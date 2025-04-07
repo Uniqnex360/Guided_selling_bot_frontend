@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import {
-    Button, Container, Grid, Typography,Paper,FormControlLabel, Checkbox, Box, Badge, TextField, Modal, List, ListItem, CircularProgress, IconButton, Divider, Link, Tabs, Tab
+    Button, Container, Grid,RadioGroup, Radio, Typography,Paper,FormControlLabel, Checkbox, Box, Badge, TextField, Modal, List, ListItem, CircularProgress, IconButton, Divider, Link, Tabs, Tab
 } from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
@@ -9,6 +9,10 @@ import { useParams } from 'react-router-dom';
 import CardMedia from '@mui/material/CardMedia';
 import { styled } from '@mui/material/styles';
 import FetchApi from './FetchApi';
+import EditIcon from '@mui/icons-material/Edit'; // Import the Edit icon
+import SaveIcon from '@mui/icons-material/Save'; // Import Save icon
+import MinimizeOutlinedIcon from '@mui/icons-material/MinimizeOutlined';
+import MaximizeOutlinedIcon from '@mui/icons-material/MaximizeOutlined';
 
 import { useNavigate, useLocation } from "react-router-dom";
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -74,16 +78,55 @@ const ProductDetail = () => {
     const [productTab, setProductTab] = useState('');
     const [selectedTitles, setSelectedTitles] = useState([]);
     const [selectedDescriptions, setSelectedDescriptions] = useState([]);
-    const [selectedFeatures, setSelectedFeatures] = useState([]);
     const [responseChat, setResponseChat] = useState('')
     const messagesEndRef = useRef(null); // Reference for the end of the chat messages
     const [isBotTyping, setIsBotTyping] = useState(false); // State for bot typing indicator
     const currentPrice = product?.msrp;
     const originalPrice = product?.list_price;
     const discountPercentage = product?.discount;
-    const currency = product?.currency || '$'; // Default to $ if currency is not available
+    const [selectedDescription, setSelectedDescription] = useState("");
+    const [promptList, setPromptList] = useState([]); // Store fetched prompt list
+    const [selectedPrompt, setSelectedPrompt] = useState(''); // Store the selected prompt
+    const [selectedFeatureSetIndex, setSelectedFeatureSetIndex] = useState(0); // To track selected feature set
+    const [selectedFeatures, setSelectedFeatures] = useState(productTab?.features || []);
+  // State for the updated title, features, and description
+const [updateTitle, setUpdateTitle] = useState('');
+const [updateFeatures, setUpdateFeatures] = useState([]);
+const [updateDescription, setUpdateDescription] = useState('');
 
+    const [editMode, setEditMode] = useState({
+      title: false,
+      features: false,
+      description: false,
+    });
+    const currency = product?.currency || '$'; // Default to $ if currency is not available
+    const [selectedTitle, setSelectedTitle] = useState("");
     const [data, setData] = useState([]); // to hold the fetched questions
+
+    // Minimize
+
+    const [isMinimized, setIsMinimized] = useState(false);
+const [isMaximized, setIsMaximized] = useState(false);
+
+
+  // Handle minimize action
+  const handleMinimize = () => {
+    setIsMinimized(true);
+    setIsMaximized(false); // Reset maximize when minimized
+  };
+
+  // Handle maximize action
+  const handleMaximize = () => {
+    setIsMaximized(true);
+    setIsMinimized(false); // Reset minimize when maximized
+  };
+
+  // Handle restore window size
+  const handleRestore = () => {
+    setIsMaximized(false);
+    setIsMinimized(false);
+  };
+
     // Initialize selectedFeatures once productTab.features is available
     useEffect(() => {
       if (Array.isArray(productTab?.features)) {
@@ -92,9 +135,197 @@ const ProductDetail = () => {
         setSelectedFeatures(initialSelectedFeatures);
       }
     }, [productTab?.features]);
-  
-   
 
+
+    const handleEditClick = (section) => {
+      setEditMode((prev) => ({ ...prev, [section]: true }));
+    };
+
+
+
+
+    const handleSaveClick = (section) => {
+      // Handle save functionality for the title section
+      if (section === 'title') {
+        // Save the updated title
+
+      
+        setEditMode((prev) => ({ ...prev, [section]: false }));
+        setUpdateTitle(selectedTitle)
+        // Update the title (assuming you want to store this in a state)
+        console.log('Updated Title:', selectedTitle);
+      } else if (section === 'features') {
+        // Save the updated features
+        setEditMode((prev) => ({ ...prev, [section]: false }));
+        // Assuming selectedFeatures stores the updated feature data
+        console.log('Updated Features:', selectedFeatures);
+        setUpdateFeatures(selectedFeatures)
+      } else if (section === 'description') {
+        // Save the updated description
+        setEditMode((prev) => ({ ...prev, [section]: false }));
+        // Assuming selectedDescription stores the updated description
+        console.log('Updated Description:', selectedDescription);
+        setUpdateDescription(selectedDescription)
+      }
+    };
+    
+    // Save function for Features - same as handleSaveClick but for features
+    const handleSaveClickFeatures = (section) => {
+      setEditMode((prev) => ({ ...prev, [section]: false }));
+      // Log the updated features
+      console.log('Updated Features:', selectedFeatures);
+    };
+    
+    // Save function for Description - same as handleSaveClick but for description
+    const handleSaveClickDescription = (section) => {
+      setEditMode((prev) => ({ ...prev, [section]: false }));
+      // Log the updated description
+      console.log('Updated Description:', selectedDescription);
+    };
+
+
+    
+  
+    useEffect(() => {
+      fetchPromptList();
+    }, []);
+  
+    // Fetch prompt list with GET method
+    const fetchPromptList = async () => {
+      try {
+        const response = await fetch('https://product-assistant-gpt.onrender.com/fetchPromptList/');
+        const data = await response.json();
+        setPromptList(data.data); // Accessing the 'data' property from the response and storing it
+      } catch (error) {
+        console.error('Error fetching prompt list:', error);
+      }
+    };
+  
+    // Handle the dropdown selection and trigger POST request
+    const handleSelectChange = (event) => {
+      const selectedValue = event.target.value;
+      setSelectedPrompt(selectedValue);
+  
+      if (selectedValue) {
+        // sendSelectedPromptToAPI(selectedValue);
+      }
+    };
+  
+    // Send POST request with selected prompt id
+    const sendSelectedPromptToAPI = async () => {
+      const requestPayload = {
+        option: selectedPrompt,
+        product_obj: {
+          product_name: updateTitle || selectedTitle,
+          long_description: updateDescription || selectedDescription,
+          features: updateFeatures || selectedFeatures,
+        },
+      };
+  
+      // Modify this payload as per your API requirements
+      try {
+        const response = await fetch(
+          'https://product-assistant-gpt.onrender.com/regenerateAiContents/',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestPayload),
+          }
+        );
+  
+        const result = await response.json();
+        console.log('API response:', result); // Handle the response as needed
+      } catch (error) {
+        console.error('Error sending data to API:', error);
+      }
+    };
+  
+    // Handle the dropdown selection and trigger POST request
+ 
+  
+    
+
+    const handleTitleChange = (e) => {
+      const title = e.target.value;
+      setSelectedTitle(title);
+      // sendSelectedTitleToAPI(title);  // Send the selected title to the API
+    };
+  
+
+    useEffect(() => {
+      if (productTab?.features && Array.isArray(productTab.features)) {
+        setSelectedFeatures(productTab.features.map((featureList) => [...featureList]));
+      }
+    }, [productTab]);
+  
+    // Handle changes in feature input fields
+     // Initialize selectedFeatures when productTab.features changes
+  useEffect(() => {
+    if (productTab?.features && Array.isArray(productTab.features)) {
+      setSelectedFeatures(productTab.features.map((featureList) => [...featureList]));
+    }
+  }, [productTab]);
+
+  // Handle selecting a feature set when radio button is clicked
+  const handleFeatureSetSelect = (event, selectedIndex) => {
+    setSelectedFeatureSetIndex(selectedIndex);
+  };
+
+  // Handle feature change when editing in text field
+  const handleFeatureChange = (e, listIndex, featureIndex) => {
+    const updatedFeatures = [...selectedFeatures]; // Create a copy of the selected features array
+    if (!updatedFeatures[listIndex]) {
+      updatedFeatures[listIndex] = []; // Initialize the feature set array if it doesn't exist
+    }
+    updatedFeatures[listIndex][featureIndex] = e.target.value; // Update the specific feature
+    setSelectedFeatures(updatedFeatures); // Update the state with the modified array
+  };
+// Handle selecting a feature set when radio button is clicked
+
+  
+    // const handleSaveClick = (type) => {
+    //   if (type === 'features') {
+    //     // Save updated features (replace with actual API call or logic)
+    //     console.log('Saving features:', selectedFeatures);
+    //   }
+    // };
+    
+    const handleFeaturesChange = (event) => {
+      const updatedFeatures = [...selectedFeatures];
+      const { value, name } = event.target;
+  
+      if (name === 'featureSet') {
+        updatedFeatures[value] = updatedFeatures[value].map((feature, index) =>
+          index === event.target.dataset.index ? event.target.value : feature
+        );
+      }
+  
+      setSelectedFeatures(updatedFeatures);
+    };
+    // const handleFeaturesChange = (e) => {
+    //   const selectedFeatureList = JSON.parse(e.target.value);
+    //   setSelectedFeatures(selectedFeatureList);
+    //   // Trigger API call for selected features if needed
+    // };
+  
+    const handleDescriptionChange = (e) => {
+      const description = e.target.value;
+      console.log('1111',description)
+      setSelectedDescription(description);
+      // Trigger API call for selected description if needed
+    };
+  
+
+    // const sendSelectedTitleToAPI = async (title) => {
+    //   try {
+    //     fetch(`https://product-assistant-gpt.onrender.com/fetchProductQuestions/${id}`)
+    //     .then((response) => response.json())
+    //   } catch (error) {
+    //     console.error('Error sending title to API:', error);
+    //   }
+    // };
   
     const defaultImg = "https://via.placeholder.com/400";
 
@@ -109,7 +340,7 @@ const toggleChat = () => setChatOpen(!chatOpen);
 useEffect(() => {
     if (chatOpen && id) {
       setLoading(true);
-      fetch(`https://product-assistant-gpt.onrender.com /fetchProductQuestions/${id}`)
+      fetch(`https://product-assistant-gpt.onrender.com/fetchProductQuestions/${id}`)
         .then((response) => response.json())
         .then((responseData) => {
           setData(responseData.data); // Setting fetched data
@@ -154,7 +385,7 @@ const sendMessageToAPI = (messageText) => {
 
     // Simulate delay before API call
     setTimeout(() => {
-      fetch('https://product-assistant-gpt.onrender.com /chatbotView/', {
+      fetch('https://product-assistant-gpt.onrender.com/chatbotView/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -228,54 +459,56 @@ const handleSendMessage = () => {
 // };
 
 
-    // Handle title checkbox change
-  const handleTitleChange = (event, titleIndex) => {
-    const newSelectedTitles = [...selectedTitles];
-    if (event.target.checked) {
-      newSelectedTitles.push(titleIndex);
-    } else {
-      const index = newSelectedTitles.indexOf(titleIndex);
-      if (index > -1) {
-        newSelectedTitles.splice(index, 1);
-      }
-    }
-    setSelectedTitles(newSelectedTitles);
-  };
+
+
 
    // Handle feature checkbox change
-  // Handle feature checkbox change
-  const handleFeatureSetChange = (event, listIndex) => {
-    const updatedSelectedFeatures = [...selectedFeatures];
-    
+
+   const handleFeatureSetChange = (event, listIndex) => {
     if (event.target.checked) {
-      // Select all features in this feature set
-      updatedSelectedFeatures[listIndex] = productTab.features[listIndex].map((_, featureIndex) => featureIndex);
+      const selected = productTab.features[listIndex];
+      setSelectedFeatures([selected]); // wrap inside array since it’s an array of arrays
+      console.log('oppo feature',selectedFeatures)
     } else {
-      // Deselect all features in this feature set
-      updatedSelectedFeatures[listIndex] = [];
+      setSelectedFeatures([]);
     }
-    
-    setSelectedFeatures(updatedSelectedFeatures);
   };
+
+  
+  // Handle feature checkbox change
+  // const handleFeatureSetChange = (event, listIndex) => {
+  //   const updatedSelectedFeatures = [...selectedFeatures];
+    
+  //   if (event.target.checked) {
+  //     // Select all features in this feature set
+  //     updatedSelectedFeatures[listIndex] = productTab.features[listIndex].map((_, featureIndex) => featureIndex);
+  //   } else {
+  //     // Deselect all features in this feature set
+  //     updatedSelectedFeatures[listIndex] = [];
+  //   }
+    
+  //   setSelectedFeatures(updatedSelectedFeatures);
+  // };
   
   const handleBackClick = () => {
     // Correct syntax for query params
     navigate(`/`);
   };
 
+  
   // Handle description checkbox change
-  const handleDescriptionChange = (event, descIndex) => {
-    const newSelectedDescriptions = [...selectedDescriptions];
-    if (event.target.checked) {
-      newSelectedDescriptions.push(descIndex);
-    } else {
-      const index = newSelectedDescriptions.indexOf(descIndex);
-      if (index > -1) {
-        newSelectedDescriptions.splice(index, 1);
-      }
-    }
-    setSelectedDescriptions(newSelectedDescriptions);
-  };
+  // const handleDescriptionChange = (event, descIndex) => {
+  //   const newSelectedDescriptions = [...selectedDescriptions];
+  //   if (event.target.checked) {
+  //     newSelectedDescriptions.push(descIndex);
+  //   } else {
+  //     const index = newSelectedDescriptions.indexOf(descIndex);
+  //     if (index > -1) {
+  //       newSelectedDescriptions.splice(index, 1);
+  //     }
+  //   }
+  //   setSelectedDescriptions(newSelectedDescriptions);
+  // };
     const handleUpdateProduct = (updatedProduct) => {
         console.log('3333111',updatedProduct)
         setProductTab(updatedProduct); // Update the product details in parent component
@@ -285,7 +518,7 @@ const handleSendMessage = () => {
         setAIModalOpen(false);
     };
     useEffect(() => {
-        fetch(`https://product-assistant-gpt.onrender.com /productDetail/${id}`)
+        fetch(`https://product-assistant-gpt.onrender.com/productDetail/${id}`)
             .then((response) => response.json())
             .then((data) => {
                 setProduct(data.data.product);
@@ -340,46 +573,48 @@ const handleSendMessage = () => {
             </Box>
             <Grid container spacing={3} marginTop={3}>
                 {/* Left Section: Image & Thumbnails */}
-                <Grid item xs={12} md={6} sx={{marginRight:'20%',  padding: '30px'}}  > {/* Occupies half width */}
-                    <Box display="flex" flexDirection="column" alignItems="center">
-                        {/* Main Image */}
-                        <CardMedia
-                            component="img"
-                            image={mainImage || defaultImg}
-                            alt="Product Image"
-                            sx={{
-                                borderRadius: "8px",
-                                marginBottom: "16px",
-                                height: "250px",
-                                width: "321px",
-                                // width: "100%",
-                                objectFit: "contain",
-                            }}
-                        />
-                        {/* Thumbnails */}
-                        <Box display="flex" flexDirection="row" gap={2}>
-                            {product?.images?.map((img, index) => {
-                                if (!img) return null;
-                                return (
-                                    <CardMedia
-                                        key={`${img}-${index}`}
-                                        component="img"
-                                        image={img}
-                                        alt={`Thumbnail ${index + 1}`}
-                                        sx={{
-                                            width: "60px",
-                                            height: "60px",
-                                            borderRadius: "4px",
-                                            cursor: "pointer",
-                                            border: mainImage === img ? "2px solid #000" : "none",
-                                        }}
-                                        onClick={() => setMainImage(img)}
-                                    />
-                                );
-                            })}
-                        </Box>
-                    </Box>
-                </Grid>
+                <Grid item xs={12} md={6} >
+  <Box display="flex" flexDirection="row" alignItems="flex-start" gap={2}>
+    {/* Thumbnails on the left - vertical */}
+    <Box display="flex" flexDirection="column" gap={2}>
+      {product?.images?.map((img, index) => {
+        if (!img) return null;
+        return (
+          <CardMedia
+            key={`${img}-${index}`}
+            component="img"
+            image={img}
+            alt={`Thumbnail ${index + 1}`}
+            sx={{
+              borderRadius: "4px",
+              height: "60px",
+              width: "60px",
+              cursor: "pointer",
+              border: mainImage === img ? "2px solid #000" : "1px solid #ccc",
+              objectFit: "cover"
+            }}
+            onClick={() => setMainImage(img)}
+          />
+        );
+      })}
+    </Box>
+
+    {/* Main Image on the right */}
+    <CardMedia
+      component="img"
+      image={mainImage || defaultImg}
+      alt="Product Image"
+      sx={{
+        width: "500px",
+        height: "300px",
+        borderRadius: "4px",
+        objectFit: "contain",
+        cursor: "pointer"
+      }}
+    />
+  </Box>
+</Grid>
+
 
                 {/* Right Section: Product Details and Tabs */}
                 <Grid item xs={12} md={6}> {/* Occupies half width */}
@@ -392,7 +627,7 @@ const handleSendMessage = () => {
   sx={{
     fontWeight: 'bold',
     mb: 1,
-    maxWidth: '35ch',  // Maximum width based on character count
+    maxWidth: '40ch',  // Maximum width based on character count
     overflowWrap: 'break-word',  // Ensures text wraps when it exceeds the width
   }}
 >
@@ -406,7 +641,7 @@ const handleSendMessage = () => {
 
 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 {currentPrice !== undefined && currentPrice !== null && (
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a73e8', mr: 1, fontSize: '1.1rem' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a73e8', mr: 1, fontSize: '25px' }}>
                         {currency}{currentPrice}
                     </Typography>
                 )}
@@ -416,7 +651,7 @@ const handleSendMessage = () => {
                     </Typography>
                 )}
                 {discountPercentage && (
-                    <Typography variant="body2" sx={{ color: 'green', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                    <Typography variant="body2" sx={{ color: 'green', fontWeight: 'bold', fontSize: '21px' }}>
                         {discountPercentage} OFF
                     </Typography>
                 )}
@@ -453,9 +688,9 @@ const handleSendMessage = () => {
                     <DetailValue>{product?.brand_name || 'N/A'}</DetailValue>
                 </Box>
             
-    <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-        <Button variant="outlined" color="primary" onClick={handleAIOptions} size="small">
-            Generate
+    <Box sx={{ display: 'flex', justifyContent: 'flex-start', marginBottom:'20px' }}>
+        <Button variant="outlined" sx={{backgroundColor:'#f2f3ae',  color:'black'}} color="primary" onClick={handleAIOptions} size="small">
+            Generate Content With AI
         </Button>
     </Box>
 </Box>
@@ -472,7 +707,7 @@ const handleSendMessage = () => {
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: 400,
+        width: 300,
         bgcolor: 'background.paper',
         border: '2px solid #000',
         boxShadow: 24,
@@ -484,7 +719,7 @@ const handleSendMessage = () => {
             <FetchApi onClose={handleCloseAIModal} onUpdateProduct={handleUpdateProduct} />
 
         </div>
-        <Button onClick={handleCloseAIModal} sx={{ mt: 2 }}>Close</Button>
+        {/* <Button onClick={handleCloseAIModal} sx={{ mt: 2 }}>Close</Button> */}
     </Box>
 </Modal>
 
@@ -500,153 +735,274 @@ const handleSendMessage = () => {
        
    <Grid container  spacing={2}>
   {/* Left Side - Product Features and Description */}
-  <Grid  item xs={6} sx={{width:'50%'}}>
-    {/* Product Features */}
-    <Box display="flex" alignItems="center" marginTop={3} marginBottom={1}>
-      <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
-        Features:
-      </Typography>
-    </Box>
-
-    <List>
-      {product?.features?.map((feature, index) => (
-        <ListItem key={index} sx={{ padding: '4px 0', fontSize: '0.9rem' }}>
-       • {feature}
-        </ListItem>
-      ))}
-    </List>
-
-    {/* Product Description */}
-    <Typography variant="h6" marginTop={3} marginBottom={1} sx={{ fontSize: '1.2rem' }}>
-      Description:
+  <Grid item xs={6} sx={{ width: '50%', fontFamily: 'Roboto, Helvetica, sans-serif' }}>
+  {/* Product Features */}
+  <Box display="flex" alignItems="center" mt={3} mb={1}>
+    <Typography variant="h6" mr={2} sx={{ fontSize: '14px', fontWeight: 600 }}>
+      Features:
     </Typography>
-    <Typography variant="body2" color="textSecondary">
-      {product?.long_description || 'No description available.'}
-    </Typography>
-  </Grid>
+  </Box>
+
+  <List>
+    {product?.features?.map((feature, index) => (
+      <ListItem key={index} sx={{ padding: '4px 0' }}>
+        <Typography sx={{ fontSize: '14px' }}>
+          • {feature}
+        </Typography>
+      </ListItem>
+    ))}
+  </List>
+
+  {/* Product Description */}
+  <Typography variant="h6" mt={3} mb={1} sx={{ fontSize: '14px', fontWeight: 600 }}>
+    Description:
+  </Typography>
+  <Typography variant="body2" sx={{ fontSize: '14px' }}>
+    {product?.long_description || 'No description available.'}
+  </Typography>
+</Grid>
+
+
+
 
   {/* Right Side - Empty */}
   <Grid  item xs={6}>
   <Box>
 
-    <Tabs value={tabIndex} onChange={handleTabChange} aria-label="product details tabs">
+    <Tabs value={tabIndex} onChange={handleTabChange} aria-label="product details tabs" sx={{marginTop:'-50px'}}>
       <Tab label="Product Title" {...a11yProps(0)} />
       <Tab label="Features" {...a11yProps(1)} />
       <Tab label="Description" {...a11yProps(2)} />
     </Tabs>
+    <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
+  {/* Dropdown to select prompt */}
+  <div>
+    <select 
+      value={selectedPrompt} 
+      onChange={handleSelectChange} 
+      className="dropdown"
+      style={{ padding: '8px', fontSize: '14px' }}
+    >
+      <option value="">Select a Prompt</option>
+      {promptList.length > 0 ? (
+        promptList.map((prompt) => (
+          <option key={prompt.id} value={prompt.id}>
+            {prompt.name} {/* Display the name of the prompt */}
+          </option>
+        ))
+      ) : (
+        <option value="">No prompts available</option>
+      )}
+    </select>
+  </div>
 
- 
+  {/* Button to trigger API call */}
+  <Button 
+    variant="contained" 
+    color="primary" 
+    onClick={() => sendSelectedPromptToAPI()}  // Trigger the API call when clicked
+    sx={{ ml: 2 }} // Optional margin for spacing between dropdown and button
+  >
+    Update
+  </Button>
+</Box>
 <TabPanel value={tabIndex} index={0}>
-        <List sx={{ padding: 0 }}>
-          {productTab?.title?.length > 0 ? (
-            productTab.title.map((title, index) => (
-              <ListItem key={index}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={selectedTitles.includes(index)}
-                      onChange={(e) => handleTitleChange(e, index)}
-                    />
-                  }
-                  label={<Typography variant="body1">{title}</Typography>}
-                />
-              </ListItem>
-            ))
-          ) : (
-            <ListItem>
-              <Typography variant="body1" color="textSecondary">No title found</Typography>
-            </ListItem>
-          )}
-        </List>
-      </TabPanel>
+  {Array.isArray(productTab?.title) && productTab.title.length > 0 ? (
+    <Box>
+      <RadioGroup value={selectedTitle} onChange={handleTitleChange}>
+        <List sx={{ padding: 0, fontSize: '14px', fontWeight: 'bold', mb: 1, maxWidth: '59ch', overflowWrap: 'break-word' }}>
+          {productTab.title.map((title, index) => (
+            <ListItem key={index}>
+              <FormControlLabel
+                value={title}
+                control={<Radio />}
+                label={<Typography variant="body1">{title}</Typography>}
+              />
 
-      <TabPanel value={tabIndex} index={1}>
+              {/* Show Edit Icon only if the title is selected and not in editMode */}
+              {selectedTitle === title && !editMode.title && (
+                <IconButton onClick={() => handleEditClick('title')}>
+                  <EditIcon />
+                </IconButton>
+              )}
+            </ListItem>
+          ))}
+        </List>
+      </RadioGroup>
+
+      {/* Show TextField to edit the title if in editMode */}
+      {editMode.title && selectedTitle && (
+        <Box>
+          <TextField
+            value={selectedTitle}
+            onChange={handleTitleChange}
+            label="Edit Title"
+            fullWidth
+            variant="outlined"
+            margin="normal"
+          />
+          <IconButton onClick={() => handleSaveClick('title')}>
+            <SaveIcon />
+          </IconButton>
+        </Box>
+      )}
+    </Box>
+  ) : (
+    <ListItem>
+      <Typography variant="body1" color="textSecondary">
+        No title found
+      </Typography>
+    </ListItem>
+  )}
+</TabPanel>
+
+<TabPanel value={tabIndex} index={1}>
   <Box>
     <Box display="flex" alignItems="center" marginBottom={1} sx={{ width: '50%' }}>
       <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
         Features:
       </Typography>
+      <IconButton onClick={() => handleEditClick('features')}>
+        <EditIcon />
+      </IconButton>
     </Box>
 
-    {/* Fallback message for features */}
-    {Array.isArray(productTab?.features) && productTab.features.length > 0 ? (
-      <List sx={{ paddingLeft: 2 }}>
-        {productTab.features.map((featureList, listIndex) => (
-          <React.Fragment key={listIndex}>
-            {/* Render checkbox only for each feature set */}
-            <ListItem sx={{ display: 'flex', alignItems: 'center' }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={selectedFeatures[listIndex]?.length > 0}  // Check if any features are selected in the set
-                    onChange={(e) => handleFeatureSetChange(e, listIndex)}  // Handle the selection for the feature set
-                  />
-                }
-                label={
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                    Feature Set {listIndex + 1}
-                  </Typography>
-                }
-              />
-            </ListItem>
-
-            {/* Render the individual features under the feature set */}
-            {featureList.map((feature, featureIndex) => (
-              <ListItem key={featureIndex} sx={{ padding: '4px 0', fontSize: '0.9rem' }}>
-                <Typography variant="body1">• {feature}</Typography>
-              </ListItem>
-            ))}
-          </React.Fragment>
-        ))}
-      </List>
+    {editMode.features ? (
+      <Box>
+        {Array.isArray(productTab?.features) && productTab.features.length > 0 ? (
+          productTab.features.map((featureList, listIndex) => (
+            <Box key={listIndex} sx={{ marginBottom: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                Feature Set {listIndex + 1}
+              </Typography>
+              {featureList.map((feature, featureIndex) => (
+                <Box key={featureIndex} sx={{ marginBottom: 1, maxWidth: '59ch', overflowWrap: 'break-word' }}>
+                  {listIndex === selectedFeatureSetIndex ? (
+                    <TextField
+                      sx={{ maxWidth: '59ch', overflowWrap: 'break-word' }}
+                      value={selectedFeatures[listIndex] ? selectedFeatures[listIndex][featureIndex] : feature}
+                      onChange={(e) => handleFeatureChange(e, listIndex, featureIndex)}
+                      label={`Feature ${featureIndex + 1}`}
+                      fullWidth
+                      variant="outlined"
+                      margin="normal"
+                    />
+                  ) : (
+                    <Typography variant="body1" sx={{ paddingLeft: '16px' }}>
+                      • {feature}
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          ))
+        ) : (
+          <Typography variant="body1" color="textSecondary">
+            No features available.
+          </Typography>
+        )}
+        <IconButton onClick={() => handleSaveClick('features')}>
+          <SaveIcon />
+        </IconButton>
+      </Box>
     ) : (
-      <Typography variant="body1" color="textSecondary">
-        No features found
-      </Typography>
+      <RadioGroup
+        value={selectedFeatureSetIndex !== null ? selectedFeatureSetIndex : ''}
+        onChange={(e) => handleFeatureSetSelect(e, Number(e.target.value))}
+      >
+        {Array.isArray(productTab.features) && productTab.features.length > 0 ? (
+          productTab.features.map((featureList, listIndex) => (
+            <React.Fragment key={listIndex}>
+              <ListItem sx={{ display: 'flex', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Radio value={listIndex} checked={selectedFeatureSetIndex === listIndex} />
+                  }
+                  label={
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                      Feature Set {listIndex + 1}
+                    </Typography>
+                  }
+                />
+              </ListItem>
+
+              {featureList.map((feature, featureIndex) => (
+                <ListItem key={featureIndex} sx={{ padding: '4px 0', fontSize: '0.9rem' }}>
+                  <Typography variant="body1">• {feature}</Typography>
+                </ListItem>
+              ))}
+            </React.Fragment>
+          ))
+        ) : (
+          <Typography variant="body1" color="textSecondary">
+            No features available.
+          </Typography>
+        )}
+      </RadioGroup>
     )}
   </Box>
 </TabPanel>
 
+<TabPanel value={tabIndex} index={2}>
+  <Typography variant="h6" marginTop={1} marginBottom={1} sx={{ fontSize: '1.2rem' }}>
+    Description:
+  </Typography>
+  
+  {productTab?.description?.length > 0 ? (
+    <RadioGroup value={selectedDescription} onChange={handleDescriptionChange}>
+      {productTab.description.map((desc, index) => (
+        <ListItem
+          key={index}
+          sx={{
+            fontWeight: 'bold',
+            fontSize: '16px',
+            mb: 1,
+            maxWidth: '59ch',
+            overflowWrap: 'break-word',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <FormControlLabel
+            value={desc}
+            control={<Radio />}
+            label={<Typography variant="body2" sx={{ fontSize: '16px' }}>{desc}</Typography>}
+          />
+          
+          {/* Show Edit button only if in editMode and the description is selected */}
+          {selectedDescription === desc && !editMode.description && (
+            <IconButton onClick={() => handleEditClick('description', desc)}>
+              <EditIcon />
+            </IconButton>
+          )}
+        </ListItem>
+      ))}
+    </RadioGroup>
+  ) : (
+    <Typography variant="body2" color="textSecondary">
+      No description available.
+    </Typography>
+  )}
 
-      {/* Description Tab */}
-      <TabPanel value={tabIndex} index={2}>
-        <Typography variant="h6" marginTop={1} marginBottom={1} sx={{ fontSize: '1.2rem' }}>
-          Description:
-        </Typography>
+  {/* Show text field for editing when in editMode and the selected description is clicked */}
+  {editMode.description && selectedDescription && (
+    <Box>
+      <TextField
+        value={selectedDescription}
+        onChange={handleDescriptionChange}
+        label="Edit Description"
+        fullWidth
+        variant="outlined"
+        margin="normal"
+      />
+      <IconButton onClick={() => handleSaveClick('description')}>
+        <SaveIcon />
+      </IconButton>
+    </Box>
+  )}
+</TabPanel>
 
-        {productTab?.description?.length > 0 ? (
-          productTab.description.map((desc, index) => (
-            <ListItem key={index}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={selectedDescriptions.includes(index)}
-                    onChange={(e) => handleDescriptionChange(e, index)}
-                  />
-                }
-                label={
-                  <Typography
-                    variant="body2"
-                    color="textSecondary"
-                    sx={{
-                      marginBottom: 1,
-                      maxWidth: '100%',
-                      wordWrap: 'break-word',
-                      overflowWrap: 'break-word',
-                    }}
-                  >
-                    {desc}
-                  </Typography>
-                }
-              />
-            </ListItem>
-          ))
-        ) : (
-          <Typography variant="body2" color="textSecondary">
-            No description available.
-          </Typography>
-        )}
-      </TabPanel>
+
   </Box>
 </Grid>
 
@@ -671,10 +1027,15 @@ const handleSendMessage = () => {
         <Box
           sx={{
             position: 'fixed',
+            width: isMaximized ? '100%' : '320px',  // Maximized window will take 100% width
+            height: isMinimized ? '50px' : isMaximized ? '100%' : '450px',  // Minimized height is small        
+            position: 'fixed',
+    
+    transition: 'all 0.3s',
+          
             bottom: 90,
             right: 20,
-            width: 320,
-            height: '450px',
+          
             bgcolor: '#fff',
             borderRadius: 2,
             boxShadow: 6,
@@ -685,17 +1046,28 @@ const handleSendMessage = () => {
         >
           {/* Header */}
           <Box sx={{ bgcolor: '#007bff', color: '#fff', p: 1.5, position: 'relative' }}>
-            <Typography variant="subtitle1" fontWeight="bold">
-              Product Chat Assistant
-            </Typography>
-            <IconButton
-              size="small"
-              sx={{ position: 'absolute', right: 8, top: 8, color: '#fff' }}
-              onClick={toggleChat} // Close chat on button click
-            >
+  <Typography variant="subtitle1" fontWeight="bold">
+    Product Chat Assistant
+  </Typography>
+
+  <Box sx={{ position: 'absolute', right: 8, top: 8, display: 'flex', gap: 1 }}>
+    {/* Minimize Button
+  <IconButton size="small" sx={{ color: '#fff' }} onClick={handleMinimize}>
+              <MinimizeOutlinedIcon fontSize="small" />
+            </IconButton>
+
+
+            <IconButton size="small" sx={{ color: '#fff' }} onClick={handleMaximize}>
+              <MaximizeOutlinedIcon fontSize="small" />
+            </IconButton> */}
+
+            {/* Close Button */}
+            <IconButton size="small" sx={{ color: '#fff' }} onClick={toggleChat}>
               <CloseIcon fontSize="small" />
             </IconButton>
-          </Box>
+  </Box>
+</Box>
+
 
           {/* Chat Body */}
           <Box
@@ -709,6 +1081,38 @@ const handleSendMessage = () => {
             }}
           >
     {/* Display Chat Messages */}
+
+    
+       {/* Display Questions from 'data' array */}
+       {data && data.length > 0 && (
+                <Box sx={{ marginTop: 2 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                        Frequently Asked Questions:
+                    </Typography>
+                    {data.map((item) => (
+                        <Box
+                            key={item.id}
+                            sx={{
+                                backgroundColor: '#f9f9f9',
+                                padding: '8px',
+                                borderRadius: '5px',
+                                marginTop: '5px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                            }}
+                        >
+                            <Typography variant="body2">{item.question}</Typography>
+                            <IconButton
+                                sx={{ padding: 0 }}
+                                onClick={() => handleQuestionClick(item.id)}
+                            >
+                                <ArrowForwardIcon />
+                            </IconButton>
+                        </Box>
+                    ))}
+                </Box>
+            )}
+
 {messages.length === 0 && (
   <Typography
     sx={{
@@ -745,77 +1149,7 @@ const handleSendMessage = () => {
 ))}
 
 
-       {/* Display Questions from 'data' array */}
-       {data && data.length > 0 && (
-                <Box sx={{ marginTop: 2 }}>
-                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                        Frequently Asked Questions:
-                    </Typography>
-                    {data.map((item) => (
-                        <Box
-                            key={item.id}
-                            sx={{
-                                backgroundColor: '#f9f9f9',
-                                padding: '8px',
-                                borderRadius: '5px',
-                                marginTop: '5px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                            }}
-                        >
-                            <Typography variant="body2">{item.question}</Typography>
-                            <IconButton
-                                sx={{ padding: 0 }}
-                                onClick={() => handleQuestionClick(item.id)}
-                            >
-                                <ArrowForwardIcon />
-                            </IconButton>
-                        </Box>
-                    ))}
-                </Box>
-            )}
-
-            {/* Display Chat Messages */}
-            {/* {messages.length === 0 && (
-                <Typography
-                    sx={{
-                        textAlign: 'center',
-                        fontStyle: 'italic',
-                        color: '#aaa',
-                        padding: '10px',
-                    }}
-                >
-                    Hello! Ask me about this product.
-                </Typography>
-            )}
-            {messages.map((message, index) => (
-                <Typography
-                    key={index}
-                    sx={{
-                        textAlign: message.sender === 'user' ? 'right' : 'left',
-                        backgroundColor: message.sender === 'user' ? '#d1e7ff' : '#f1f1f1',
-                        padding: '8px 12px',
-                        borderRadius: '10px',
-                        margin: '5px 0',
-                        display: 'inline-block',
-                        maxWidth: '80%',
-                    }}
-                >
-                    {message.text}
-                </Typography>
-            ))}
-        */}
-
-            {/* {!loading && data.length > 0 && (
-              <Paper sx={{ p: 1, bgcolor: '#f1f1f1', borderRadius: 2, maxWidth: '80%' }}>
-                <Typography variant="body2">Here are some questions you can ask:</Typography>
-                {data.map((item) => (
-                  <Typography variant="body2" key={item.id}>
-                    - {item.question}
-                  </Typography>
-                ))}
-              </Paper>
-            )} */}
+           
 
             {/* Bot Typing Indicator */}
             {isBotTyping && (
@@ -838,6 +1172,11 @@ const handleSendMessage = () => {
               placeholder="Type your message..."
               value={userMessage}
               onChange={(e) => setUserMessage(e.target.value)}
+              onKeyUp={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  handleSendMessage();  // Send the message when Enter key is pressed
+                }
+              }}
             />
             <Button variant="contained" sx={{ textTransform: 'capitalize' }} onClick={handleSendMessage}>
               Send

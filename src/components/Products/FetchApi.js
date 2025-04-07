@@ -17,7 +17,7 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
     });
 
     useEffect(() => {
-        fetch(`https://product-assistant-gpt.onrender.com /productDetail/${id}`)
+        fetch(`https://product-assistant-gpt.onrender.com/productDetail/${id}`)
             .then((response) => response.json())
             .then((data) => {
                 setProduct(data.data.product);
@@ -46,7 +46,7 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
 
         setLoading(true); // Show loading indicator during API call
 
-        fetch(`https://product-assistant-gpt.onrender.com /fetchAiContent/`, {
+        fetch(`https://product-assistant-gpt.onrender.com/fetchAiContent/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -80,17 +80,18 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
             {/* Close button aligned at the top right */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-                <IconButton onClick={onClose} aria-label="close" sx={{ color: '#1976d2' }}>
-                    <CloseIcon />
-                </IconButton>
-            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1 }}>
+  <Typography variant="h6" gutterBottom>
+    Generate AI Content
+  </Typography>
+  <IconButton onClick={onClose} aria-label="close" sx={{ color: '#1976d2' }}>
+    <CloseIcon />
+  </IconButton>
+</Box>
 
             {/* Main Content */}
             <Box sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                    Generate AI Content
-                </Typography>
+
 
                 {/* Options to generate AI content */}
                 <FormControl component="fieldset">
@@ -131,8 +132,8 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
 
             {/* Action button to fetch AI content */}
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button variant="contained" color="primary" onClick={handleFetchAiContent} disabled={loading}>
-                    {loading ? <CircularProgress size={24} color="inherit" /> : 'Fetch AI Content'}
+                <Button variant="contained" color="primary" sx={{textTransform:'capitalize'}} onClick={handleFetchAiContent} disabled={loading}>
+                    {loading ? <CircularProgress size={24} color="inherit" /> : 'Create AI content'}
                 </Button>
             </Box>
         </Box>
