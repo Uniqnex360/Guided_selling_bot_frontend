@@ -149,41 +149,6 @@ const handleEditClick = (field) => {
   }
 };
 
-const handleDescriptionChange = (event) => {
-  const value = event.target.value; // Get the value of the selected description
-  setSelectedDescription(value); // Set the selected description value
-  setEditedDescription(value); // Set this value for editing
-
-  // Update the checked status for descriptions based on the selected value
-  const updatedDescriptions = productTab.description.map((desc) => ({
-    ...desc,
-    checked: desc.value === value, // Set checked to true for the selected description
-  }));
-
-  // Update the local state (productTab) with the new checked description
-  handleLocalUpdate({ ...productTab, description: updatedDescriptions });
-};
-
-// Function to save the edited description
-const handleSaveClickDescription = () => {
-  const updatedDescriptions = [...productTab.description];
-
-  // Update the description at the selectedEditIndex
-  updatedDescriptions[selectedEditIndex] = {
-    ...updatedDescriptions[selectedEditIndex],
-    value: editedDescription, // Update the value with the edited description
-    checked: true, // Mark the edited description as checked
-  };
-
-  setProductTab((prev) => ({
-    ...prev,
-    description: updatedDescriptions, // Update the description array
-  }));
-
-  // Close edit mode and reset selected index
-  setEditMode({ ...editMode, description: false });
-  setSelectedEditIndex(null);
-};
 
 // On edit button click
 // const handleEditClick = (field) => {
@@ -220,14 +185,14 @@ const handleFeatureSetSelect = (e, index) => {
 // };
 
 // Save the edited features
-const handleSaveClick = (field) => {
-  if (field === 'features') {
-    const updatedFeatures = [...productTab.features];
-    updatedFeatures[selectedFeatureSetIndex] = selectedFeatures[selectedFeatureSetIndex];
-    setProductTab({ ...productTab, features: updatedFeatures });
-    setEditMode({ ...editMode, features: false });
-  }
-};
+// const handleSaveClick = (field) => {
+//   if (field === 'features') {
+//     const updatedFeatures = [...productTab.features];
+//     updatedFeatures[selectedFeatureSetIndex] = selectedFeatures[selectedFeatureSetIndex];
+//     setProductTab({ ...productTab, features: updatedFeatures });
+//     setEditMode({ ...editMode, features: false });
+//   }
+// };
 
 const handleEditClickFeatures = (type, index) => {
   setEditMode({ ...editMode, [type]: true });
@@ -282,30 +247,194 @@ const handleEditClickFeatures = (type, index) => {
 
 
 
-const handleBackendUpdate = (updatedData) => {
-  console.log('Backend update called with:', updatedData);
-  // Implement your API call here
-};
+// const handleLocalUpdate = (updatedProductTab) => {
+//   console.log('Local state updated with:', updatedProductTab);
 
-const handleLocalUpdate = (updatedProductTab) => {
+//   // Find the description with checked = true
+//   const checkedDescription = updatedProductTab.description.find(desc => desc.checked);
+
+//   // Set the selected description to the one that's checked
+//   if (checkedDescription) {
+//     setGetDescription(checkedDescription.value);
+//   } else {
+//     // If no description is checked, set it to a default value or handle the error accordingly
+//     setGetDescription('');
+//   }
+
+//   // Update other parts of the state as needed
+//   setGetTitle(updatedProductTab.title);
+//   setGetFeatures(updatedProductTab.features);
+//   setGetRewriteDescription(updatedProductTab.description)
+// };
+
+
+// const handleLocalUpdate = (updatedProductTab) => {
+//   console.log('Local state updated with:', updatedProductTab);
+
+//   // ✅ Safely handle description
+//   const checkedDescription = updatedProductTab.description?.find(desc => desc.checked);
+//   setGetDescription(checkedDescription ? checkedDescription.value : '');
+
+//   // ✅ Safely handle title and features
+//   setGetTitle(updatedProductTab.title || []);
+//   setGetFeatures(updatedProductTab.features || []);
+//   setGetRewriteDescription(updatedProductTab.description || []);
+// };
+
+
+const handleLocalUpdate = (updatedFields) => {
+  const updatedProductTab = {
+    ...productTab,
+    ...updatedFields,
+  };
+
   console.log('Local state updated with:', updatedProductTab);
 
-  // Find the description with checked = true
-  const checkedDescription = updatedProductTab.description.find(desc => desc.checked);
+  // ✅ Handle description
+  const checkedDescription = updatedProductTab.description?.find(desc => desc.checked);
+  setGetDescription(checkedDescription ? checkedDescription.value : '');
 
-  // Set the selected description to the one that's checked
-  if (checkedDescription) {
-    setGetDescription(checkedDescription.value);
-  } else {
-    // If no description is checked, set it to a default value or handle the error accordingly
-    setGetDescription('');
-  }
+  // ✅ Handle title and features
+  setGetTitle(updatedProductTab.title || []);
+  setGetFeatures(updatedProductTab.features || []);
+  setGetRewriteDescription(updatedProductTab.description || []);
 
-  // Update other parts of the state as needed
-  setGetTitle(updatedProductTab.title);
-  setGetFeatures(updatedProductTab.features);
-  setGetRewriteDescription(updatedProductTab.description)
+  // ✅ Update the entire productTab state
+  setProductTab(updatedProductTab);
 };
+
+
+
+
+// const handleDescriptionChange = (event) => {
+//   const value = event.target.value; // Get the value of the selected description
+//   setSelectedDescription(value); // Set the selected description value
+//   setEditedDescription(value); // Set this value for editing
+
+//   // Update the checked status for descriptions based on the selected value
+//   const updatedDescriptions = productTab.description.map((desc) => ({
+//     ...desc,
+//     checked: desc.value === value, // Set checked to true for the selected description
+//   }));
+
+//   // Update the local state (productTab) with the new checked description
+//   handleLocalUpdate({ ...productTab, description: updatedDescriptions });
+// };
+
+
+const handleDescriptionChange = (event) => {
+  const value = event.target.value;
+  setSelectedDescription(value);
+  setEditedDescription(value);
+
+  const updatedDescriptions = productTab.description.map((desc) => ({
+    ...desc,
+    checked: desc.value === value,
+  }));
+
+  handleLocalUpdate({ description: updatedDescriptions });
+};
+
+
+// Function to save the edited description
+const handleSaveClickDescription = () => {
+  const updatedDescriptions = [...productTab.description];
+
+  // Update the description at the selectedEditIndex
+  updatedDescriptions[selectedEditIndex] = {
+    ...updatedDescriptions[selectedEditIndex],
+    value: editedDescription, // Update the value with the edited description
+    checked: true, // Mark the edited description as checked
+  };
+
+  setProductTab((prev) => ({
+    ...prev,
+    description: updatedDescriptions, // Update the description array
+  }));
+
+  // Close edit mode and reset selected index
+  setEditMode({ ...editMode, description: false });
+  setSelectedEditIndex(null);
+};
+
+
+const handleSaveClick = (type) => {
+  if (type === 'title') {
+    const updatedTitles = productTab.title.map((title, index) => 
+      index === selectedEditIndex
+        ? { ...title, value: editedTitle } // Update the selected title with the edited title
+        : title
+    );
+
+    // Update the productTab state with the new titles array
+    handleLocalUpdate({ ...productTab, title: updatedTitles });
+
+    // Update the selectedTitle state after saving
+    setSelectedTitle(editedTitle);
+
+    // Close the edit mode
+    setEditMode({ ...editMode, title: false });
+    setSelectedEditIndex(null); // Reset the selected edit index
+  }
+};
+
+// const handleTitleChange = (event) => {
+//   const value = event.target.value;
+//   setSelectedTitle(value);
+//   setEditedTitle(value);
+
+//   if (!productTab?.title) return;
+
+//   const updatedTitles = productTab.title.map((title) => ({
+//     ...title,
+//     checked: title.value === value,
+//   }));
+
+//   handleLocalUpdate({ ...productTab, title: updatedTitles });
+// };
+
+
+// const handleTitleChange = (event) => {
+//   const value = event.target.value;
+//   setSelectedTitle(value);
+//   setEditedTitle(value);
+
+//   if (!productTab?.title) return;
+
+//   const updatedTitles = productTab.title.map((title) => ({
+//     ...title,
+//     checked: title.value === value,
+//   }));
+
+//   handleLocalUpdate({ ...productTab, title: updatedTitles });
+// };
+
+
+const handleTitleChange = (event) => {
+  const value = event.target.value;
+  setSelectedTitle(value);
+  setEditedTitle(value);
+
+  if (!productTab?.title) return;
+
+  const updatedTitles = productTab.title.map((title) => ({
+    ...title,
+    checked: title.value === value,
+  }));
+
+  handleLocalUpdate({ title: updatedTitles });
+};
+
+
+useEffect(() => {
+  const checkedTitle = productTab?.title?.find(title => title?.checked);
+  if (checkedTitle) {
+    setSelectedTitle(checkedTitle.value);
+  } else if (productTab?.title?.length > 0) {
+    setSelectedTitle(productTab.title[0].value); // fallback to first
+  }
+}, [productTab?.title]);
+
 
 // Title select
 
@@ -316,18 +445,7 @@ useEffect(() => {
   }
 }, [productTab?.title]);
 
-const handleTitleChange = (event) => {
-  const value = event.target.value;
-  setSelectedTitle(value);
-  setEditedTitle(value);
 
-  const updatedTitles = productTab.title.map((title) => ({
-    ...title,
-    checked: title.value === value,
-  }));
-  handleLocalUpdate({ ...productTab, title: updatedTitles });
-  // handleBackendUpdate({ title: updatedTitles });
-};
 
 
 const handleRadioChange = (type, index, value) => {
@@ -340,14 +458,22 @@ const handleRadioChange = (type, index, value) => {
   // handleBackendUpdate({ title: updatedTitles });
 };
 
+// const handleEditClickTitle = (type, index) => {
+//   setEditMode({ ...editMode, [type]: true });
+//   setSelectedEditIndex(index);
+//   if (type === 'title' && productTab?.title?.[index]?.value) {
+//     setEditedTitle(productTab.title[index].value);
+//   }
+// };
+
 const handleEditClickTitle = (type, index) => {
   setEditMode({ ...editMode, [type]: true });
   setSelectedEditIndex(index);
   if (type === 'title' && productTab?.title?.[index]?.value) {
-    setEditedTitle(productTab.title[index].value);
+    setEditedTitle(productTab.title[index].value); // Set the edited title
+    setSelectedTitle(productTab.title[index].value); // Preserve selected title
   }
 };
-
 
 
 useEffect(() => {
@@ -359,6 +485,48 @@ useEffect(() => {
     setSelectedFeatureValue(checkedFeature.value[0]);
   }
 }, [productTab?.features]);
+
+const handleSaveClickFeatures = () => {
+  const updatedFeatures = [...productTab.features];
+  updatedFeatures[selectedFeatureSetIndex].value[selectedFeatureIndex] = selectedFeatureValue;
+
+  handleLocalUpdate({ ...productTab, features: updatedFeatures });
+  setEditMode({ ...editMode, features: false });
+};
+
+
+
+useEffect(() => {
+  // Initialize selectedDescription with the checked value on mount
+  const checkedDescription = productTab?.description?.find(desc => desc?.checked);
+  if (checkedDescription) {
+    setSelectedDescription(checkedDescription.value);
+  }
+}, [productTab?.description]);
+
+
+const handleLocalUpdateDescription = (updatedProductTab) => {
+  console.log('Local state updated with:', updatedProductTab);
+
+  // Get the selected title based on checked item
+  const selectedTitle = updatedProductTab.title.find(item => item.checked)?.value || '';
+  setFinalTitle(selectedTitle);
+
+  // Get the selected description based on checked item
+  const selectedDescription = updatedProductTab.description.find(item => item.checked)?.value || '';
+  setFinalDescription(selectedDescription);
+};
+
+
+const handleEditClickDescription = (index) => {
+  setEditMode({ ...editMode, description: true });
+  setSelectedEditIndex(index);
+  const currentValue = productTab?.description?.[index]?.value || '';
+  setEditedDescription(currentValue);
+};
+
+ 
+
 
 
 const handleFeatureChange = (e, listIndex, featureIndex) => {
@@ -372,151 +540,6 @@ const handleFeatureChange = (e, listIndex, featureIndex) => {
 };
 
 
-const handleSaveClickFeatures = () => {
-  const updatedFeatures = [...productTab.features];
-  updatedFeatures[selectedFeatureSetIndex].value[selectedFeatureIndex] = selectedFeatureValue;
-
-  handleLocalUpdate({ ...productTab, features: updatedFeatures });
-  setEditMode({ ...editMode, features: false });
-};
-
-// const handleSaveClick = (type) => {
-//   if (type === 'title' && selectedEditIndex !== null) {
-//     const updatedTitles = productTab.title.map((title, index) => {
-//       if (index === selectedEditIndex) {
-//         return { ...title, value: editedTitle, checked: true };
-//       } else {
-//         return { ...title, checked: false };
-//       }
-//     });
-//     handleLocalUpdate({ ...productTab, title: updatedTitles });
-//     // handleBackendUpdate({ title: updatedTitles });
-//     setEditMode({ ...editMode, title: false });
-//     setSelectedEditIndex(null);
-//   }
-// };
-
-
-
-useEffect(() => {
-  // Initialize selectedDescription with the checked value on mount
-  const checkedDescription = productTab?.description?.find(desc => desc?.checked);
-  if (checkedDescription) {
-    setSelectedDescription(checkedDescription.value);
-  }
-}, [productTab?.description]);
-
-// Handle description change
-// const handleDescriptionChange = (event) => {
-//   const value = event.target.value;
-//   setSelectedDescription(value);
-//   setEditedDescription(value);
-
-//   const updatedDescriptions = productTab.description.map((desc) => ({
-//     ...desc,
-//     checked: desc.value === value,
-//   }));
-
-//   const updatedProductTab = {
-//     ...productTab,
-//     description: updatedDescriptions,
-//   };
-
-//   setProductTab(updatedProductTab); // Update the productTab state
-//   handleLocalUpdateDescription(updatedProductTab); // Optional if you want a side effect
-// };
-
-// Handle local update for description
-const handleLocalUpdateDescription = (updatedProductTab) => {
-  console.log('Local state updated with:', updatedProductTab);
-
-  // Get the selected title based on checked item
-  const selectedTitle = updatedProductTab.title.find(item => item.checked)?.value || '';
-  setFinalTitle(selectedTitle);
-
-  // Get the selected description based on checked item
-  const selectedDescription = updatedProductTab.description.find(item => item.checked)?.value || '';
-  setFinalDescription(selectedDescription);
-};
-
-// const handleDescriptionChange = (event) => {
-//   const selectedValue = event.target.value;
-
-//   const updatedDescriptions = productTab.description.map((desc) => ({
-//     ...desc,
-//     checked: desc.value === selectedValue, // only selected becomes true
-//   }));
-
-//   setProductTab((prev) => ({
-//     ...prev,
-//     description: updatedDescriptions,
-//   }));
-
-//   setSelectedDescription(selectedValue);
-// };
-
-
-// Handle edit click for description
-const handleEditClickDescription = (index) => {
-  setEditMode({ ...editMode, description: true });
-  setSelectedEditIndex(index);
-  const currentValue = productTab?.description?.[index]?.value || '';
-  setEditedDescription(currentValue);
-};
-// const handleSaveClickDescription = () => {
-//   const updatedDescriptions = [...productTab.description];
-
-//   updatedDescriptions[selectedEditIndex] = {
-//     ...updatedDescriptions[selectedEditIndex],
-//     value: editedDescription, // update value
-//   };
-
-//   setProductTab((prev) => ({
-//     ...prev,
-//     description: updatedDescriptions,
-//   }));
-
-//   // Close edit mode
-//   setEditMode({ ...editMode, description: false });
-//   setSelectedEditIndex(null);
-// };
-
-
-// // Handle edit button click for description
-// const handleEditClickDescription = (index) => {
-//   setEditMode({ ...editMode, description: true });
-//   setSelectedEditIndex(index);
-//   const currentValue = productTab?.description?.[index]?.value || '';
-//   setEditedDescription(currentValue);
-// };
-
-// // Handle save click for description
-// const handleSaveClickDescription = (type) => {
-//   if (type === 'description' && selectedEditIndex !== null) {
-//     const updatedDescriptions = productTab.description.map((desc, index) => {
-//       if (index === selectedEditIndex) {
-//         return { ...desc, value: editedDescription, checked: true };
-//       } else {
-//         return { ...desc, checked: false };
-//       }
-//     });
-
-//     const updatedProductTab = {
-//       ...productTab,
-//       description: updatedDescriptions,
-//     };
-
-//     setProductTab(updatedProductTab); // ✅ Update state
-//     handleLocalUpdateDescription(updatedProductTab); // Optional
-//     setSelectedDescription(editedDescription); // Update selected radio
-//     setEditMode({ ...editMode, description: false });
-//     setSelectedEditIndex(null);
-//   }
-// };
-
-
-  // Handle minimize action
- 
   const handleMinimize = () => {
     setIsMinimized(true);
     setIsMaximized(false); // Reset maximize when minimized
@@ -737,19 +760,6 @@ const handleSendMessage = () => {
       }, [messages]);
  
 
-   // Handle feature checkbox change
-
-  //  const handleFeatureSetChange = (event, listIndex) => {
-  //   if (event.target.checked) {
-  //     const selected = productTab.features[listIndex];
-  //     setSelectedFeatures([selected]); // wrap inside array since it’s an array of arrays
-  //     console.log('oppo feature',selectedFeatures)
-  //   } else {
-  //     setSelectedFeatures([]);
-  //   }
-  // };
-
-
   const handleBackClick = () => {
     // Correct syntax for query params
     navigate(`/`);
@@ -764,29 +774,23 @@ const handleSendMessage = () => {
     const handleCloseAIModal = () => {
         setAIModalOpen(false);
     };
-    // useEffect(() => {
-    //   setLoading(true);
-    //     fetch(`https://product-assistant-gpt.onrender.com/productDetail/${id}`)
-    //         .then((response) => response.json())
-    //         .then((data) => {
-    //             setProduct(data.data.product);
-    //             setMainImage(data.data.product?.logo || soonImg);
-    //             setLoading(false);
-    //         })
-    //         .catch((error) => console.error("Error fetching product:", error));
-    // }, [id]);
+ 
 
     useEffect(() => {
       fetchProductDetails();
     }, []); // Empty dependency array means it runs only once after initial render
     
     const handleUpdateProductTotal = async () => {
-      console.log('getT', getDescription);
+      const selectedTitle = Array.isArray(getTitle) && getTitle.find(item => item.checked)?.value || '';
+  
+      // Ensure getDescription is an array and find the checked description
+      const selectedDescription = Array.isArray(getDescription) && getDescription.find(item => item.checked)?.value || '';
     
-      const selectedTitle = getTitle.find(item => item.checked)?.value || '';
+      // const selectedTitle = getTitle.find(item => item.checked)?.value || '';
       // const selectedDescription = getDescription.find(item => item.checked)?.value || '';
       // const selectedDescription = productTab.description.find(desc => desc.checked)?.value || ''; // Ensure this gives the selected description
-
+      console.log('getT', selectedTitle);
+    
       setLoading(true);
     
       try {
@@ -1261,7 +1265,7 @@ const handleSendMessage = () => {
 
             return (
               <React.Fragment key={listIndex}>
-                <ListItem sx={{ display: 'flex', alignItems: 'center' }}>
+                <ListItem sx={{ display: 'flex', alignItems: 'center' ,maxWidth: '59ch', overflowWrap: 'break-word'}}>
                   <FormControlLabel
                     control={<Radio value={listIndex} checked={selectedFeatureSetIndex === listIndex} />}
                     label={
@@ -1274,7 +1278,7 @@ const handleSendMessage = () => {
 
                 {featureList.length > 0 ? (
                   featureList.map((feature, featureIndex) => (
-                    <ListItem key={featureIndex} sx={{ padding: '4px 0', fontSize: '0.9rem' }}>
+                    <ListItem key={featureIndex} sx={{ padding: '4px 0', fontSize: '0.9rem' ,maxWidth: '59ch', overflowWrap: 'break-word'}}>
                       <Typography variant="body1">• {feature}</Typography>
                     </ListItem>
                   ))
