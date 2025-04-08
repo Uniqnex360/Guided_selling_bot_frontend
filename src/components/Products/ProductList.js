@@ -520,7 +520,28 @@ const handleCategoryChange = (event) => {
                 ❓
             </Button>
 
-            <Dialog open={showPopup} onClose={() => setShowPopup(false)} maxWidth="xs" fullWidth>
+            {/* <Dialog open={showPopup} onClose={() => setShowPopup(false)} maxWidth="xs" fullWidth> */}
+
+
+
+            <Dialog
+  open={showPopup}
+  onClose={() => setShowPopup(false)}
+  maxWidth="xs"
+  fullWidth
+//   hideBackdrop
+  PaperProps={{
+    style: {
+      position: 'fixed',
+      marginTop:'30px',
+      bottom: '80px', // adjust to appear above the ❓ button
+      right: '20px',
+      margin: 0,
+      borderRadius: '12px',
+      zIndex: 1300
+    }
+  }}
+>
                 <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', color: '#7B61FF' }}>
                     Product Finder
                     <Button
@@ -552,8 +573,8 @@ const handleCategoryChange = (event) => {
                     </FormControl>
 
                     {categoryFilters.map((filter, index) => (
-                        <Accordion key={index}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Accordion key={index}  >
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#cfd3df' }}>
                                 <Typography variant="subtitle1">{filter.name}</Typography>
                             </AccordionSummary>
                             <AccordionDetails>
