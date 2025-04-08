@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import {
-    Button, Container, Grid,RadioGroup, Radio, Typography,Paper,FormControlLabel, Checkbox, Box, Badge, TextField, Modal, List, ListItem, CircularProgress, IconButton, Divider, Link, Tabs, Tab
+    Button, Container, Grid,RadioGroup, Tooltip,Radio, Typography,Paper,FormControlLabel, Checkbox, Box, Badge, TextField, Modal, List, ListItem, CircularProgress, IconButton, Divider, Link, Tabs, Tab
 } from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
@@ -13,13 +13,17 @@ import EditIcon from '@mui/icons-material/Edit'; // Import the Edit icon
 import SaveIcon from '@mui/icons-material/Save'; // Import Save icon
 import MinimizeOutlinedIcon from '@mui/icons-material/MinimizeOutlined';
 import MaximizeOutlinedIcon from '@mui/icons-material/MaximizeOutlined';
+import CropSquareIcon from '@mui/icons-material/CropSquare';
+import CancelIcon from '@mui/icons-material/Cancel';
 
+import soonImg from "../assets/soon-img.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import {
 
     ArrowBack
   } from "@mui/icons-material";
+import DotLoading from '../Loading/DotLoading';
 
 // Custom Typography for product details labels
 const DetailLabel = styled(Typography)(({ theme }) => ({
@@ -74,8 +78,13 @@ const ProductDetail = () => {
     const [aiModalOpen, setAIModalOpen] = useState(false);
     const [mainImage, setMainImage] = useState('');
     const { id } = useParams();
+    const [productTab, setProductTab] = useState({
+      title: [],
+      description: [],
+      features: [],
+    });
     const [tabIndex, setTabIndex] = useState(0);
-    const [productTab, setProductTab] = useState('');
+    // const [productTab, setProductTab] = useState('');
     const [selectedTitles, setSelectedTitles] = useState([]);
     const [selectedDescriptions, setSelectedDescriptions] = useState([]);
     const [responseChat, setResponseChat] = useState('')
@@ -93,6 +102,23 @@ const ProductDetail = () => {
 const [updateTitle, setUpdateTitle] = useState('');
 const [updateFeatures, setUpdateFeatures] = useState([]);
 const [updateDescription, setUpdateDescription] = useState('');
+const [updatedDescription, setUpdatedDescription] = useState(productTab?.description || []);
+ // State for Title Tab (managed within TitleTab)
+  const [editedTitle, setEditedTitle] = useState(''); // Likely managed in TitleTab
+  const [editModeTitle, setEditModeTitle] = useState(false); // Likely managed in TitleTab
+  const [getTitle, setGetTitle] = useState([]);
+  const [getFeatures, setGetFeatures] = useState([]);
+  const [getDescription, setGetDescription] = useState([]);
+  const [finalTitle, setFinalTitle] = useState('');
+const [finalDescription, setFinalDescription] = useState('');
+
+  // State for Features Tab (managed within FeaturesTab)
+  const [editedFeatures, setEditedFeatures] = useState([]); // Likely managed in FeaturesTab
+  const [editModeFeatures, setEditModeFeatures] = useState(false); // Likely managed in FeaturesTab
+
+  // State for Description Tab (managed within DescriptionTab - based on your earlier code)
+  const [editModeDescription, setEditModeDescription] = useState(false); // Likely managed in DescriptionTab
+
 
     const [editMode, setEditMode] = useState({
       title: false,
@@ -107,9 +133,214 @@ const [updateDescription, setUpdateDescription] = useState('');
 
     const [isMinimized, setIsMinimized] = useState(false);
 const [isMaximized, setIsMaximized] = useState(false);
+const [selectedEditIndex, setSelectedEditIndex] = useState(null);
+const [editedDescription, setEditedDescription] = useState('');
+
+
+
+
+// On edit button click
+const handleEditClick = (field) => {
+  if (field === 'features') {
+    setEditMode({ ...editMode, features: true });
+
+    // Clone the existing productTab.features into editable state
+    const cloned = productTab.features?.map(f => [...f.value]);
+    setEditedFeatures(cloned);
+  }
+};
+
+// On input change
+const handleFeatureChange = (newVal, setIndex, featureIndex) => {
+  const updated = [...editedFeatures];
+  updated[setIndex][featureIndex] = newVal;
+  setEditedFeatures(updated);
+};
+
+// On save click
+const handleSaveClickFeatures = () => {
+  const updatedProduct = {
+    ...productTab,
+    features: productTab.features.map((f, i) => ({
+      ...f,
+      value: editedFeatures[i]
+    })),
+  };
+
+  // Save this to API or state
+  // Example: updateProduct(updatedProduct);
+
+  setEditMode({ ...editMode, features: false });
+};
+
+
+
+const handleBackendUpdate = (updatedData) => {
+  console.log('Backend update called with:', updatedData);
+  // Implement your API call here
+};
+
+const handleLocalUpdate = (updatedProductTab) => {
+  console.log('Local state updated with:', updatedProductTab);
+  // Implement your local state update here
+
+  setGetTitle(updatedProductTab.title)
+  setGetFeatures(updatedProductTab.features)
+  setGetDescription(updatedProductTab.description )
+};
+
+// Title select
+
+useEffect(() => {
+  const checkedTitle = productTab?.title?.find(title => title?.checked);
+  if (checkedTitle) {
+    setSelectedTitle(checkedTitle.value);
+  }
+}, [productTab?.title]);
+
+const handleTitleChange = (event) => {
+  const value = event.target.value;
+  setSelectedTitle(value);
+  setEditedTitle(value);
+
+  const updatedTitles = productTab.title.map((title) => ({
+    ...title,
+    checked: title.value === value,
+  }));
+  handleLocalUpdate({ ...productTab, title: updatedTitles });
+  // handleBackendUpdate({ title: updatedTitles });
+};
+
+
+const handleRadioChange = (type, index, value) => {
+  setSelectedTitle(value);
+  const updatedTitles = productTab.title.map((title, i) => ({
+    ...title,
+    checked: i === index,
+  }));
+  handleLocalUpdate({ ...productTab, title: updatedTitles });
+  // handleBackendUpdate({ title: updatedTitles });
+};
+
+const handleEditClickTitle = (type, index) => {
+  setEditMode({ ...editMode, [type]: true });
+  setSelectedEditIndex(index);
+  if (type === 'title' && productTab?.title?.[index]?.value) {
+    setEditedTitle(productTab.title[index].value);
+  }
+};
+
+const handleSaveClick = (type) => {
+  if (type === 'title' && selectedEditIndex !== null) {
+    const updatedTitles = productTab.title.map((title, index) => {
+      if (index === selectedEditIndex) {
+        return { ...title, value: editedTitle, checked: true };
+      } else {
+        return { ...title, checked: false };
+      }
+    });
+    handleLocalUpdate({ ...productTab, title: updatedTitles });
+    // handleBackendUpdate({ title: updatedTitles });
+    setEditMode({ ...editMode, title: false });
+    setSelectedEditIndex(null);
+  }
+};
+
+
+
+
+
+// Tab discription
+
+useEffect(() => {
+  // Initialize selectedDescription with the checked value on mount
+  const checkedDescription = productTab?.description?.find(desc => desc?.checked);
+  if (checkedDescription) {
+    setSelectedDescription(checkedDescription.value);
+  }
+}, [productTab?.description]);
+
+const handleRadioChangeDescription = (type, index, value) => {
+  setSelectedDescription(value);
+  const updatedDescriptions = productTab.description.map((desc, i) => ({
+    ...desc,
+    checked: i === index,
+  }));
+  // Optimistically update the local state
+  handleLocalUpdateDescription({ ...productTab, description: updatedDescriptions });
+  // You would typically call your backend update function here
+  // handleBackendUpdate({ description: updatedDescriptions });
+};
+
+const handleLocalUpdateDescription = (updatedProductTab) => {
+  // This function would update your local state that holds the productTab data
+  console.log('Local state updated with:', updatedProductTab);
+ 
+  const selectedTitle = updatedProductTab.title.find(item => item.checked)?.value || '';
+  setFinalTitle(selectedTitle)
+  const selectedDescription = updatedProductTab.description.find(item => item.checked)?.value || '';
+  setFinalDescription(selectedDescription)
+  // For example, if you have a state like `setProductData(updatedProductTab)`
+};
+
+
+
+const handleEditClickDescription = (type, index) => {
+  setEditMode({ ...editMode, [type]: true });
+  setSelectedEditIndex(index);
+  if (type === 'description') {
+    const currentValue = productTab?.description?.[index]?.value || '';
+    setEditedDescription(currentValue);
+  }
+};
+
+
+const handleSaveClickDescription = (type) => {
+  if (type === 'description' && selectedEditIndex !== null) {
+    const updatedDescriptions = productTab.description.map((desc, index) => {
+      if (index === selectedEditIndex) {
+        return { ...desc, value: editedDescription, checked: true };
+      } else {
+        return { ...desc, checked: false };
+      }
+    });
+
+    const updatedProductTab = {
+      ...productTab,
+      description: updatedDescriptions,
+    };
+
+    setProductTab(updatedProductTab); // ✅ Update state
+    handleLocalUpdateDescription(updatedProductTab); // Optional
+    setSelectedDescription(editedDescription); // Update selected radio
+    setEditMode({ ...editMode, description: false });
+    setSelectedEditIndex(null);
+  }
+};
+
+const handleDescriptionChange = (event) => {
+  const value = event.target.value;
+  setSelectedDescription(value);
+  setEditedDescription(value);
+
+  const updatedDescriptions = productTab.description.map((desc) => ({
+    ...desc,
+    checked: desc.value === value,
+  }));
+
+  const updatedProductTab = {
+    ...productTab,
+    description: updatedDescriptions,
+  };
+
+  setProductTab(updatedProductTab); // 👈 Make sure you're updating this state
+  handleLocalUpdateDescription(updatedProductTab); // Optional if you want a side effect
+};
+
 
 
   // Handle minimize action
+ 
   const handleMinimize = () => {
     setIsMinimized(true);
     setIsMaximized(false); // Reset maximize when minimized
@@ -120,6 +351,7 @@ const [isMaximized, setIsMaximized] = useState(false);
     setIsMaximized(true);
     setIsMinimized(false); // Reset minimize when maximized
   };
+
 
   // Handle restore window size
   const handleRestore = () => {
@@ -137,70 +369,29 @@ const [isMaximized, setIsMaximized] = useState(false);
     }, [productTab?.features]);
 
 
-    const handleEditClick = (section) => {
-      setEditMode((prev) => ({ ...prev, [section]: true }));
-    };
 
-
-
-
-    const handleSaveClick = (section) => {
-      // Handle save functionality for the title section
-      if (section === 'title') {
-        // Save the updated title
-
+useEffect(() => {
+  const fetchPromptList = async () => {
+    try {
+      const response = await fetch('https://product-assistant-gpt.onrender.com/fetchPromptList/');
+      const data = await response.json();
       
-        setEditMode((prev) => ({ ...prev, [section]: false }));
-        setUpdateTitle(selectedTitle)
-        // Update the title (assuming you want to store this in a state)
-        console.log('Updated Title:', selectedTitle);
-      } else if (section === 'features') {
-        // Save the updated features
-        setEditMode((prev) => ({ ...prev, [section]: false }));
-        // Assuming selectedFeatures stores the updated feature data
-        console.log('Updated Features:', selectedFeatures);
-        setUpdateFeatures(selectedFeatures)
-      } else if (section === 'description') {
-        // Save the updated description
-        setEditMode((prev) => ({ ...prev, [section]: false }));
-        // Assuming selectedDescription stores the updated description
-        console.log('Updated Description:', selectedDescription);
-        setUpdateDescription(selectedDescription)
+      if (data?.status && Array.isArray(data.data)) {
+        setPromptList(data.data); // ✅ Correctly setting prompt list
       }
-    };
-    
-    // Save function for Features - same as handleSaveClick but for features
-    const handleSaveClickFeatures = (section) => {
-      setEditMode((prev) => ({ ...prev, [section]: false }));
-      // Log the updated features
-      console.log('Updated Features:', selectedFeatures);
-    };
-    
-    // Save function for Description - same as handleSaveClick but for description
-    const handleSaveClickDescription = (section) => {
-      setEditMode((prev) => ({ ...prev, [section]: false }));
-      // Log the updated description
-      console.log('Updated Description:', selectedDescription);
-    };
+    } catch (error) {
+      console.error('Error fetching prompt list:', error);
+    }
+  };
+
+  fetchPromptList();
+}, []);
 
 
-    
-  
-    useEffect(() => {
-      fetchPromptList();
-    }, []);
-  
-    // Fetch prompt list with GET method
-    const fetchPromptList = async () => {
-      try {
-        const response = await fetch('https://product-assistant-gpt.onrender.com/fetchPromptList/');
-        const data = await response.json();
-        setPromptList(data.data); // Accessing the 'data' property from the response and storing it
-      } catch (error) {
-        console.error('Error fetching prompt list:', error);
-      }
-    };
-  
+
+
+
+
     // Handle the dropdown selection and trigger POST request
     const handleSelectChange = (event) => {
       const selectedValue = event.target.value;
@@ -215,11 +406,12 @@ const [isMaximized, setIsMaximized] = useState(false);
     const sendSelectedPromptToAPI = async () => {
       const requestPayload = {
         option: selectedPrompt,
-        product_obj: {
-          product_name: updateTitle || selectedTitle,
-          long_description: updateDescription || selectedDescription,
-          features: updateFeatures || selectedFeatures,
-        },
+        // product_obj: {
+          title: getTitle,
+          description: getDescription,
+          features: getFeatures,
+          product_id: id
+        // },
       };
   
       // Modify this payload as per your API requirements
@@ -234,9 +426,16 @@ const [isMaximized, setIsMaximized] = useState(false);
             body: JSON.stringify(requestPayload),
           }
         );
-  
+    
         const result = await response.json();
-        console.log('API response:', result); // Handle the response as needed
+        if (result.status) {
+          // Update the UI with the new data after successful API call
+          setSelectedTitle(result.data.title);
+          console.log('9090',selectedTitle)
+          setSelectedDescription(result.data.description);
+          setSelectedFeatures(result.data.features);
+          console.log("API response:", result);
+        }
       } catch (error) {
         console.error('Error sending data to API:', error);
       }
@@ -246,89 +445,17 @@ const [isMaximized, setIsMaximized] = useState(false);
  
   
     
-
-    const handleTitleChange = (e) => {
-      const title = e.target.value;
-      setSelectedTitle(title);
-      // sendSelectedTitleToAPI(title);  // Send the selected title to the API
-    };
-  
-
     useEffect(() => {
       if (productTab?.features && Array.isArray(productTab.features)) {
-        setSelectedFeatures(productTab.features.map((featureList) => [...featureList]));
-      }
-    }, [productTab]);
-  
-    // Handle changes in feature input fields
-     // Initialize selectedFeatures when productTab.features changes
-  useEffect(() => {
-    if (productTab?.features && Array.isArray(productTab.features)) {
-      setSelectedFeatures(productTab.features.map((featureList) => [...featureList]));
-    }
-  }, [productTab]);
-
-  // Handle selecting a feature set when radio button is clicked
-  const handleFeatureSetSelect = (event, selectedIndex) => {
-    setSelectedFeatureSetIndex(selectedIndex);
-  };
-
-  // Handle feature change when editing in text field
-  const handleFeatureChange = (e, listIndex, featureIndex) => {
-    const updatedFeatures = [...selectedFeatures]; // Create a copy of the selected features array
-    if (!updatedFeatures[listIndex]) {
-      updatedFeatures[listIndex] = []; // Initialize the feature set array if it doesn't exist
-    }
-    updatedFeatures[listIndex][featureIndex] = e.target.value; // Update the specific feature
-    setSelectedFeatures(updatedFeatures); // Update the state with the modified array
-  };
-// Handle selecting a feature set when radio button is clicked
-
-  
-    // const handleSaveClick = (type) => {
-    //   if (type === 'features') {
-    //     // Save updated features (replace with actual API call or logic)
-    //     console.log('Saving features:', selectedFeatures);
-    //   }
-    // };
-    
-    const handleFeaturesChange = (event) => {
-      const updatedFeatures = [...selectedFeatures];
-      const { value, name } = event.target;
-  
-      if (name === 'featureSet') {
-        updatedFeatures[value] = updatedFeatures[value].map((feature, index) =>
-          index === event.target.dataset.index ? event.target.value : feature
+        setSelectedFeatures(
+          productTab.features.map((featureList) => {
+            // Ensure featureList.value is an array, if it's not, default it to an empty array.
+            return Array.isArray(featureList.value) ? [...featureList.value] : [];
+          })
         );
       }
-  
-      setSelectedFeatures(updatedFeatures);
-    };
-    // const handleFeaturesChange = (e) => {
-    //   const selectedFeatureList = JSON.parse(e.target.value);
-    //   setSelectedFeatures(selectedFeatureList);
-    //   // Trigger API call for selected features if needed
-    // };
-  
-    const handleDescriptionChange = (e) => {
-      const description = e.target.value;
-      console.log('1111',description)
-      setSelectedDescription(description);
-      // Trigger API call for selected description if needed
-    };
-  
-
-    // const sendSelectedTitleToAPI = async (title) => {
-    //   try {
-    //     fetch(`https://product-assistant-gpt.onrender.com/fetchProductQuestions/${id}`)
-    //     .then((response) => response.json())
-    //   } catch (error) {
-    //     console.error('Error sending title to API:', error);
-    //   }
-    // };
-  
-    const defaultImg = "https://via.placeholder.com/400";
-
+    }, [productTab]);
+    
     const handleAIOptions = () => {
         setAIModalOpen(true);
     };
@@ -354,16 +481,7 @@ useEffect(() => {
   }, [chatOpen, id]);
 
 
-// Define the handleQuestionClick function
-// const handleQuestionClick = (questionId) => {
-//     console.log("Question clicked:", questionId);
-//     // You can send a message or perform any other action here
-//     // Example: Send a message to the chat
-//     const question = data.find((item) => item.id === questionId);
-//     if (question) {
-//         setMessages([...messages, { sender: 'user', text: question.question }]);
-//     }
-// };
+
 const handleQuestionClick = (questionId) => {
     console.log("Question clicked:", questionId);
     // Example: Send the clicked question as a message
@@ -443,25 +561,6 @@ const handleSendMessage = () => {
       }, [messages]);
  
 
-// const handleSendMessage = () => {
-//     if (userMessage.trim()) {
-//         setMessages([...messages, { sender: 'user', text: userMessage }]);
-//         setUserMessage('');
-
-//         // Simulate a bot response (this can be replaced with actual bot logic)
-//         setTimeout(() => {
-//             setMessages((prevMessages) => [
-//                 ...prevMessages,
-//                 { sender: 'bot', text: 'Thank you for your message!' },
-//             ]);
-//         }, 1000);
-//     }
-// };
-
-
-
-
-
    // Handle feature checkbox change
 
    const handleFeatureSetChange = (event, listIndex) => {
@@ -474,41 +573,13 @@ const handleSendMessage = () => {
     }
   };
 
-  
-  // Handle feature checkbox change
-  // const handleFeatureSetChange = (event, listIndex) => {
-  //   const updatedSelectedFeatures = [...selectedFeatures];
-    
-  //   if (event.target.checked) {
-  //     // Select all features in this feature set
-  //     updatedSelectedFeatures[listIndex] = productTab.features[listIndex].map((_, featureIndex) => featureIndex);
-  //   } else {
-  //     // Deselect all features in this feature set
-  //     updatedSelectedFeatures[listIndex] = [];
-  //   }
-    
-  //   setSelectedFeatures(updatedSelectedFeatures);
-  // };
-  
+
   const handleBackClick = () => {
     // Correct syntax for query params
     navigate(`/`);
   };
 
   
-  // Handle description checkbox change
-  // const handleDescriptionChange = (event, descIndex) => {
-  //   const newSelectedDescriptions = [...selectedDescriptions];
-  //   if (event.target.checked) {
-  //     newSelectedDescriptions.push(descIndex);
-  //   } else {
-  //     const index = newSelectedDescriptions.indexOf(descIndex);
-  //     if (index > -1) {
-  //       newSelectedDescriptions.splice(index, 1);
-  //     }
-  //   }
-  //   setSelectedDescriptions(newSelectedDescriptions);
-  // };
     const handleUpdateProduct = (updatedProduct) => {
         console.log('3333111',updatedProduct)
         setProductTab(updatedProduct); // Update the product details in parent component
@@ -518,34 +589,56 @@ const handleSendMessage = () => {
         setAIModalOpen(false);
     };
     useEffect(() => {
+      setLoading(true);
         fetch(`https://product-assistant-gpt.onrender.com/productDetail/${id}`)
             .then((response) => response.json())
             .then((data) => {
                 setProduct(data.data.product);
-                setMainImage(data.data.product?.logo || defaultImg);
+                setMainImage(data.data.product?.logo || soonImg);
                 setLoading(false);
             })
             .catch((error) => console.error("Error fetching product:", error));
     }, [id]);
 
-    // const handleSendMessage = () => {
-    //     if (!userMessage) return;
 
-    //     setMessages((prevMessages) => [
-    //         ...prevMessages,
-    //         { text: userMessage, sender: 'user' }
-    //     ]);
-
-    //     setUserMessage('');
-
-    //     setMessages((prevMessages) => [
-    //         ...prevMessages,
-    //         { text: 'Bot: Thanks for your message!', sender: 'bot' }
-    //     ]);
-    // };
-
-    // const toggleChat = () => setChatOpen(!chatOpen);
-
+    const handleUpdateProductTotal = async () => {
+      console.log('getT',getDescription)
+      const selectedTitle = getTitle.find(item => item.checked)?.value || '';
+    
+      setLoading(true);
+   
+      try {
+        const response = await fetch('https://product-assistant-gpt.onrender.com/updateProductContent/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            product_id: id,
+            product_obj: {
+              product_name : selectedTitle,
+              long_description : selectedDescription ,
+              features : []
+            }
+          })
+        });
+  
+        const data = await response.json();
+        console.log('Update response:', data);
+  
+        if (data?.status) {
+          alert('Product updated successfully!');
+        } else {
+          alert('Update failed');
+        }
+  
+      } catch (error) {
+        console.error('Error updating product:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
   
 
     const handleAISuggestionSelect = (suggestion) => {
@@ -560,6 +653,10 @@ const handleSendMessage = () => {
         setTabIndex(newTabIndex);
     };
 
+    if (loading) return <div style={{marginTop:'10%'}}><DotLoading/>...</div>;
+    // if (error) return <div>{error}</div>;
+  
+
     return (
         <Container>
 
@@ -570,6 +667,15 @@ const handleSendMessage = () => {
               <Typography gutterBottom sx={{ fontSize: "18px", marginTop: "7px" }}>
                Back to Products
               </Typography>
+
+              
+  <Button
+    onClick={handleUpdateProductTotal}
+    disabled={loading}
+    sx={{ marginLeft: "auto", textTransform:'capitalize', backgroundColor:'grey', color:'black' }}
+  >
+    {loading ? 'Updating...' : 'Products Update'}
+  </Button>
             </Box>
             <Grid container spacing={3} marginTop={3}>
                 {/* Left Section: Image & Thumbnails */}
@@ -602,7 +708,7 @@ const handleSendMessage = () => {
     {/* Main Image on the right */}
     <CardMedia
       component="img"
-      image={mainImage || defaultImg}
+      image={mainImage || soonImg}
       alt="Product Image"
       sx={{
         width: "500px",
@@ -777,24 +883,25 @@ const handleSendMessage = () => {
     <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
   {/* Dropdown to select prompt */}
   <div>
-    <select 
-      value={selectedPrompt} 
-      onChange={handleSelectChange} 
-      className="dropdown"
-      style={{ padding: '8px', fontSize: '14px' }}
-    >
-      <option value="">Select a Prompt</option>
-      {promptList.length > 0 ? (
-        promptList.map((prompt) => (
-          <option key={prompt.id} value={prompt.id}>
-            {prompt.name} {/* Display the name of the prompt */}
-          </option>
-        ))
-      ) : (
-        <option value="">No prompts available</option>
-      )}
-    </select>
-  </div>
+  <select 
+    value={selectedPrompt} 
+    onChange={handleSelectChange} 
+    className="dropdown"
+    style={{ padding: '8px', fontSize: '14px' }}
+  >
+    <option value="">Select a Prompt</option>
+    {promptList.length > 0 ? (
+      promptList.map((prompt) => (
+        <option key={prompt.id} value={prompt.id}>
+          {prompt.name}
+        </option>
+      ))
+    ) : (
+      <option value="">No prompts available</option>
+    )}
+  </select>
+</div>
+
 
   {/* Button to trigger API call */}
   <Button 
@@ -806,201 +913,241 @@ const handleSendMessage = () => {
     Update
   </Button>
 </Box>
+
+
+{/* Tab feilds */}
+
+
 <TabPanel value={tabIndex} index={0}>
-  {Array.isArray(productTab?.title) && productTab.title.length > 0 ? (
-    <Box>
-      <RadioGroup value={selectedTitle} onChange={handleTitleChange}>
-        <List sx={{ padding: 0, fontSize: '14px', fontWeight: 'bold', mb: 1, maxWidth: '59ch', overflowWrap: 'break-word' }}>
-          {productTab.title.map((title, index) => (
-            <ListItem key={index}>
-              <FormControlLabel
-                value={title}
-                control={<Radio />}
-                label={<Typography variant="body1">{title}</Typography>}
-              />
-
-              {/* Show Edit Icon only if the title is selected and not in editMode */}
-              {selectedTitle === title && !editMode.title && (
-                <IconButton onClick={() => handleEditClick('title')}>
-                  <EditIcon />
-                </IconButton>
-              )}
-            </ListItem>
-          ))}
-        </List>
-      </RadioGroup>
-
-      {/* Show TextField to edit the title if in editMode */}
-      {editMode.title && selectedTitle && (
+      {Array.isArray(productTab?.title) && productTab.title.length > 0 ? (
         <Box>
-          <TextField
-            value={selectedTitle}
-            onChange={handleTitleChange}
-            label="Edit Title"
-            fullWidth
-            variant="outlined"
-            margin="normal"
-          />
-          <IconButton onClick={() => handleSaveClick('title')}>
-            <SaveIcon />
+        <RadioGroup value={selectedTitle} onChange={handleTitleChange}>
+  <List
+    sx={{
+      padding: 0,
+      fontSize: '14px',
+      fontWeight: 'bold',
+      mb: 1,
+      maxWidth: '59ch',
+      overflowWrap: 'break-word',
+    }}
+  >
+    {productTab.title.map((title, index) => (
+      <ListItem key={index}>
+        <FormControlLabel
+          value={title.value}
+          control={<Radio />} // ❌ Removed `checked` from here
+          label={<Typography variant="body1">{title.value}</Typography>}
+        />
+        {selectedTitle === title.value && !editMode.title && (
+          <IconButton onClick={() => handleEditClickTitle('title', index)}>
+            <EditIcon />
           </IconButton>
-        </Box>
-      )}
-    </Box>
-  ) : (
-    <ListItem>
-      <Typography variant="body1" color="textSecondary">
-        No title found
-      </Typography>
-    </ListItem>
-  )}
-</TabPanel>
+        )}
+      </ListItem>
+    ))}
+  </List>
+</RadioGroup>
 
-<TabPanel value={tabIndex} index={1}>
+
+          {editMode.title && selectedEditIndex !== null && (
+            <Box>
+              <TextField
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                label="Edit Title"
+                fullWidth
+                variant="outlined"
+                margin="normal"
+              />
+              <IconButton onClick={() => handleSaveClick('title')}>
+                <SaveIcon />
+              </IconButton>
+              <IconButton onClick={() => setEditMode({...editMode, title: false,})}>
+                <CancelIcon />
+              </IconButton>
+            </Box>
+          )}
+        </Box>
+      ) : (
+        <ListItem>
+          <Typography variant="body1" color="textSecondary">
+            No title found
+          </Typography>
+        </ListItem>
+      )}
+    </TabPanel>
+    <TabPanel value={tabIndex} index={1}>
   <Box>
+    {/* Title */}
     <Box display="flex" alignItems="center" marginBottom={1} sx={{ width: '50%' }}>
       <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
         Features:
       </Typography>
-      <IconButton onClick={() => handleEditClick('features')}>
-        <EditIcon />
-      </IconButton>
     </Box>
 
-    {editMode.features ? (
-      <Box>
-        {Array.isArray(productTab?.features) && productTab.features.length > 0 ? (
-          productTab.features.map((featureList, listIndex) => (
-            <Box key={listIndex} sx={{ marginBottom: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                Feature Set {listIndex + 1}
-              </Typography>
-              {featureList.map((feature, featureIndex) => (
-                <Box key={featureIndex} sx={{ marginBottom: 1, maxWidth: '59ch', overflowWrap: 'break-word' }}>
-                  {listIndex === selectedFeatureSetIndex ? (
-                    <TextField
-                      sx={{ maxWidth: '59ch', overflowWrap: 'break-word' }}
-                      value={selectedFeatures[listIndex] ? selectedFeatures[listIndex][featureIndex] : feature}
-                      onChange={(e) => handleFeatureChange(e, listIndex, featureIndex)}
-                      label={`Feature ${featureIndex + 1}`}
-                      fullWidth
-                      variant="outlined"
-                      margin="normal"
-                    />
-                  ) : (
-                    <Typography variant="body1" sx={{ paddingLeft: '16px' }}>
-                      • {feature}
-                    </Typography>
-                  )}
-                </Box>
-              ))}
-            </Box>
-          ))
-        ) : (
-          <Typography variant="body1" color="textSecondary">
-            No features available.
-          </Typography>
-        )}
-        <IconButton onClick={() => handleSaveClick('features')}>
-          <SaveIcon />
-        </IconButton>
-      </Box>
-    ) : (
-      <RadioGroup
-        value={selectedFeatureSetIndex !== null ? selectedFeatureSetIndex : ''}
-        onChange={(e) => handleFeatureSetSelect(e, Number(e.target.value))}
-      >
-        {Array.isArray(productTab.features) && productTab.features.length > 0 ? (
-          productTab.features.map((featureList, listIndex) => (
-            <React.Fragment key={listIndex}>
-              <ListItem sx={{ display: 'flex', alignItems: 'center' }}>
+    {/* View + Edit Combined Mode */}
+   <RadioGroup
+  value={selectedFeatureSetIndex !== null ? selectedFeatureSetIndex.toString() : ''}
+  onChange={(e) => {
+    const selectedIndex = Number(e.target.value);
+    setSelectedFeatureSetIndex(selectedIndex);
+    setEditMode({ ...editMode, features: true }); // Enable edit mode directly on selection
+  }}
+>
+
+      {Array.isArray(productTab?.features) && productTab.features.length > 0 ? (
+        productTab.features.map((featureSet, index) => {
+          const isEditable = editMode.features && selectedFeatureSetIndex === index;
+
+          return (
+            <Box key={index} sx={{ marginBottom: 2 }}>
+              <ListItem
+                secondaryAction={
+                  selectedFeatureSetIndex === index && !editMode.features && (
+                    <IconButton onClick={() => handleEditClick('features')}>
+                      <EditIcon />
+                    </IconButton>
+                  )
+                }
+              >
                 <FormControlLabel
-                  control={
-                    <Radio value={listIndex} checked={selectedFeatureSetIndex === listIndex} />
-                  }
+                  control={<Radio value={index.toString()} />}
                   label={
                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                      Feature Set {listIndex + 1}
+                      Feature Set {index + 1}
                     </Typography>
                   }
                 />
               </ListItem>
 
-              {featureList.map((feature, featureIndex) => (
-                <ListItem key={featureIndex} sx={{ padding: '4px 0', fontSize: '0.9rem' }}>
-                  <Typography variant="body1">• {feature}</Typography>
-                </ListItem>
-              ))}
-            </React.Fragment>
-          ))
-        ) : (
-          <Typography variant="body1" color="textSecondary">
-            No features available.
-          </Typography>
-        )}
-      </RadioGroup>
-    )}
+              {/* Render edit or view mode per set */}
+              {isEditable ? (
+                <Box sx={{ pl: 4 , 
+
+                  maxWidth: '59ch',
+                  overflowWrap: 'break-word',
+                  
+                }}>
+                  {Array.isArray(featureSet.value) && featureSet.value.length > 0 ? (
+                    featureSet.value.map((feature, featureIndex) => (
+                      <TextField
+                        key={featureIndex}
+                        value={editedFeatures[index][featureIndex]}
+                        onChange={(e) =>
+                          handleFeatureChange(e.target.value, index, featureIndex)
+                        }
+                        label={`Feature ${featureIndex + 1}`}
+                        fullWidth
+                        margin="normal"
+                        sx={{ maxWidth: '59ch' }}
+                      />
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">No features available.</Typography>
+                  )}
+
+                  {/* Save & Cancel buttons */}
+                  <Box sx={{ mt: 1 }}>
+                    <IconButton onClick={() => handleSaveClickFeatures('features')}>
+                      <SaveIcon />
+                    </IconButton>
+                    <IconButton onClick={() => setEditMode({ ...editMode, features: false })}>
+                      <CancelIcon />
+                    </IconButton>
+                  </Box>
+                </Box>
+              ) : (
+                <Box sx={{ pl: 4 }}>
+                  {Array.isArray(featureSet.value) && featureSet.value.length > 0 ? (
+                    featureSet.value.map((feature, featureIndex) => (
+                      <ListItem key={featureIndex} sx={{ padding: '4px 0' }}>
+                        <Typography variant="body2">• {feature}</Typography>
+                      </ListItem>
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">No features available.</Typography>
+                  )}
+                </Box>
+              )}
+            </Box>
+          );
+        })
+      ) : (
+        <Typography variant="body1" color="textSecondary">No features available.</Typography>
+      )}
+    </RadioGroup>
   </Box>
 </TabPanel>
 
+
+
+
 <TabPanel value={tabIndex} index={2}>
-  <Typography variant="h6" marginTop={1} marginBottom={1} sx={{ fontSize: '1.2rem' }}>
+  <Typography variant="h6" mt={1} mb={1} sx={{ fontSize: '1.2rem' }}>
     Description:
   </Typography>
-  
+
   {productTab?.description?.length > 0 ? (
-    <RadioGroup value={selectedDescription} onChange={handleDescriptionChange}>
-      {productTab.description.map((desc, index) => (
-        <ListItem
-          key={index}
-          sx={{
-            fontWeight: 'bold',
-            fontSize: '16px',
-            mb: 1,
-            maxWidth: '59ch',
-            overflowWrap: 'break-word',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <FormControlLabel
-            value={desc}
-            control={<Radio />}
-            label={<Typography variant="body2" sx={{ fontSize: '16px' }}>{desc}</Typography>}
-          />
-          
-          {/* Show Edit button only if in editMode and the description is selected */}
-          {selectedDescription === desc && !editMode.description && (
-            <IconButton onClick={() => handleEditClick('description', desc)}>
-              <EditIcon />
+  <RadioGroup value={selectedDescription} onChange={handleDescriptionChange}>
+  {productTab.description.map((desc, index) => {
+    const descValue = desc?.value || '';
+
+    return (
+      <ListItem
+        key={index}
+        sx={{
+          fontWeight: 'bold',
+          fontSize: '16px',
+          mb: 1,
+          maxWidth: '59ch',
+          overflowWrap: 'break-word',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        {editMode.description && selectedEditIndex === index ? (
+          <>
+            <TextField
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+              label="Edit Description"
+              fullWidth
+              variant="outlined"
+              size="small"
+              sx={{ mr: 1 }}
+            />
+            <IconButton onClick={() => handleSaveClickDescription('description')}>
+              <SaveIcon />
             </IconButton>
-          )}
-        </ListItem>
-      ))}
-    </RadioGroup>
+            <IconButton onClick={() => setEditMode({ ...editMode, description: false })}>
+              <CancelIcon />
+            </IconButton>
+          </>
+        ) : (
+          <FormControlLabel
+            value={descValue}
+            control={<Radio checked={desc.checked} />}
+            label={
+              <Typography variant="body2" sx={{ fontSize: '16px' }}>
+                {descValue}
+              </Typography>
+            }
+          />
+        )}
+      </ListItem>
+    );
+  })}
+</RadioGroup>
+
+ 
   ) : (
     <Typography variant="body2" color="textSecondary">
       No description available.
     </Typography>
   )}
-
-  {/* Show text field for editing when in editMode and the selected description is clicked */}
-  {editMode.description && selectedDescription && (
-    <Box>
-      <TextField
-        value={selectedDescription}
-        onChange={handleDescriptionChange}
-        label="Edit Description"
-        fullWidth
-        variant="outlined"
-        margin="normal"
-      />
-      <IconButton onClick={() => handleSaveClick('description')}>
-        <SaveIcon />
-      </IconButton>
-    </Box>
-  )}
 </TabPanel>
+
 
 
   </Box>
@@ -1023,263 +1170,166 @@ const handleSendMessage = () => {
       >
         <ChatIcon />
       </IconButton>
+
+
       {chatOpen && (
-        <Box
-          sx={{
-            position: 'fixed',
-            width: isMaximized ? '100%' : '320px',  // Maximized window will take 100% width
-            height: isMinimized ? '50px' : isMaximized ? '100%' : '450px',  // Minimized height is small        
-            position: 'fixed',
-    
-    transition: 'all 0.3s',
-          
-            bottom: 90,
-            right: 20,
-          
-            bgcolor: '#fff',
-            borderRadius: 2,
-            boxShadow: 6,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* Header */}
-          <Box sx={{ bgcolor: '#007bff', color: '#fff', p: 1.5, position: 'relative' }}>
-  <Typography variant="subtitle1" fontWeight="bold">
-    Product Chat Assistant
-  </Typography>
+      <Box
+        sx={{
+          position: 'fixed',
+          width: isMaximized ? '31%' : '320px', // Maximized window will take 100% width
+          height: isMinimized ? '50px' : isMaximized ? '80%' : '450px', // Minimized height is small, maximized height is full
+          transition: 'all 0.3s',
+          bottom: 90,
+          right: 20,
+          bgcolor: '#fff',
+          borderRadius: 2,
+          boxShadow: 6,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Header */}
+        <Box sx={{ bgcolor: '#007bff', color: '#fff', p: 1.5, position: 'relative' }}>
+          <Typography variant="subtitle1" fontWeight="bold">
+            Product Chat Assistant
+          </Typography>
 
-  <Box sx={{ position: 'absolute', right: 8, top: 8, display: 'flex', gap: 1 }}>
-    {/* Minimize Button
-  <IconButton size="small" sx={{ color: '#fff' }} onClick={handleMinimize}>
-              <MinimizeOutlinedIcon fontSize="small" />
-            </IconButton>
+          <Box sx={{ position: 'absolute', right: 8, top: 8, display: 'flex', gap: 1 }}>
+  {/* Minimize Button */}
+  <Tooltip title="Minimize" arrow>
+    <IconButton size="small" sx={{ color: 'black' }} onClick={handleMinimize}>
+      <MinimizeOutlinedIcon fontSize="small" />
+    </IconButton>
+  </Tooltip>
 
+  {/* Maximize Button */}
+  <Tooltip title="Maximize" arrow>
+    <IconButton size="small" sx={{ color: 'black' }} onClick={handleMaximize}>
+      <CropSquareIcon fontSize="small" />
+      {/* CropSquareIcon matches the Windows maximize icon better */}
+    </IconButton>
+  </Tooltip>
 
-            <IconButton size="small" sx={{ color: '#fff' }} onClick={handleMaximize}>
-              <MaximizeOutlinedIcon fontSize="small" />
-            </IconButton> */}
-
-            {/* Close Button */}
-            <IconButton size="small" sx={{ color: '#fff' }} onClick={toggleChat}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
-  </Box>
+  {/* Close Button */}
+  <Tooltip title="Close" arrow>
+    <IconButton size="small" sx={{ color: 'black' }} onClick={toggleChat}>
+      <CloseIcon fontSize="small" />
+    </IconButton>
+  </Tooltip>
 </Box>
 
-
-          {/* Chat Body */}
-          <Box
-            sx={{
-              p: 2,
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1,
-              overflowY: 'auto', // Make the messages box scrollable
-            }}
-          >
-    {/* Display Chat Messages */}
-
-    
-       {/* Display Questions from 'data' array */}
-       {data && data.length > 0 && (
-                <Box sx={{ marginTop: 2 }}>
-                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                        Frequently Asked Questions:
-                    </Typography>
-                    {data.map((item) => (
-                        <Box
-                            key={item.id}
-                            sx={{
-                                backgroundColor: '#f9f9f9',
-                                padding: '8px',
-                                borderRadius: '5px',
-                                marginTop: '5px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                            }}
-                        >
-                            <Typography variant="body2">{item.question}</Typography>
-                            <IconButton
-                                sx={{ padding: 0 }}
-                                onClick={() => handleQuestionClick(item.id)}
-                            >
-                                <ArrowForwardIcon />
-                            </IconButton>
-                        </Box>
-                    ))}
-                </Box>
-            )}
-
-{messages.length === 0 && (
-  <Typography
-    sx={{
-      textAlign: 'center',
-      fontStyle: 'italic',
-      color: '#aaa',
-      padding: '10px',
-    }}
-  >
-    Hello! Ask me about this product.
-  </Typography>
-)}
-{messages.map((message, index) => (
-  <Box
-    key={index}
-    sx={{
-      display: 'flex',
-      justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start',
-      marginBottom: '8px',
-    }}
-  >
-    <Typography
-      sx={{
-        backgroundColor: message.sender === 'user' ? '#d1e7ff' : '#f1f1f1',
-        padding: '8px 12px',
-        borderRadius: '10px',
-        maxWidth: '80%',
-        wordBreak: 'break-word', // Ensure long words are wrapped
-      }}
-    >
-      {message.text}
-    </Typography>
-  </Box>
-))}
-
-
-           
-
-            {/* Bot Typing Indicator */}
-            {isBotTyping && (
-              <Box sx={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '8px' }}>
-                <Paper sx={{ p: 1, bgcolor: '#f1f1f1', borderRadius: 2, maxWidth: '80%' }}>
-                  <Typography variant="body2">...typing</Typography>
-                </Paper>
-              </Box>
-            )}
-
-            {/* Scroll to bottom reference */}
-            <div ref={messagesEndRef} />
-          </Box>
-
-          {/* Input Box */}
-          <Box sx={{ display: 'flex', gap: 1, p: 1.5, borderTop: '1px solid #ddd' }}>
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="Type your message..."
-              value={userMessage}
-              onChange={(e) => setUserMessage(e.target.value)}
-              onKeyUp={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  handleSendMessage();  // Send the message when Enter key is pressed
-                }
-              }}
-            />
-            <Button variant="contained" sx={{ textTransform: 'capitalize' }} onClick={handleSendMessage}>
-              Send
-            </Button>
-          </Box>
         </Box>
-      )}
-            {/* <IconButton onClick={toggleChat} sx={{ position: 'fixed', bottom: 20, right: 20, background: '#007bff', color: 'white', '&:hover': { background: '#0056b3' } }}>
-                <ChatIcon />
-            </IconButton> */}
 
-      {/* Chat Box */}
-      {/* {chatOpen && (
+        {/* Chat Body */}
         <Box
           sx={{
-            position: 'fixed',
-            bottom: 90,
-            right: 20,
-            width: 320,
-            bgcolor: '#fff',
-            borderRadius: 2,
-            boxShadow: 6,
-            overflow: 'hidden',
+            p: 2,
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
+            gap: 1,
+            overflowY: 'auto', // Make the messages box scrollable
           }}
         >
-         
-          <Box
-            sx={{
-              bgcolor: '#007bff',
-              color: '#fff',
-              p: 1.5,
-              position: 'relative',
-            }}
-          >
-            <Typography variant="subtitle1" fontWeight="bold">
-              Product Chat Assistant
-            </Typography>
-            <IconButton
-              size="small"
-              sx={{ position: 'absolute', right: 8, top: 8, color: '#fff' }}
-              onClick={toggleChat} // Close chat on button click
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
-
-     
-          <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-           
-            {messages.length === 0 && (
-              <Paper sx={{ p: 1, bgcolor: '#f1f1f1', borderRadius: 2, maxWidth: '80%' }}>
-                <Typography variant="body2">Hello! Ask me about this product.</Typography>
-              </Paper>
-            )}
-
-            {messages.map((message, index) => (
-              <Box
-                key={index}
-                sx={{
-                  display: 'flex',
-                  justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start',
-                  marginBottom: '8px',
-                }}
-              >
-                <Paper
+          {/* Display Chat Messages */}
+          {data && data.length > 0 && (
+            <Box sx={{ marginTop: 2 }}>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                Frequently Asked Questions:
+              </Typography>
+              {data.map((item) => (
+                <Box
+                  key={item.id}
                   sx={{
-                    p: 1,
-                    bgcolor: message.sender === 'user' ? '#e0f3ff' : '#f1f1f1',
-                    borderRadius: 2,
-                    maxWidth: '80%',
-                    wordWrap: 'break-word',
+                    backgroundColor: '#f9f9f9',
+                    padding: '8px',
+                    borderRadius: '5px',
+                    marginTop: '5px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <Typography variant="body2">{message.text}</Typography>
-                </Paper>
-              </Box>
-            ))}
-            {responseChat && (
-              <Box sx={{ alignSelf: 'flex-start' }}>
-                <Paper sx={{ p: 1, bgcolor: '#f1f1f1', borderRadius: 2, maxWidth: '80%' }}>
-                  <Typography variant="body2">{responseChat}</Typography>
-                </Paper>
-              </Box>
-            )}
-          </Box>
+                  <Typography variant="body2">{item.question}</Typography>
+                  <IconButton sx={{ padding: 0 }} onClick={() => handleQuestionClick(item.id)}>
+                    <ArrowForwardIcon />
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
+          )}
 
-        
-          <Box sx={{ display: 'flex', gap: 1, p: 1.5, borderTop: '1px solid #ddd' }}>
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="Type your message..."
-              value={userMessage}
-              onChange={(e) => setUserMessage(e.target.value)}
-            />
-            <Button variant="contained" onClick={handleSendMessage}>
-              Send
-            </Button>
-          </Box>
+          {messages.length === 0 && (
+            <Typography
+              sx={{
+                textAlign: 'center',
+                fontStyle: 'italic',
+                color: '#aaa',
+                padding: '10px',
+              }}
+            >
+              Hello! Ask me about this product.
+            </Typography>
+          )}
+
+          {messages.map((message, index) => (
+            <Box
+              key={index}
+              sx={{
+                display: 'flex',
+                justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start',
+                marginBottom: '8px',
+              }}
+            >
+              <Typography
+                sx={{
+                  backgroundColor: message.sender === 'user' ? '#d1e7ff' : '#f1f1f1',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  maxWidth: '80%',
+                  wordBreak: 'break-word', // Ensure long words are wrapped
+                }}
+              >
+                {message.text}
+              </Typography>
+            </Box>
+          ))}
+
+          {/* Bot Typing Indicator */}
+          {isBotTyping && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '8px' }}>
+              <Paper sx={{ p: 1, bgcolor: '#f1f1f1', borderRadius: 2, maxWidth: '80%' }}>
+                <Typography variant="body2">...typing</Typography>
+              </Paper>
+            </Box>
+          )}
+
+          {/* Scroll to bottom reference */}
+          <div ref={messagesEndRef} />
         </Box>
-      )} */}
+
+        {/* Input Box */}
+        <Box sx={{ display: 'flex', gap: 1, p: 1.5, borderTop: '1px solid #ddd' }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Type your message..."
+            value={userMessage}
+            onChange={(e) => setUserMessage(e.target.value)}
+            onKeyUp={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                handleSendMessage(); // Send the message when Enter key is pressed
+              }
+            }}
+          />
+          <Button variant="contained" sx={{ textTransform: 'capitalize' }} onClick={handleSendMessage}>
+            Send
+          </Button>
+        </Box>
+      </Box>
+    )}
+      
+
         
         </Container>
     );

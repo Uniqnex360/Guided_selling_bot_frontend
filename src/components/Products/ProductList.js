@@ -17,11 +17,22 @@ import {
     TableRow,
     TableCell,
     TableBody,
-    TablePagination,
+    TablePagination, FormControlLabel, FormControl, InputLabel,Select,MenuItem,Checkbox,  Dialog, DialogActions, DialogContent, DialogTitle
 } from '@mui/material';
+import {
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    
+  } from '@mui/material';
+  
+  import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+  
+import CloseIcon from '@mui/icons-material/Close';
 import { Edit as EditIcon } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { ListAlt as ListAltIcon, GridView as GridViewIcon } from '@mui/icons-material';
+import DotLoading from '../Loading/DotLoading';
 
 const ProductList = () => {
     const [products, setProducts] = useState([]);
@@ -31,40 +42,169 @@ const ProductList = () => {
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [viewMode, setViewMode] = useState('list'); // Added state to track the view mode
     const [sortConfig, setSortConfig] = useState({ key: 'sku', direction: 'asc' }); // Sorting state
+    const [loading, setLoading] = useState(true); // Loading state
+    const [noDataFound, setNoDataFound] = useState(false); // No data found state
+    const [allProducts, setAllProducts] = useState([]);
+    const [selectedCategoryId, setSelectedCategoryId] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [productsPerPage] = useState(5);
+    const [showPopup, setShowPopup] = useState(false);
+    const [selectedCategoryName, setSelectedCategoryName] = useState('');
+    const [selectedFilters, setSelectedFilters] = useState({});
+    const [categoryOptions, setCategoryOptions] = useState([]);
 
+    const [categoryFilters, setCategoryFilters] = useState([]);
+// const selectedCategory = categoryOptions.find(cat => cat.id === selectedCategoryId);
 
-  
-  // Get the sort symbol for each column
-  const getSortSymbol = (column) => {
-      if (sortConfig.key === column) {
-          return sortConfig.direction === 'asc' ? '↑' : '↓';
-      }
-      return '↕'; // Default sorting symbol for unsorted columns
-  };
+    // Get the sort symbol for each column
+    const getSortSymbol = (column) => {
+        if (sortConfig.key === column) {
+            return sortConfig.direction === 'asc' ? '↑' : '↓';
+        }
+        return '↕'; // Default sorting symbol for unsorted columns
+    };
 
-
-
-    useEffect(() => {
-        fetch('https://product-assistant-gpt.onrender.com/productList/')
+    const fetchCategories = () => {
+        setLoading(true);
+        fetch("https://product-assistant-gpt.onrender.com/fourth_level_categories/")
             .then(response => response.json())
-            .then(responseData => {
-                setProducts(responseData.data?.products || []);
+            .then(data => {
+                setCategoryOptions(data.data.categories || []);
+                setLoading(false);
             })
             .catch(error => {
-                console.error('Error fetching product data:', error);
+                console.error('Error fetching categories:', error);
+                setLoading(false);
             });
+    };
+
+// Fetch filters based on categoryId
+  // Fetch filters based on categoryId
+  const fetchFilters = (categoryId) => {
+    setLoading(true); // Start loading for filters
+    fetch(`https://product-assistant-gpt.onrender.com/category_filters/?category_id=${categoryId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        const filters = data.data.filters;
+        const filtersWithCheckbox = filters.map(filter => {
+            return {
+                ...filter,
+                options: filter.config.options.map(option => ({
+                    label: option.trim(),
+                    checked: false,
+                }))
+            };
+        });
+        setCategoryFilters(filtersWithCheckbox);
+        setLoading(false); // Stop loading after filters are fetched
+    })
+    .catch(error => {
+        console.error('Error fetching filters:', error);
+        setLoading(false); // Stop loading even if there's an error
+    });
+};
+
+
+// Handle category selection change
+const handleCategoryChange = (event) => {
+    const categoryId = event.target.value;
+    setSelectedCategoryId(categoryId);
+
+    // Find the selected category name based on the categoryId
+    const selectedCategory = categoryOptions.find(cat => cat.id === categoryId);
+    setSelectedCategoryName(selectedCategory ? selectedCategory.name : '');
+
+    // Fetch the filters for the selected category
+    if (categoryId) {
+        fetchFilters(categoryId);
+    }
+};
+
+    // Handle filter option change
+    const handleFilterChange = (filterName, option) => {
+        const newFilters = { ...selectedFilters };
+        if (newFilters[filterName]) {
+            if (newFilters[filterName].includes(option)) {
+                newFilters[filterName] = newFilters[filterName].filter(f => f !== option);
+            } else {
+                newFilters[filterName].push(option);
+            }
+        } else {
+            newFilters[filterName] = [option];
+        }
+        setSelectedFilters(newFilters);
+    };
+
+    // Handle filter clearing
+    const handleClearFilters = () => {
+        setSelectedCategoryId('');
+        setSelectedCategoryName('');
+        setSelectedFilters({});
+        setCategoryFilters([]);
+        setCategoryOptions([]);
+    };
+
+    useEffect(() => {
+        fetchCategories();
     }, []);
 
     useEffect(() => {
+        if (selectedCategoryId) {
+            fetchFilters(selectedCategoryId);
+            fetchProducts(selectedCategoryId);
+        }
+    }, [selectedCategoryId]);
+
+    useEffect(() => {
+        fetchProducts('');
+    }, []);
+    const fetchProducts = (selectedCategoryId) => {
+        setLoading(true); // Start loading
+        fetch('https://product-assistant-gpt.onrender.com/productList/', {
+            method: 'POST', // Assuming the method is POST
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                category_id: selectedCategoryId,
+             
+                // collection_name: selectedCategoryName,
+            }),
+        })
+            .then(response => response.json())
+            .then(responseData => {
+                setProducts(responseData.data?.products || []);
+                setLoading(false); // Stop loading after data is fetched
+            })
+            .catch(error => {
+                console.error('Error fetching product data:', error);
+                setLoading(false); // Stop loading even if there's an error
+            });
+    };
+
+    // Effect to fetch products when categoryId or filters change
+    useEffect(() => {
+        if (selectedCategoryId && Object.keys(selectedFilters).length > 0) {
+            fetchProducts(); // Fetch products when category or filters change
+        }
+    }, [selectedCategoryId, selectedFilters]); // Depend on selectedCategoryId and selectedFilters
+
+    useEffect(() => {
         if (searchQuery) {
-            setFilteredProducts(
-                products.filter(product =>
-                    product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-                )
+            const filtered = products.filter(product =>
+                product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                product.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
+            setFilteredProducts(filtered);
+            setNoDataFound(filtered.length === 0); // Set No Data Found if no products match search query
         } else {
             setFilteredProducts(products);
+            setNoDataFound(products.length === 0); // Set No Data Found if no products available
         }
     }, [searchQuery, products]);
 
@@ -98,13 +238,32 @@ const ProductList = () => {
 
     const handleSearchChange = (event) => {
         setSearchQuery(event.target.value);
-        setPage(0)
+        setPage(0);
+    };
+
+    // Clear search functionality
+    const handleClearSearch = () => {
+        setSearchQuery('');
+        setFilteredProducts(products);
+        setPage(0);
+        setSortConfig({ key: 'sku', direction: 'asc' }); // Reset sort to default
     };
 
     // Toggle between grid and list view
     const toggleViewMode = (mode) => {
         setViewMode(mode);
     };
+
+    if (loading) {
+        return (
+            <Container maxWidth="lg">
+                <Typography variant="h4" sx={{ fontSize: '18px' }} gutterBottom>
+                    Products
+                </Typography>
+                <div style={{marginTop:'10%'}}><DotLoading/></div>
+            </Container>
+        );
+    }
 
     return (
         <Container maxWidth="lg">
@@ -116,14 +275,14 @@ const ProductList = () => {
                     <Button
                         variant={viewMode === 'list' ? 'contained' : 'outlined'}
                         onClick={() => toggleViewMode('list')}
-                        sx={{ marginRight: 2, backgroundColor: '#f2f3ae', color: 'black' }}
+                        sx={{ marginRight: 2, backgroundColor: '#9197ae', color: 'black' }}
                     >
                         <ListAltIcon />
                     </Button>
                     <Button
                         variant={viewMode === 'grid' ? 'contained' : 'outlined'}
                         onClick={() => toggleViewMode('grid')}
-                        sx={{ backgroundColor: '#f2f3ae', color: 'black' }}
+                        sx={{ backgroundColor: '#9197ae', color: 'black' }}
                     >
                         <GridViewIcon />
                     </Button>
@@ -137,44 +296,69 @@ const ProductList = () => {
                     onChange={handleSearchChange}
                     sx={{ minWidth: 300 }}
                 />
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Button onClick={handleClearSearch} sx={{ marginLeft: 2 }}>
                     <IconButton aria-label="refresh" sx={{ marginRight: 2 }}>
                         <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
                             <path d="M0 0h24v24H0z" fill="none" />
                             <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.37-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                         </svg>
                     </IconButton>
+                </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Typography variant="body2">Total Products: {products.length}</Typography>
                 </Box>
             </Box>
 
             <Paper sx={{ width: '100%', mb: 2 }}>
-                {viewMode === 'list' ? (
+                {noDataFound ? (
+                    <Typography variant="h6" align="center" sx={{ marginTop: '20px' }}>
+                        No Data Found
+                    </Typography>
+                ) : viewMode === 'list' ? (
                     <TableContainer>
                         <Table>
-                        <TableHead sx={{ backgroundColor: '#f2f3ae' }}>
-                            <TableRow>
-                                <TableCell sx={{ textAlign: 'center' }}>Image</TableCell>
-                                <TableCell sx={{ textAlign: 'center' }} onClick={() => sortProducts('sku')}>
-                                    SKU {getSortSymbol('sku')}
-                                </TableCell>
-                                <TableCell sx={{ textAlign: 'center' }} onClick={() => sortProducts('name')}>
-                                    Title {getSortSymbol('name')}
-                                </TableCell>
-                                <TableCell sx={{ textAlign: 'center' }} onClick={() => sortProducts('mpn')}>
-                                    MPN {getSortSymbol('mpn')}
-                                </TableCell>
-                                <TableCell sx={{ textAlign: 'center' }} onClick={() => sortProducts('category')}>
-                                    Category {getSortSymbol('category')}
-                                </TableCell>
-                                <TableCell sx={{ textAlign: 'center' }} onClick={() => sortProducts('brand_name')}>
-                                    Brand {getSortSymbol('brand_name')}
-                                </TableCell>
-                                <TableCell sx={{ textAlign: 'center' }} onClick={() => sortProducts('price')}>
-                                    Price {getSortSymbol('price')}
-                                </TableCell>
-                            </TableRow>
-                        </TableHead>
+                            <TableHead sx={{ backgroundColor: '#9197ae', position: 'sticky', top: 0, zIndex: 1 }}>
+                                <TableRow>
+                                    <TableCell sx={{ textAlign: 'center' }}>Image</TableCell>
+                                    <TableCell
+                                        sx={{ textAlign: 'center', cursor: 'pointer' }}
+                                        onClick={() => sortProducts('sku')}
+                                    >
+                                        SKU {getSortSymbol('sku')}
+                                    </TableCell>
+                                    <TableCell
+                                        sx={{ textAlign: 'center', cursor: 'pointer' }}
+                                        onClick={() => sortProducts('name')}
+                                    >
+                                        Title {getSortSymbol('name')}
+                                    </TableCell>
+                                    <TableCell
+                                        sx={{ textAlign: 'center', cursor: 'pointer' }}
+                                        onClick={() => sortProducts('mpn')}
+                                    >
+                                        MPN {getSortSymbol('mpn')}
+                                    </TableCell>
+                                    <TableCell
+                                        sx={{ textAlign: 'center', cursor: 'pointer' }}
+                                        onClick={() => sortProducts('category')}
+                                    >
+                                        Category {getSortSymbol('category')}
+                                    </TableCell>
+                                    <TableCell
+                                        sx={{ textAlign: 'center', cursor: 'pointer' }}
+                                        onClick={() => sortProducts('brand_name')}
+                                    >
+                                        Brand {getSortSymbol('brand_name')}
+                                    </TableCell>
+                                    <TableCell
+                                        sx={{ textAlign: 'center', cursor: 'pointer' }}
+                                        onClick={() => sortProducts('price')}
+                                    >
+                                        Price {getSortSymbol('price')}
+                                    </TableCell>
+                                </TableRow>
+                            </TableHead>
+
                             <TableBody>
                                 {filteredProducts
                                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -200,15 +384,7 @@ const ProductList = () => {
                                                     {product.sku}
                                                 </Link>
                                             </TableCell>
-                                            <TableCell sx={{ textAlign: 'center',
-                textAlign: "center", 
-                minWidth: 320, 
-                width: 320, 
-                wordBreak: "break-word", 
-                whiteSpace: "normal", 
-                overflow: "hidden", 
-                textOverflow: "ellipsis"
-               }}>
+                                            <TableCell sx={{ textAlign: 'center', minWidth: 320, wordBreak: "break-word" }}>
                                                 <Link to={`/details/${product.id}`} style={{ color: 'black', textDecoration: 'none' }}>
                                                     {product.name}
                                                 </Link>
@@ -307,6 +483,114 @@ const ProductList = () => {
                 onRowsPerPageChange={handleChangeRowsPerPage}
                 labelRowsPerPage="Rows per page:"
             />
+  {/* <Button
+                variant="contained"
+                color="primary"
+                style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '50%',
+                    fontSize: '24px',
+                    zIndex: 9999
+                }}
+                onClick={() => setShowPopup(true)}
+            >
+                ❓
+            </Button> */}
+
+            {/* Filter Dialog */}
+           <Button
+                variant="contained"
+                color="primary"
+                style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '50%',
+                    fontSize: '24px',
+                    zIndex: 9999
+                }}
+                onClick={() => setShowPopup(true)}
+            >
+                ❓
+            </Button>
+
+            <Dialog open={showPopup} onClose={() => setShowPopup(false)} maxWidth="xs" fullWidth>
+                <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', color: '#7B61FF' }}>
+                    Product Finder
+                    <Button
+                        onClick={() => setShowPopup(false)}
+                        style={{
+                            position: 'absolute',
+                            right: '10px',
+                            top: '10px',
+                            minWidth: 'unset'
+                        }}
+                    >
+                        <CloseIcon />
+                    </Button>
+                </DialogTitle>
+                <DialogContent dividers>
+                      <FormControl fullWidth margin="normal">
+                        <InputLabel>Category</InputLabel>
+                        <Select
+        value={selectedCategoryId}
+        label="Category"
+        onChange={handleCategoryChange}
+    >
+        {categoryOptions.map((category) => (
+            <MenuItem key={category.id} value={category.id}>
+                {category.name}
+            </MenuItem>
+        ))}
+    </Select>
+                    </FormControl>
+
+                    {categoryFilters.map((filter, index) => (
+                        <Accordion key={index}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="subtitle1">{filter.name}</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                {filter.options.map((option, optionIndex) => (
+                                    <FormControlLabel
+                                        key={optionIndex}
+                                        control={
+                                            <Checkbox
+                                                checked={selectedFilters[filter.name]?.includes(option.label) || false}
+                                                onChange={() => handleFilterChange(filter.name, option.label)}
+                                            />
+                                        }
+                                        label={option.label}
+                                    />
+                                ))}
+                            </AccordionDetails>
+                        </Accordion>
+                    ))}
+
+                        <div style={{ marginTop: '10px', textAlign: 'right' }}>
+                        <Button
+                            variant="text"
+                            color="error"
+                            onClick={handleClearFilters}
+                            style={{ fontWeight: 'bold' }}
+                        >
+                            ❌ Reset All
+                        </Button>
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowPopup(false)} color="primary">
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
         </Container>
     );
 };
