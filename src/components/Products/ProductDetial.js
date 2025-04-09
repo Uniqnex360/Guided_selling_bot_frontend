@@ -104,6 +104,8 @@ const [updateFeatures, setUpdateFeatures] = useState([]);
 const [updateDescription, setUpdateDescription] = useState('');
 const [updatedDescription, setUpdatedDescription] = useState(productTab?.description || []);
  // State for Title Tab (managed within TitleTab)
+
+ const [selectedTitleIndex, setSelectedTitleIndex] = useState(null);
   const [editedTitle, setEditedTitle] = useState(''); // Likely managed in TitleTab
   const [editModeTitle, setEditModeTitle] = useState(false); // Likely managed in TitleTab
   const [getTitle, setGetTitle] = useState([]);
@@ -111,7 +113,9 @@ const [updatedDescription, setUpdatedDescription] = useState(productTab?.descrip
   const [getDescription, setGetDescription] = useState([]);
   const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(null);
   const [selectedFeatureValue, setSelectedFeatureValue] = useState("");
-  
+const [editingSetIndex, setEditingSetIndex] = useState(null);
+const [editingFeatures, setEditingFeatures] = useState([]);
+
   const [getRewriteDescription, setGetRewriteDescription] = useState([]);
   
   const [finalTitle, setFinalTitle] = useState('');
@@ -141,145 +145,121 @@ const [isMaximized, setIsMaximized] = useState(false);
 const [selectedEditIndex, setSelectedEditIndex] = useState(null);
 const [editedDescription, setEditedDescription] = useState('');
 
-const handleEditClick = (field) => {
-  if (field === 'features') {
-    setEditMode({ ...editMode, features: true });
-    // Clone the existing feature values to allow editing
-    setSelectedFeatures(productTab.features.map((featureSet) => [...featureSet]));
+useEffect(() => {
+  const checkedFeatureSet = productTab?.features?.findIndex(f => f?.checked);
+  if (checkedFeatureSet !== -1) {
+    setSelectedFeatureSetIndex(checkedFeatureSet);
   }
-};
+}, [productTab?.features]);
 
 
-// On edit button click
-// const handleEditClick = (field) => {
-//   if (field === 'features') {
-//     setEditMode({ ...editMode, features: true });
-
-//     // Clone the existing productTab.features into editable state
-//     const cloned = productTab.features?.map(f => [...f.value]);
-//     setEditedFeatures(cloned);
-//   }
-// };
-
-
-
-// const handleEditClick = (field) => {
-//   if (field === 'features') {
-//     setEditMode({ ...editMode, features: true });
-//     // Clone the existing feature values to allow editing
-//     setSelectedFeatures(productTab.features.map((featureSet) => [...featureSet]));
-//   }
-// };
-
-// Handle feature set selection
 const handleFeatureSetSelect = (e, index) => {
   setSelectedFeatureSetIndex(index);
-  setSelectedFeatures(productTab.features[index]);
+  setEditingSetIndex(null); // Reset any edit mode
+
+  const updatedFeatures = productTab.features.map((set, i) => ({
+    ...set,
+    checked: i === index,
+  }));
+
+  handleLocalUpdate({ features: updatedFeatures });
 };
 
-// Handle feature input changes
-// const handleFeatureChange = (e, listIndex, featureIndex) => {
-//   const newSelectedFeatures = [...selectedFeatures];
-//   newSelectedFeatures[listIndex][featureIndex] = e.target.value;
-//   setSelectedFeatures(newSelectedFeatures);
-// };
 
-// Save the edited features
-// const handleSaveClick = (field) => {
-//   if (field === 'features') {
-//     const updatedFeatures = [...productTab.features];
-//     updatedFeatures[selectedFeatureSetIndex] = selectedFeatures[selectedFeatureSetIndex];
-//     setProductTab({ ...productTab, features: updatedFeatures });
-//     setEditMode({ ...editMode, features: false });
-//   }
-// };
-
-const handleEditClickFeatures = (type, index) => {
-  setEditMode({ ...editMode, [type]: true });
-  setSelectedFeatureSetIndex(index);
-  setSelectedFeatureIndex(null); // Initialize to avoid errors if no feature is selected
-  if (type === 'features') {
-    const featureObj = productTab.features[index];
-    setSelectedFeatureValue(featureObj.value[0]); // Setting the first feature value for editing
+useEffect(() => {
+  const defaultIndex = productTab?.features?.findIndex((set) => set.checked);
+  if (defaultIndex !== -1 && defaultIndex !== undefined) {
+    setSelectedFeatureSetIndex(defaultIndex);
   }
+}, [productTab?.features]);
+
+const handleFeatureChange = (setIndex, featureIndex, newValue) => {
+  const updated = [...editingFeatures];
+  updated[setIndex][featureIndex] = newValue;
+  setEditingFeatures(updated);
 };
 
+// const handleFeatureChange = (setIndex, featureIndex, newValue) => {
+//   const updated = [...editingFeatures];
 
-  // Handle feature checkbox change
-  const handleFeatureSetChange = (event, listIndex) => {
-    const updatedSelectedFeatures = [...selectedFeatures];
-    
-    if (event.target.checked) {
-      // Select all features in this feature set
-      updatedSelectedFeatures[listIndex] = productTab.features[listIndex].map((_, featureIndex) => featureIndex);
+//   if (!updated[setIndex]) {
+//     updated[setIndex] = [...productTab.features[setIndex].value];
+//   }
+
+//   updated[setIndex][featureIndex] = newValue;
+//   setEditingFeatures(updated);
+// };
+
+
+
+const handleSaveClickFeatures = () => {
+  const updatedFeatures = productTab.features.map((feature, index) => {
+    if (index === editingSetIndex) {
+      return {
+        ...feature,
+        value: editingFeatures[index],
+        checked: true, // ✅ Only edited one is checked
+      };
     } else {
-      // Deselect all features in this feature set
-      updatedSelectedFeatures[listIndex] = [];
+      return {
+        ...feature,
+        checked: false, // ✅ Others must be unchecked
+      };
     }
-    
-    setSelectedFeatures(updatedSelectedFeatures);
+  });
+
+  const updatedProductTab = {
+    ...productTab,
+    features: updatedFeatures,
   };
 
-   // Handle feature checkbox change
+  setProductTab(updatedProductTab);
+  setGetFeatures(updatedFeatures); // optional but helpful for local getFeatures
+  setEditMode({ ...editMode, features: false });
+  setEditingSetIndex(null);
+  setSelectedFeatureSetIndex(editingSetIndex); // ✅ Reflect the checked one as selected
+};
 
-// On input change
-// const handleFeatureChange = (newVal, setIndex, featureIndex) => {
-//   const updated = [...editedFeatures];
-//   updated[setIndex][featureIndex] = newVal;
-//   setEditedFeatures(updated);
-// };
 
-// // On save click
-// const handleSaveClickFeatures = () => {
-//   const updatedProduct = {
-//     ...productTab,
-//     features: productTab.features.map((f, i) => ({
-//       ...f,
-//       value: editedFeatures[i]
-//     })),
-//   };
+const handleCancelFeatures = () => {
+  setEditingSetIndex(null);
+  setEditMode({ ...editMode, features: false });
 
-//   // Save this to API or state
-//   // Example: updateProduct(updatedProduct);
+  // Reset editingFeatures so we don’t retain edited values
+  const checkedFeature = productTab.features.find((f) => f.checked);
+  const featuresCopy = productTab.features.map(set => [...set.value]);
+  setEditingFeatures(featuresCopy);
 
-//   setEditMode({ ...editMode, features: false });
-// };
+  const checkedIndex = productTab.features.findIndex(f => f.checked);
+  setSelectedFeatureSetIndex(checkedIndex !== -1 ? checkedIndex : null);
+};
 
 
 
-// const handleLocalUpdate = (updatedProductTab) => {
-//   console.log('Local state updated with:', updatedProductTab);
 
-//   // Find the description with checked = true
-//   const checkedDescription = updatedProductTab.description.find(desc => desc.checked);
-
-//   // Set the selected description to the one that's checked
-//   if (checkedDescription) {
-//     setGetDescription(checkedDescription.value);
-//   } else {
-//     // If no description is checked, set it to a default value or handle the error accordingly
-//     setGetDescription('');
-//   }
-
-//   // Update other parts of the state as needed
-//   setGetTitle(updatedProductTab.title);
-//   setGetFeatures(updatedProductTab.features);
-//   setGetRewriteDescription(updatedProductTab.description)
-// };
+const handleEditClickFeatures = (featureIndex) => {
+  setSelectedFeatureIndex(featureIndex);
+  const featureValue = productTab.features[selectedFeatureSetIndex]?.value[featureIndex];
+  setSelectedFeatureValue(featureValue || '');
+};
 
 
-// const handleLocalUpdate = (updatedProductTab) => {
-//   console.log('Local state updated with:', updatedProductTab);
+const handleFeatureSetChange = (event, listIndex) => {
+  const updatedSelectedFeatures = [...selectedFeatures];
+  if (event.target.checked) {
+    // Select all features in this feature set
+    updatedSelectedFeatures[listIndex] = productTab.features[listIndex].map((_, featureIndex) => featureIndex);
+  } else {
+    // Deselect all features in this feature set
+    updatedSelectedFeatures[listIndex] = [];
+  }
+  setSelectedFeatures(updatedSelectedFeatures);
+};
 
-//   // ✅ Safely handle description
-//   const checkedDescription = updatedProductTab.description?.find(desc => desc.checked);
-//   setGetDescription(checkedDescription ? checkedDescription.value : '');
 
-//   // ✅ Safely handle title and features
-//   setGetTitle(updatedProductTab.title || []);
-//   setGetFeatures(updatedProductTab.features || []);
-//   setGetRewriteDescription(updatedProductTab.description || []);
-// };
+
+
+ 
 
 
 const handleLocalUpdate = (updatedFields) => {
@@ -410,20 +390,51 @@ const handleSaveClick = (type) => {
 // };
 
 
-const handleTitleChange = (event) => {
-  const value = event.target.value;
-  setSelectedTitle(value);
-  setEditedTitle(value);
 
-  if (!productTab?.title) return;
 
-  const updatedTitles = productTab.title.map((title) => ({
+// const handleTitleChange = (event) => {
+//   const value = event.target.value;
+//   setSelectedTitle(value);
+//   setEditedTitle(value);
+
+//   if (!productTab?.title) return;
+
+//   const updatedTitles = productTab.title.map((title) => ({
+//     ...title,
+//     checked: title.value === value,
+//   }));
+
+//   handleLocalUpdate({ title: updatedTitles });
+// };
+const handleTitleChange = (index) => {
+  setSelectedTitleIndex(index);
+
+  // Update the checked property for each title
+  const updatedTitles = productTab.title.map((title, idx) => ({
     ...title,
-    checked: title.value === value,
+    checked: idx === index,
   }));
 
+  // Assuming handleLocalUpdate updates the productTab state
   handleLocalUpdate({ title: updatedTitles });
 };
+
+// const handleEditClickTitle = (field, index) => {
+//   setEditMode({ ...editMode, [field]: true });
+//   setSelectedEditIndex(index);
+//   setEditedTitle(productTab.title[index].value);
+// };
+
+// const handleSaveClick = (field) => {
+//   // Save the edited title
+//   const updatedTitles = productTab.title.map((title, idx) =>
+//     idx === selectedEditIndex ? { ...title, value: editedTitle } : title
+//   );
+
+//   handleLocalUpdate({ [field]: updatedTitles });
+//   setEditMode({ ...editMode, [field]: false });
+//   setSelectedEditIndex(null);
+// };
 
 
 useEffect(() => {
@@ -476,24 +487,6 @@ const handleEditClickTitle = (type, index) => {
 };
 
 
-useEffect(() => {
-  const checkedFeature = productTab?.features?.find((featureObj, listIndex) =>
-    featureObj.value.some(feature => featureObj.checked)
-  );
-  
-  if (checkedFeature) {
-    setSelectedFeatureValue(checkedFeature.value[0]);
-  }
-}, [productTab?.features]);
-
-const handleSaveClickFeatures = () => {
-  const updatedFeatures = [...productTab.features];
-  updatedFeatures[selectedFeatureSetIndex].value[selectedFeatureIndex] = selectedFeatureValue;
-
-  handleLocalUpdate({ ...productTab, features: updatedFeatures });
-  setEditMode({ ...editMode, features: false });
-};
-
 
 
 useEffect(() => {
@@ -526,19 +519,6 @@ const handleEditClickDescription = (index) => {
 };
 
  
-
-
-
-const handleFeatureChange = (e, listIndex, featureIndex) => {
-  const newFeatures = [...productTab.features];
-  newFeatures[listIndex].value[featureIndex] = e.target.value;
-
-  handleLocalUpdate({
-    ...productTab,
-    features: newFeatures
-  });
-};
-
 
   const handleMinimize = () => {
     setIsMinimized(true);
@@ -665,7 +645,7 @@ const toggleChat = () => setChatOpen(!chatOpen);
 
 useEffect(() => {
     if (chatOpen && id) {
-      setLoading(true);
+      // setLoading(true);
       fetch(`https://product-assistant-gpt.onrender.com/fetchProductQuestions/${id}`)
         .then((response) => response.json())
         .then((responseData) => {
@@ -674,7 +654,7 @@ useEffect(() => {
         })
         .catch((error) => {
           console.error('Error fetching product details:', error);
-          setLoading(false);
+          // setLoading(false);
         });
     }
   }, [chatOpen, id]);
@@ -779,17 +759,19 @@ const handleSendMessage = () => {
     useEffect(() => {
       fetchProductDetails();
     }, []); // Empty dependency array means it runs only once after initial render
-    
+
     const handleUpdateProductTotal = async () => {
       const selectedTitle = Array.isArray(getTitle) && getTitle.find(item => item.checked)?.value || '';
-  
-      // Ensure getDescription is an array and find the checked description
       const selectedDescription = Array.isArray(getDescription) && getDescription.find(item => item.checked)?.value || '';
     
-      // const selectedTitle = getTitle.find(item => item.checked)?.value || '';
-      // const selectedDescription = getDescription.find(item => item.checked)?.value || '';
-      // const selectedDescription = productTab.description.find(desc => desc.checked)?.value || ''; // Ensure this gives the selected description
-      console.log('getT', selectedTitle);
+      // ✅ Extract the features with checked: true
+      const selectedFeatures = Array.isArray(getFeatures)
+        ? getFeatures.find(item => item.checked)?.value || []
+        : [];
+    
+      console.log('getTitle:', selectedTitle);
+      console.log('getDescription:', selectedDescription);
+      console.log('selectedFeatures:', selectedFeatures);
     
       setLoading(true);
     
@@ -803,8 +785,8 @@ const handleSendMessage = () => {
             product_id: id,
             product_obj: {
               product_name: selectedTitle,
-              long_description: getDescription ? getDescription: '',
-              features: [] // Add features if required
+              long_description: getDescription || '',
+              features: selectedFeatures // ✅ Only send the checked set's value
             }
           })
         });
@@ -814,9 +796,7 @@ const handleSendMessage = () => {
     
         if (data?.status) {
           alert('Product updated successfully!');
-          
-          // Fetch the updated product details after successful update
-          fetchProductDetails();
+          fetchProductDetails(); // Refresh data after save
         } else {
           alert('Update failed');
         }
@@ -827,6 +807,7 @@ const handleSendMessage = () => {
         setLoading(false);
       }
     };
+    
     
     // Function to fetch product details
     const fetchProductDetails = () => {
@@ -863,7 +844,7 @@ const handleSendMessage = () => {
     return (
         <Container>
 
-<Box sx={{ display: "flex",marginLeft: '-43px', alignItems: "center", padding: "20px" }}>
+<Box sx={{ display: "flex",marginLeft: '-30px', alignItems: "center", padding: "20px" }}>
               <IconButton sx={{ marginLeft: "-3%" }} onClick={handleBackClick}>
                 <ArrowBack />
               </IconButton>
@@ -1024,10 +1005,11 @@ const handleSendMessage = () => {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         width: 300,
+        height: 300,
         bgcolor: 'background.paper',
         border: '2px solid #000',
         boxShadow: 24,
-        p: 4,
+        p: 2,
         borderRadius: '8px',
     }}>
         <div id="ai-modal-description">
@@ -1040,7 +1022,7 @@ const handleSendMessage = () => {
 </Modal>
 
 
-                            <Divider sx={{ my: 2 }} />
+                            {/* <Divider sx={{ my: 2 }} /> */}
             
 
                         </Box>
@@ -1085,7 +1067,7 @@ const handleSendMessage = () => {
   <Grid  item xs={6}>
   <Box>
 
-    <Tabs value={tabIndex} onChange={handleTabChange} aria-label="product details tabs" sx={{marginTop:'-50px'}}>
+    <Tabs value={tabIndex} onChange={handleTabChange} aria-label="product details tabs" sx={{marginTop:'-20px'}}>
       <Tab label="Product Title" {...a11yProps(0)} />
       <Tab label="Features" {...a11yProps(1)} />
       <Tab label="Description" {...a11yProps(2)} />
@@ -1131,34 +1113,37 @@ const handleSendMessage = () => {
 <TabPanel value={tabIndex} index={0}>
       {Array.isArray(productTab?.title) && productTab.title.length > 0 ? (
         <Box>
-        <RadioGroup value={selectedTitle} onChange={handleTitleChange}>
-  <List
-    sx={{
-      padding: 0,
-      fontSize: '14px',
-      fontWeight: 'bold',
-      mb: 1,
-      maxWidth: '59ch',
-      overflowWrap: 'break-word',
-    }}
-  >
-    {productTab.title.map((title, index) => (
-      <ListItem key={index}>
-        <FormControlLabel
-          value={title.value}
-          control={<Radio />} // ❌ Removed `checked` from here
-          label={<Typography variant="body1">{title.value}</Typography>}
-        />
-        {selectedTitle === title.value && !editMode.title && (
-          <IconButton onClick={() => handleEditClickTitle('title', index)}>
-            <EditIcon />
-          </IconButton>
-        )}
-      </ListItem>
-    ))}
-  </List>
-</RadioGroup>
+          <List
+            sx={{
+              padding: 0,
+              fontSize: '14px',
+              fontWeight: 'bold',
+              mb: 1,
+              maxWidth: '59ch',
+              overflowWrap: 'break-word',
+            }}
+          >
+            {productTab.title.map((title, index) => (
+              <ListItem key={index}>
+                <FormControlLabel
+                  value={title.value}
+                  control={
+                    <Radio
+                      checked={title.checked === true}
+                      onChange={() => handleTitleChange(index)}
+                    />
+                  }
+                  label={<Typography variant="body1">{title.value}</Typography>}
+                />
 
+                {title.checked === true && !editMode.title && (
+                  <IconButton onClick={() => handleEditClickTitle('title', index)}>
+                    <EditIcon />
+                  </IconButton>
+                )}
+              </ListItem>
+            ))}
+          </List>
 
           {editMode.title && selectedEditIndex !== null && (
             <Box>
@@ -1173,7 +1158,14 @@ const handleSendMessage = () => {
               <IconButton onClick={() => handleSaveClick('title')}>
                 <SaveIcon />
               </IconButton>
-              <IconButton onClick={() => setEditMode({...editMode, title: false,})}>
+              <IconButton
+                onClick={() =>
+                  setEditMode({
+                    ...editMode,
+                    title: false,
+                  })
+                }
+              >
                 <CancelIcon />
               </IconButton>
             </Box>
@@ -1188,15 +1180,13 @@ const handleSendMessage = () => {
       )}
     </TabPanel>
 
+
     <TabPanel value={tabIndex} index={1}>
   <Box>
     <Box display="flex" alignItems="center" marginBottom={1} sx={{ width: '50%' }}>
       <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
         Features:
       </Typography>
-      <IconButton onClick={() => handleEditClickFeatures('features', selectedFeatureSetIndex)}>
-        <EditIcon />
-      </IconButton>
     </Box>
 
     {editMode.features ? (
@@ -1204,44 +1194,58 @@ const handleSendMessage = () => {
         {Array.isArray(productTab?.features) && productTab.features.length > 0 ? (
           productTab.features.map((featureObj, listIndex) => {
             const featureList = Array.isArray(featureObj.value) ? featureObj.value : [];
-            
+
             return (
               <Box key={listIndex} sx={{ marginBottom: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                  Feature Set {listIndex + 1}
-                </Typography>
-                {featureList.length > 0 ? (
-                  featureList.map((feature, featureIndex) => (
-                    <Box
-                      key={featureIndex}
-                      sx={{
-                        marginBottom: 1,
-                        maxWidth: '59ch',
-                        overflowWrap: 'break-word',
-                      }}
-                    >
-                      {listIndex === selectedFeatureSetIndex && featureIndex === selectedFeatureIndex ? (
-                        <TextField
-                          sx={{ maxWidth: '59ch', overflowWrap: 'break-word' }}
-                          value={selectedFeatureValue}
-                          onChange={(e) => setSelectedFeatureValue(e.target.value)}
-                          label={`Feature ${featureIndex + 1}`}
-                          fullWidth
-                          variant="outlined"
-                          margin="normal"
-                        />
-                      ) : (
-                        <Typography variant="body1" sx={{ paddingLeft: '16px' }}>
-                          • {feature}
-                        </Typography>
-                      )}
-                    </Box>
-                  ))
-                ) : (
-                  <Typography variant="body1" color="textSecondary">
-                    No features available.
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                    Feature Set {listIndex + 1}
                   </Typography>
-                )}
+
+                  {/* 👇 Show edit icon only for selected set */}
+                  {/* {selectedFeatureSetIndex === listIndex && editingSetIndex === null && ( */}
+                    <IconButton onClick={() => setEditingSetIndex(listIndex)} size="small">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  {/* )} */}
+
+                         {/* 👇 Show save only in edit mode */}
+        {editingSetIndex !== null && (
+  <Box>
+    <IconButton onClick={handleSaveClickFeatures}>
+      <SaveIcon />
+    </IconButton>
+    <IconButton onClick={handleCancelFeatures}>
+      <CancelIcon />
+    </IconButton>
+  </Box>
+)}
+                </Box>
+
+                {featureList.map((feature, featureIndex) => (
+                  <Box
+                    key={featureIndex}
+                    sx={{ marginBottom: 1, maxWidth: '59ch', overflowWrap: 'break-word' }}
+                  >
+                    {editingSetIndex === listIndex ? (
+                      <TextField
+                        sx={{ maxWidth: '59ch' }}
+                        value={editingFeatures[listIndex]?.[featureIndex] || feature}
+                        onChange={(e) =>
+                          handleFeatureChange(listIndex, featureIndex, e.target.value)
+                        }
+                        label={`Feature ${featureIndex + 1}`}
+                        fullWidth
+                        variant="outlined"
+                        margin="normal"
+                      />
+                    ) : (
+                      <Typography variant="body1" sx={{ paddingLeft: '16px' }}>
+                        • {feature}
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
               </Box>
             );
           })
@@ -1250,55 +1254,80 @@ const handleSendMessage = () => {
             No features available.
           </Typography>
         )}
-        <IconButton onClick={handleSaveClickFeatures}>
-          <SaveIcon />
-        </IconButton>
+
+ 
+
       </Box>
     ) : (
       <RadioGroup
-        value={selectedFeatureSetIndex !== null ? selectedFeatureSetIndex : ''}
-        onChange={(e) => handleFeatureSetSelect(e, Number(e.target.value))}
-      >
-        {Array.isArray(productTab.features) && productTab.features.length > 0 ? (
-          productTab.features.map((featureObj, listIndex) => {
-            const featureList = Array.isArray(featureObj.value) ? featureObj.value : [];
+  value={selectedFeatureSetIndex ?? ''}
+  onChange={(e) => handleFeatureSetSelect(e, Number(e.target.value))}
+>
+  {Array.isArray(productTab?.features) && productTab.features.length > 0 ? (
+    productTab.features.map((featureObj, listIndex) => {
+      const featureList = Array.isArray(featureObj.value) ? featureObj.value : [];
 
-            return (
-              <React.Fragment key={listIndex}>
-                <ListItem sx={{ display: 'flex', alignItems: 'center' ,maxWidth: '59ch', overflowWrap: 'break-word'}}>
-                  <FormControlLabel
-                    control={<Radio value={listIndex} checked={selectedFeatureSetIndex === listIndex} />}
-                    label={
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                        Feature Set {listIndex + 1}
-                      </Typography>
-                    }
-                  />
-                </ListItem>
-
-                {featureList.length > 0 ? (
-                  featureList.map((feature, featureIndex) => (
-                    <ListItem key={featureIndex} sx={{ padding: '4px 0', fontSize: '0.9rem' ,maxWidth: '59ch', overflowWrap: 'break-word'}}>
-                      <Typography variant="body1">• {feature}</Typography>
-                    </ListItem>
-                  ))
-                ) : (
-                  <Typography variant="body1" color="textSecondary">
-                    No features available.
+      return (
+        <React.Fragment key={listIndex}>
+          <ListItem sx={{ display: 'flex', alignItems: 'center' }}>
+            <FormControlLabel
+              value={listIndex}
+              control={
+                <Radio
+                  checked={productTab.features[listIndex]?.checked === true}
+                />
+              }
+              label={
+                <Box display="flex" alignItems="center">
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                    Feature Set {listIndex + 1}
                   </Typography>
-                )}
-              </React.Fragment>
-            );
-          })
-        ) : (
-          <Typography variant="body1" color="textSecondary">
-            No features available.
-          </Typography>
-        )}
-      </RadioGroup>
+                  {productTab.features[listIndex]?.checked === true && (
+                    <IconButton
+                      onClick={() => {
+                        setEditingSetIndex(listIndex);
+                        const featuresCopy = productTab.features.map(set => [...set.value]);
+                        setEditingFeatures(featuresCopy);
+                        setEditMode({ ...editMode, features: true });
+                      }}
+                      size="small"
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+              }
+            />
+          </ListItem>
+
+          {featureList.map((feature, featureIndex) => (
+            <ListItem
+              key={featureIndex}
+              sx={{
+                padding: '4px 0',
+                fontSize: '0.9rem',
+                maxWidth: '59ch',
+                overflowWrap: 'break-word',
+              }}
+            >
+              <Typography variant="body1">• {feature}</Typography>
+            </ListItem>
+          ))}
+        </React.Fragment>
+      );
+    })
+  ) : (
+    <Typography variant="body1" color="textSecondary">
+      No features available.
+    </Typography>
+  )}
+</RadioGroup>
+
     )}
   </Box>
 </TabPanel>
+
+
 
 
 
@@ -1425,10 +1454,11 @@ const handleSendMessage = () => {
           <Box sx={{ position: 'absolute', right: 8, top: 8, display: 'flex', gap: 1 }}>
   {/* Minimize Button */}
   <Tooltip title="Minimize" arrow>
-    <IconButton size="small" sx={{ color: 'black' }} onClick={handleMinimize}>
-      <MinimizeOutlinedIcon fontSize="small" />
-    </IconButton>
-  </Tooltip>
+  <IconButton size="small" sx={{ color: 'black' }} onClick={handleMinimize}>
+    <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-10px' }} />
+  </IconButton>
+</Tooltip>
+
 
   {/* Maximize Button */}
   <Tooltip title="Maximize" arrow>
