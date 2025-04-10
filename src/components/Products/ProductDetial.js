@@ -80,7 +80,8 @@ const ProductDetail = () => {
 const [snackbarOpen, setSnackbarOpen] = useState(false);
 const [snackbarMessage, setSnackbarMessage] = useState('');
 
-    
+const [isAddingNewPrompt, setIsAddingNewPrompt] = useState(false);
+
     const [chatOpen, setChatOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [userMessage, setUserMessage] = useState('');
@@ -104,9 +105,12 @@ const [snackbarMessage, setSnackbarMessage] = useState('');
     const originalPrice = product?.was_price;
     const discountPercentage = product?.discount;
     const [selectedDescription, setSelectedDescription] = useState("");
-    const [promptList, setPromptList] = useState([]); // Store fetched prompt list
-    const [selectedPrompt, setSelectedPrompt] = useState(''); // Store the selected prompt
-    const [selectedFeatureSetIndex, setSelectedFeatureSetIndex] = useState(0); // To track selected feature set
+    const [selectedPrompt, setSelectedPrompt] = useState('');
+const [promptList, setPromptList] = useState([]);
+const [showCustomPromptInput, setShowCustomPromptInput] = useState(false);
+const [customPrompt, setCustomPrompt] = useState('');
+
+     const [selectedFeatureSetIndex, setSelectedFeatureSetIndex] = useState(0); // To track selected feature set
     const [selectedFeatures, setSelectedFeatures] = useState(productTab?.features || []);
   // State for the updated title, features, and description
 const [updateTitle, setUpdateTitle] = useState('');
@@ -151,6 +155,9 @@ const [finalDescription, setFinalDescription] = useState('');
 const [isMaximized, setIsMaximized] = useState(false);
 const [selectedEditIndex, setSelectedEditIndex] = useState(null);
 const [editedDescription, setEditedDescription] = useState('');
+const [updateDesc, setUpdateDesc] = useState('');
+
+
 
 
 // const currentIndex = productIds.findIndex(
@@ -169,6 +176,8 @@ const fetchProducts = () => {
     },
     body: JSON.stringify({
       category_id: '',
+      search_query: ''
+ 
     }),
   })
     .then((response) => response.json())
@@ -261,6 +270,10 @@ const handleSaveClickFeatures = () => {
   setEditMode({ ...editMode, features: false });
   setEditingSetIndex(null);
   setSelectedFeatureSetIndex(editingSetIndex); // ✅ Reflect the checked one as selected
+
+  if(updatedFeatures){
+    fetchEditSave()
+  }
 };
 
 
@@ -316,6 +329,7 @@ const handleLocalUpdate = (updatedFields) => {
   setGetFeatures(updatedProductTab.features || []);
   setGetRewriteDescription(updatedProductTab.description || []);
 
+
   // ✅ Update the entire productTab state
   setProductTab(updatedProductTab);
 };
@@ -326,36 +340,90 @@ const handleDescriptionChange = (event) => {
   setSelectedDescription(value);
   setEditedDescription(value);
 
+  // Update the descriptions and mark the selected one as checked
   const updatedDescriptions = productTab.description.map((desc) => ({
     ...desc,
     checked: desc.value === value,
   }));
 
+  // Update local product tab state
   handleLocalUpdate({ description: updatedDescriptions });
+
+  // Get only the checked value
+  const selectedChecked = updatedDescriptions.find(desc => desc.checked);
+  const longDescription = selectedChecked ? selectedChecked.value : '';
+
+  // Set to state
+  setUpdateDesc(longDescription);
+
+  console.log('✅ Selected Description:', longDescription);
 };
 
 
-// Function to save the edited description
 const handleSaveClickDescription = () => {
   const updatedDescriptions = [...productTab.description];
 
-  // Update the description at the selectedEditIndex
+  // Update the selected index with edited value and set checked true
   updatedDescriptions[selectedEditIndex] = {
     ...updatedDescriptions[selectedEditIndex],
-    value: editedDescription, // Update the value with the edited description
-    checked: true, // Mark the edited description as checked
+    value: editedDescription.trim(), // Optional: Trim whitespace
+    checked: true,
   };
 
+  // Update the state with new descriptions
   setProductTab((prev) => ({
     ...prev,
-    description: updatedDescriptions, // Update the description array
+    description: updatedDescriptions,
   }));
 
-  // Close edit mode and reset selected index
+  // Filter out only checked descriptions
+  const checkedDescriptions = updatedDescriptions.filter(item => item.checked);
+
+  // Extract values and join them into a single string
+  const longDescription = checkedDescriptions.map(item => item.value).join('\n\n');
+
+  // Set the final long description into state
+  setUpdateDesc(longDescription);
+
+  // Close edit mode
   setEditMode({ ...editMode, description: false });
   setSelectedEditIndex(null);
+  if(updatedDescriptions){
+    fetchEditSave()
+  }
+  // Debug log
+  console.log('✅ Final Long Description:', longDescription);
 };
 
+
+const fetchEditSave = () => {
+  setLoading(true);
+
+  fetch('https://product-assistant-gpt.onrender.com/updategeneratedContent/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      product_id: id,
+      title: getTitle,
+      features: getFeatures, // replace with getFeatures if needed
+      description: getRewriteDescription,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      console.log('Save success:', data);
+      // Optionally show success snackbar or update UI
+    })
+    .catch((error) => {
+      console.error('Save error:', error);
+      // Optionally show error snackbar
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+};
 
 const handleSaveClick = (type) => {
   if (type === 'title') {
@@ -367,10 +435,13 @@ const handleSaveClick = (type) => {
 
     // Update the productTab state with the new titles array
     handleLocalUpdate({ ...productTab, title: updatedTitles });
-
+console.log('yyy',updatedTitles)
+if(updatedTitles){
+  fetchEditSave()
+}
     // Update the selectedTitle state after saving
     setSelectedTitle(editedTitle);
-
+console.log('edited',editedTitle)
     // Close the edit mode
     setEditMode({ ...editMode, title: false });
     setSelectedEditIndex(null); // Reset the selected edit index
@@ -388,6 +459,8 @@ const handleTitleChange = (index) => {
 
   // Assuming handleLocalUpdate updates the productTab state
   handleLocalUpdate({ title: updatedTitles });
+
+  console.log('oppo',updateTitle)
 };
 
 
@@ -516,31 +589,28 @@ useEffect(() => {
   fetchPromptList();
 }, []);
 
+const handleSelectChange = (e) => {
+  const value = e.target.value;
+  if (value === '__add_new__') {
+    setIsAddingNewPrompt(true);
+    setSelectedPrompt('');
+  } else {
+    setSelectedPrompt(value);
+    setIsAddingNewPrompt(false);
+  }
+};
 
+// Rewrite button API handler
+const sendSelectedPromptToAPI = async () => {
+  const selectedPromptName = isAddingNewPrompt ? customPrompt : promptList.find(p => p.id === selectedPrompt)?.name;
 
+  if (!selectedPromptName || selectedPromptName.trim() === '') {
+    alert('Please enter or select a prompt before submitting.');
+    return;
+  }
 
-
-
-    // Handle the dropdown selection and trigger POST request
-    const handleSelectChange = (event) => {
-      const selectedValue = event.target.value;
-      setSelectedPrompt(selectedValue);
-  
-      if (selectedValue) {
-        // sendSelectedPromptToAPI(selectedValue);
-      }
-    };
-  
-
-    const sendSelectedPromptToAPI = async () => {
-      if (!selectedPrompt) {
-        setSnackbarMessage('Please select a prompt before submitting.');
-        setSnackbarOpen(true);
-        return;
-      }
-    
-      const requestPayload = {
-        option: selectedPrompt,
+  const requestPayload = {
+    option: selectedPromptName,
         title: getTitle,
         description: getRewriteDescription,
         features: getFeatures,
@@ -570,7 +640,7 @@ useEffect(() => {
           console.log("Updated productTab:", result.data);
     
           // ✅ Show success Snackbar message
-          setSnackbarMessage('AI content generated successfully!');
+          setSnackbarMessage('AI content Rewrite successfully!');
           setSnackbarOpen(true);
         }
       } catch (error) {
@@ -726,16 +796,17 @@ const handleSendMessage = () => {
     }, []); // Empty dependency array means it runs only once after initial render
 
     const handleUpdateProductTotal = async () => {
-      const selectedTitle = Array.isArray(getTitle) && getTitle.find(item => item.checked)?.value || '';
+      const selectedTitleFinal = Array.isArray(getTitle) && getTitle.find(item => item.checked)?.value || '';
       const selectedDescription = Array.isArray(getDescription) && getDescription.find(item => item.checked)?.value || '';
     
+      
       // ✅ Extract the features with checked: true
       const selectedFeatures = Array.isArray(getFeatures)
         ? getFeatures.find(item => item.checked)?.value || []
         : [];
     
       console.log('getTitle:', selectedTitle);
-      console.log('getDescription:', selectedDescription);
+    
       console.log('selectedFeatures:', selectedFeatures);
     
       setLoading(true);
@@ -749,8 +820,8 @@ const handleSendMessage = () => {
           body: JSON.stringify({
             product_id: id,
             product_obj: {
-              product_name: selectedTitle,
-              long_description: getDescription || '',
+              product_name: selectedTitleFinal || selectedTitle,
+              long_description: updateDesc ,
               features: selectedFeatures // ✅ Only send the checked set's value
             }
           })
@@ -1073,24 +1144,43 @@ setSnackbarOpen(true);
     <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
   {/* Dropdown to select prompt */}
   <div>
-  <select 
-    value={selectedPrompt} 
-    onChange={handleSelectChange} 
-    className="dropdown"
-    style={{ padding: '8px', fontSize: '14px' }}
-  >
-    <option value="">Select a Prompt</option>
-    {promptList.length > 0 ? (
-      promptList.map((prompt) => (
+  {!isAddingNewPrompt ? (
+    <select
+      value={selectedPrompt}
+      onChange={handleSelectChange}
+      style={{ padding: '8px', fontSize: '14px' }}
+    >
+      <option value="">Select a Prompt</option>
+      {promptList.map((prompt) => (
         <option key={prompt.id} value={prompt.id}>
           {prompt.name}
         </option>
-      ))
-    ) : (
-      <option value="">No prompts available</option>
-    )}
-  </select>
+      ))}
+      <option value="__add_new__">➕ Enter new Prompt</option>
+    </select>
+  ) : (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <input
+        type="text"
+        placeholder="Enter custom prompt"
+        value={customPrompt}
+        onChange={(e) => setCustomPrompt(e.target.value)}
+        style={{ padding: '8px', fontSize: '14px', width: '200px' }}
+      />
+      <button
+        onClick={() => {
+          setCustomPrompt('');
+          setIsAddingNewPrompt(false); // Go back to dropdown
+        }}
+        style={{ padding: '6px 10px' }}
+      >
+        Cancel
+      </button>
+    </div>
+  )}
 </div>
+
+
 
 
   {/* Button to trigger API call */}
@@ -1643,8 +1733,7 @@ setSnackbarOpen(true);
     )}
       
     
-
-<Snackbar
+      <Snackbar
   open={snackbarOpen}
   autoHideDuration={3000}
   onClose={() => setSnackbarOpen(false)}
@@ -1653,16 +1742,15 @@ setSnackbarOpen(true);
   <Alert
     onClose={() => setSnackbarOpen(false)}
     severity={
-      snackbarMessage === 'AI content generated successfully!' ||
-      snackbarMessage === 'Product updated successfully!'
-        ? 'success'
-        : 'error' // or 'warning' based on your need
+      snackbarMessage.includes('successfully') ? 'success' : 'error'
     }
+    variant="filled" // ✅ Makes the color background solid
     sx={{ width: '100%' }}
   >
     {snackbarMessage}
   </Alert>
 </Snackbar>
+
 
         
         </Container>

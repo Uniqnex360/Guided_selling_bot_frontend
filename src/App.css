@@ -36,3 +36,10 @@
     transform: rotate(360deg);
   }
 }
+
+@media (min-width: 1200px) {
+  .css-9wvnva {
+      width: 100% !important;
+      /* max-width: 1200px; */ /* remove or comment this */
+  }
+}

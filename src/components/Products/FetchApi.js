@@ -6,7 +6,8 @@ import CloseIcon from '@mui/icons-material/Close';
 export default function FetchApi({ onClose, onUpdateProduct }) {
     const { id } = useParams();
     const [product, setProduct] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // ✅
+
     const [mainImage, setMainImage] = useState('');
     const defaultImg = "https://via.placeholder.com/400";
 
