@@ -130,6 +130,10 @@ const [updatedDescription, setUpdatedDescription] = useState(productTab?.descrip
 const [editingSetIndex, setEditingSetIndex] = useState(null);
 const [editingFeatures, setEditingFeatures] = useState([]);
   const [getRewriteDescription, setGetRewriteDescription] = useState([]);
+  
+  const [editedValueDec, setEditedValueDec] = useState([]);
+  const [editValueFeatures, setEditValueFeatures] = useState([]);
+
   const [finalTitle, setFinalTitle] = useState('');
 const [finalDescription, setFinalDescription] = useState('');
   const [editModeDescription, setEditModeDescription] = useState(false); // Likely managed in DescriptionTab
@@ -148,8 +152,10 @@ const [finalDescription, setFinalDescription] = useState('');
     const currency = product?.currency || '$'; // Default to $ if currency is not available
     const [selectedTitle, setSelectedTitle] = useState("");
     const [data, setData] = useState([]); // to hold the fetched questions
-
+    
     // Minimize
+    const [editValueTitle, seteditValueTitle] = useState("");
+ 
 
     const [isMinimized, setIsMinimized] = useState(false);
 const [isMaximized, setIsMaximized] = useState(false);
@@ -270,10 +276,37 @@ const handleSaveClickFeatures = () => {
   setEditMode({ ...editMode, features: false });
   setEditingSetIndex(null);
   setSelectedFeatureSetIndex(editingSetIndex); // ✅ Reflect the checked one as selected
+console.log('oppo',updatedFeatures)
+setEditValueFeatures(updatedFeatures)
 
   if(updatedFeatures){
-    fetchEditSave()
-  }
+
+      fetch('https://product-assistant-gpt.onrender.com/updategeneratedContent/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          product_id: id,
+         
+          features: updatedFeatures, // replace with getFeatures if needed
+          
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log('Save success:', data);
+          // Optionally show success snackbar or update UI
+        })
+        .catch((error) => {
+          console.error('Save error:', error);
+          // Optionally show error snackbar
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+      }
+  
 };
 
 
@@ -375,7 +408,9 @@ const handleSaveClickDescription = () => {
     ...prev,
     description: updatedDescriptions,
   }));
-
+  setGetRewriteDescription(updatedDescriptions)
+  setEditedValueDec(updatedDescriptions)
+console.log('query one',updatedDescriptions)
   // Filter out only checked descriptions
   const checkedDescriptions = updatedDescriptions.filter(item => item.checked);
 
@@ -389,64 +424,91 @@ const handleSaveClickDescription = () => {
   setEditMode({ ...editMode, description: false });
   setSelectedEditIndex(null);
   if(updatedDescriptions){
-    fetchEditSave()
-  }
+    fetch('https://product-assistant-gpt.onrender.com/updategeneratedContent/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        product_id: id,
+       
+        description: updatedDescriptions,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log('Save success:', data);
+        // Optionally show success snackbar or update UI
+      })
+      .catch((error) => {
+        console.error('Save error:', error);
+        // Optionally show error snackbar
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+    }
+  
   // Debug log
   console.log('✅ Final Long Description:', longDescription);
 };
 
 
-const fetchEditSave = () => {
-  setLoading(true);
-
-  fetch('https://product-assistant-gpt.onrender.com/updategeneratedContent/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      product_id: id,
-      title: getTitle,
-      features: getFeatures, // replace with getFeatures if needed
-      description: getRewriteDescription,
-    }),
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      console.log('Save success:', data);
-      // Optionally show success snackbar or update UI
-    })
-    .catch((error) => {
-      console.error('Save error:', error);
-      // Optionally show error snackbar
-    })
-    .finally(() => {
-      setLoading(false);
-    });
-};
-
 const handleSaveClick = (type) => {
   if (type === 'title') {
-    const updatedTitles = productTab.title.map((title, index) => 
+    // 1. Update the specific title using index
+    const updatedTitles = productTab.title.map((title, index) =>
       index === selectedEditIndex
-        ? { ...title, value: editedTitle } // Update the selected title with the edited title
+        ? { ...title, value: editedTitle }
         : title
     );
 
-    // Update the productTab state with the new titles array
+    // 2. Update the state for display or local changes
     handleLocalUpdate({ ...productTab, title: updatedTitles });
-console.log('yyy',updatedTitles)
-if(updatedTitles){
-  fetchEditSave()
-}
-    // Update the selectedTitle state after saving
+
+    // 3. Set the updated list to another state (for API)
+    seteditValueTitle(updatedTitles);
+console.log('0000',updatedTitles)
+    // 4. Find the checked title's updated value
+    const checkedTitle = updatedTitles.find(t => t.checked)?.value || '';
+
+    // 5. Send only that checked+edited value to API
+    if (updatedTitles) {
+   
+        fetch('https://product-assistant-gpt.onrender.com/updategeneratedContent/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            product_id: id,
+            title: updatedTitles,
+          
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log('Save success:', data);
+            // Optionally show success snackbar or update UI
+          })
+          .catch((error) => {
+            console.error('Save error:', error);
+            // Optionally show error snackbar
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+        }
+      };
+    
+
+    // 6. Close edit state
     setSelectedTitle(editedTitle);
-console.log('edited',editedTitle)
-    // Close the edit mode
     setEditMode({ ...editMode, title: false });
-    setSelectedEditIndex(null); // Reset the selected edit index
+    setSelectedEditIndex(null);
   }
-};
+
+
 
 const handleTitleChange = (index) => {
   setSelectedTitleIndex(index);
@@ -602,56 +664,68 @@ const handleSelectChange = (e) => {
 
 // Rewrite button API handler
 const sendSelectedPromptToAPI = async () => {
-  const selectedPromptName = isAddingNewPrompt ? customPrompt : promptList.find(p => p.id === selectedPrompt)?.name;
+  const selectedPromptName = isAddingNewPrompt
+    ? customPrompt
+    : promptList.find((p) => p.id === selectedPrompt)?.name;
 
+  // Prompt name validation
   if (!selectedPromptName || selectedPromptName.trim() === '') {
     alert('Please enter or select a prompt before submitting.');
     return;
   }
 
+  // Required fields validation
+  if (!getTitle || !getRewriteDescription || !getFeatures) {
+    setSnackbarMessage('Title, description, and features are required!');
+    setSnackbarOpen(true);
+    return;
+  }
+
   const requestPayload = {
     option: selectedPromptName,
-        title: getTitle,
-        description: getRewriteDescription,
-        features: getFeatures,
-        product_id: id,
-      };
-    
-      try {
-        const response = await fetch(
-          'https://product-assistant-gpt.onrender.com/regenerateAiContents/',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestPayload),
-          }
-        );
-    
-        const result = await response.json();
-        if (result.status) {
-          setProductTab({
-            title: result.data.title || [],
-            description: result.data.description || [],
-            features: result.data.features || [],
-          });
-    
-          console.log("Updated productTab:", result.data);
-    
-          // ✅ Show success Snackbar message
-          setSnackbarMessage('AI content Rewrite successfully!');
-          setSnackbarOpen(true);
-        }
-      } catch (error) {
-        console.error('Error sending data to API:', error);
-    
-        // ❌ Optional: show error Snackbar
-        setSnackbarMessage('Something went wrong. Please try again.');
-        setSnackbarOpen(true);
+    title: getTitle,
+    description: getRewriteDescription,
+    features: getFeatures,
+    product_id: id,
+  };
+
+  try {
+    const response = await fetch(
+      'https://product-assistant-gpt.onrender.com/regenerateAiContents/',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
       }
-    };
-    
+    );
+
+    const result = await response.json();
+
+    if (result.status) {
+      setProductTab({
+        title: result.data.title || [],
+        description: result.data.description || [],
+        features: result.data.features || [],
+      });
+
+      console.log('Updated productTab:', result.data);
+
+      // ✅ Show success Snackbar
+      setSnackbarMessage('AI content Rewrite successfully!');
+      setSnackbarOpen(true);
+    } else {
+      setSnackbarMessage('Failed to regenerate AI content.');
+      setSnackbarOpen(true);
+    }
+  } catch (error) {
+    console.error('Error sending data to API:', error);
+    setSnackbarMessage('Something went wrong. Please try again.');
+    setSnackbarOpen(true);
+  }
+};
+
   
     // Handle the dropdown selection and trigger POST request
  
@@ -797,7 +871,6 @@ const handleSendMessage = () => {
 
     const handleUpdateProductTotal = async () => {
       const selectedTitleFinal = Array.isArray(getTitle) && getTitle.find(item => item.checked)?.value || '';
-      const selectedDescription = Array.isArray(getDescription) && getDescription.find(item => item.checked)?.value || '';
     
       
       // ✅ Extract the features with checked: true
@@ -805,7 +878,7 @@ const handleSendMessage = () => {
         ? getFeatures.find(item => item.checked)?.value || []
         : [];
     
-      console.log('getTitle:', selectedTitle);
+      console.log('getTitle:', getRewriteDescription);
     
       console.log('selectedFeatures:', selectedFeatures);
     

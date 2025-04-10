@@ -170,7 +170,7 @@ const handleCategoryChange = (event) => {
 
     useEffect(() => {
         fetchProducts();
-    }, [searchQuery]);
+    }, []);
     const fetchProducts = () => {
         setLoading(true); // Start loading
         fetch('https://product-assistant-gpt.onrender.com/productList/', {
@@ -180,7 +180,7 @@ const handleCategoryChange = (event) => {
             },
             body: JSON.stringify({
               ...(selectedCategoryId && { category_id: selectedCategoryId }),
-                search_query : searchQuery ? searchQuery :''
+                search_query : ''
                 // collection_name: selectedCategoryName,
             }),
         })
@@ -206,7 +206,9 @@ const handleCategoryChange = (event) => {
         if (searchQuery) {
             const filtered = products.filter(product =>
                 product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                product.name.toLowerCase().includes(searchQuery.toLowerCase())
+                product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                product.brand_name.toLowerCase().includes(searchQuery.toLowerCase())
             );
             setFilteredProducts(filtered);
             setNoDataFound(filtered.length === 0); // Set No Data Found if no products match search query
@@ -246,9 +248,9 @@ const handleCategoryChange = (event) => {
 
     const handleSearchChange = (event) => {
 
-      if(searchQuery){
-        fetchProducts()
-      }
+      // if(searchQuery){
+      //   fetchProducts()
+      // }
         setSearchQuery(event.target.value);
         setPage(0);
     };
