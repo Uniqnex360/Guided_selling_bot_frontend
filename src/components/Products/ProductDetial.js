@@ -796,11 +796,11 @@ setSnackbarOpen(true);
           if (data?.data?.product) {
             setProduct(data.data.product);
             setMainImage(data.data.product.logo || 'default_image.png');
-            // setProductTab({
-            //   title: data?.data?.product?.ai_generated_title || [],
-            //   description: data?.data?.product?.ai_generated_description || [],
-            //   features: data?.data?.product?.ai_generated_features || [],
-            // });
+            setProductTab({
+              title: data?.data?.product?.ai_generated_title || [],
+              description: data?.data?.product?.ai_generated_description || [],
+              features: data?.data?.product?.ai_generated_features || [],
+            });
           } else {
             console.warn("Product data not found for ID:", id);
           }
