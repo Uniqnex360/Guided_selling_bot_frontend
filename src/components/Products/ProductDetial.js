@@ -15,6 +15,8 @@ import MinimizeOutlinedIcon from '@mui/icons-material/MinimizeOutlined';
 import MaximizeOutlinedIcon from '@mui/icons-material/MaximizeOutlined';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
 import CancelIcon from '@mui/icons-material/Cancel';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
 import soonImg from "../assets/soon-img.png";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -69,8 +71,16 @@ function a11yProps(index) {
 const ProductDetail = () => {
     
   const navigate = useNavigate();
+  
+  const location = useLocation();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadingQuestion, setLoadingQuestion] = useState(true);
+   // Snackbar state
+const [snackbarOpen, setSnackbarOpen] = useState(false);
+const [snackbarMessage, setSnackbarMessage] = useState('');
+
+    
     const [chatOpen, setChatOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [userMessage, setUserMessage] = useState('');
@@ -104,7 +114,7 @@ const [updateFeatures, setUpdateFeatures] = useState([]);
 const [updateDescription, setUpdateDescription] = useState('');
 const [updatedDescription, setUpdatedDescription] = useState(productTab?.description || []);
  // State for Title Tab (managed within TitleTab)
-
+ const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // or error, info
  const [selectedTitleIndex, setSelectedTitleIndex] = useState(null);
   const [editedTitle, setEditedTitle] = useState(''); // Likely managed in TitleTab
   const [editModeTitle, setEditModeTitle] = useState(false); // Likely managed in TitleTab
@@ -115,20 +125,17 @@ const [updatedDescription, setUpdatedDescription] = useState(productTab?.descrip
   const [selectedFeatureValue, setSelectedFeatureValue] = useState("");
 const [editingSetIndex, setEditingSetIndex] = useState(null);
 const [editingFeatures, setEditingFeatures] = useState([]);
-
   const [getRewriteDescription, setGetRewriteDescription] = useState([]);
-  
   const [finalTitle, setFinalTitle] = useState('');
 const [finalDescription, setFinalDescription] = useState('');
-
-  // State for Features Tab (managed within FeaturesTab)
-  const [editedFeatures, setEditedFeatures] = useState([]); // Likely managed in FeaturesTab
-  const [editModeFeatures, setEditModeFeatures] = useState(false); // Likely managed in FeaturesTab
-
-  // State for Description Tab (managed within DescriptionTab - based on your earlier code)
   const [editModeDescription, setEditModeDescription] = useState(false); // Likely managed in DescriptionTab
+  const queryParams = new URLSearchParams(location.search);
+  const currentPage = queryParams.get('page') || 0;
 
-
+  const { searchQuery } = location.state || {};
+  console.log("searchQuery-Details:", searchQuery);
+  const [productIds, setProductIds] = useState([]);
+  
     const [editMode, setEditMode] = useState({
       title: false,
       features: false,
@@ -144,6 +151,54 @@ const [finalDescription, setFinalDescription] = useState('');
 const [isMaximized, setIsMaximized] = useState(false);
 const [selectedEditIndex, setSelectedEditIndex] = useState(null);
 const [editedDescription, setEditedDescription] = useState('');
+
+
+// const currentIndex = productIds.findIndex(
+//   (pid) => pid.toString() === id.toString()
+// );
+useEffect(() => {
+  fetchProducts();
+}, []);
+
+const fetchProducts = () => {
+  setLoading(true);
+  fetch('https://product-assistant-gpt.onrender.com/productList/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      category_id: '',
+    }),
+  })
+    .then((response) => response.json())
+    .then((responseData) => {
+      const ids = responseData.data.products.map((item) => item.id);
+      setProductIds(ids);
+      setLoading(false);
+    })
+    .catch((error) => {
+      console.error('Error fetching product data:', error);
+      setLoading(false);
+    });
+};
+
+// Get current index **after** productIds is available
+const currentIndex = productIds.findIndex((pid) => pid === id);
+
+const handleNext = () => {
+  if (currentIndex !== -1 && currentIndex < productIds.length - 1) {
+    const nextId = productIds[currentIndex + 1];
+    navigate(`/details/${nextId}`);
+  }
+};
+
+const handlePrevious = () => {
+  if (currentIndex > 0) {
+    const prevId = productIds[currentIndex - 1];
+    navigate(`/details/${prevId}`);
+  }
+};
 
 useEffect(() => {
   const checkedFeatureSet = productTab?.features?.findIndex(f => f?.checked);
@@ -178,18 +233,6 @@ const handleFeatureChange = (setIndex, featureIndex, newValue) => {
   updated[setIndex][featureIndex] = newValue;
   setEditingFeatures(updated);
 };
-
-// const handleFeatureChange = (setIndex, featureIndex, newValue) => {
-//   const updated = [...editingFeatures];
-
-//   if (!updated[setIndex]) {
-//     updated[setIndex] = [...productTab.features[setIndex].value];
-//   }
-
-//   updated[setIndex][featureIndex] = newValue;
-//   setEditingFeatures(updated);
-// };
-
 
 
 const handleSaveClickFeatures = () => {
@@ -256,12 +299,6 @@ const handleFeatureSetChange = (event, listIndex) => {
   setSelectedFeatures(updatedSelectedFeatures);
 };
 
-
-
-
- 
-
-
 const handleLocalUpdate = (updatedFields) => {
   const updatedProductTab = {
     ...productTab,
@@ -282,24 +319,6 @@ const handleLocalUpdate = (updatedFields) => {
   // ✅ Update the entire productTab state
   setProductTab(updatedProductTab);
 };
-
-
-
-
-// const handleDescriptionChange = (event) => {
-//   const value = event.target.value; // Get the value of the selected description
-//   setSelectedDescription(value); // Set the selected description value
-//   setEditedDescription(value); // Set this value for editing
-
-//   // Update the checked status for descriptions based on the selected value
-//   const updatedDescriptions = productTab.description.map((desc) => ({
-//     ...desc,
-//     checked: desc.value === value, // Set checked to true for the selected description
-//   }));
-
-//   // Update the local state (productTab) with the new checked description
-//   handleLocalUpdate({ ...productTab, description: updatedDescriptions });
-// };
 
 
 const handleDescriptionChange = (event) => {
@@ -358,54 +377,6 @@ const handleSaveClick = (type) => {
   }
 };
 
-// const handleTitleChange = (event) => {
-//   const value = event.target.value;
-//   setSelectedTitle(value);
-//   setEditedTitle(value);
-
-//   if (!productTab?.title) return;
-
-//   const updatedTitles = productTab.title.map((title) => ({
-//     ...title,
-//     checked: title.value === value,
-//   }));
-
-//   handleLocalUpdate({ ...productTab, title: updatedTitles });
-// };
-
-
-// const handleTitleChange = (event) => {
-//   const value = event.target.value;
-//   setSelectedTitle(value);
-//   setEditedTitle(value);
-
-//   if (!productTab?.title) return;
-
-//   const updatedTitles = productTab.title.map((title) => ({
-//     ...title,
-//     checked: title.value === value,
-//   }));
-
-//   handleLocalUpdate({ ...productTab, title: updatedTitles });
-// };
-
-
-
-
-// const handleTitleChange = (event) => {
-//   const value = event.target.value;
-//   setSelectedTitle(value);
-//   setEditedTitle(value);
-
-//   if (!productTab?.title) return;
-
-//   const updatedTitles = productTab.title.map((title) => ({
-//     ...title,
-//     checked: title.value === value,
-//   }));
-
-//   handleLocalUpdate({ title: updatedTitles });
-// };
 const handleTitleChange = (index) => {
   setSelectedTitleIndex(index);
 
@@ -419,22 +390,7 @@ const handleTitleChange = (index) => {
   handleLocalUpdate({ title: updatedTitles });
 };
 
-// const handleEditClickTitle = (field, index) => {
-//   setEditMode({ ...editMode, [field]: true });
-//   setSelectedEditIndex(index);
-//   setEditedTitle(productTab.title[index].value);
-// };
 
-// const handleSaveClick = (field) => {
-//   // Save the edited title
-//   const updatedTitles = productTab.title.map((title, idx) =>
-//     idx === selectedEditIndex ? { ...title, value: editedTitle } : title
-//   );
-
-//   handleLocalUpdate({ [field]: updatedTitles });
-//   setEditMode({ ...editMode, [field]: false });
-//   setSelectedEditIndex(null);
-// };
 
 
 useEffect(() => {
@@ -469,13 +425,7 @@ const handleRadioChange = (type, index, value) => {
   // handleBackendUpdate({ title: updatedTitles });
 };
 
-// const handleEditClickTitle = (type, index) => {
-//   setEditMode({ ...editMode, [type]: true });
-//   setSelectedEditIndex(index);
-//   if (type === 'title' && productTab?.title?.[index]?.value) {
-//     setEditedTitle(productTab.title[index].value);
-//   }
-// };
+
 
 const handleEditClickTitle = (type, index) => {
   setEditMode({ ...editMode, [type]: true });
@@ -581,19 +531,22 @@ useEffect(() => {
       }
     };
   
-    // Send POST request with selected prompt id
+
     const sendSelectedPromptToAPI = async () => {
+      if (!selectedPrompt) {
+        setSnackbarMessage('Please select a prompt before submitting.');
+        setSnackbarOpen(true);
+        return;
+      }
+    
       const requestPayload = {
         option: selectedPrompt,
-        // product_obj: {
-          title: getTitle,
-          description: getRewriteDescription,
-          features: getFeatures,
-          product_id: id
-        // },
+        title: getTitle,
+        description: getRewriteDescription,
+        features: getFeatures,
+        product_id: id,
       };
-  
-      // Modify this payload as per your API requirements
+    
       try {
         const response = await fetch(
           'https://product-assistant-gpt.onrender.com/regenerateAiContents/',
@@ -608,17 +561,27 @@ useEffect(() => {
     
         const result = await response.json();
         if (result.status) {
-          // Update the UI with the new data after successful API call
-          setSelectedTitle(result.data.title);
-          console.log('9090',selectedTitle)
-          setSelectedDescription(result.data.description);
-          setSelectedFeatures(result.data.features);
-          console.log("API response:", result);
+          setProductTab({
+            title: result.data.title || [],
+            description: result.data.description || [],
+            features: result.data.features || [],
+          });
+    
+          console.log("Updated productTab:", result.data);
+    
+          // ✅ Show success Snackbar message
+          setSnackbarMessage('AI content generated successfully!');
+          setSnackbarOpen(true);
         }
       } catch (error) {
         console.error('Error sending data to API:', error);
+    
+        // ❌ Optional: show error Snackbar
+        setSnackbarMessage('Something went wrong. Please try again.');
+        setSnackbarOpen(true);
       }
     };
+    
   
     // Handle the dropdown selection and trigger POST request
  
@@ -645,12 +608,12 @@ const toggleChat = () => setChatOpen(!chatOpen);
 
 useEffect(() => {
     if (chatOpen && id) {
-      // setLoading(true);
+      setLoadingQuestion(true);
       fetch(`https://product-assistant-gpt.onrender.com/fetchProductQuestions/${id}`)
         .then((response) => response.json())
         .then((responseData) => {
           setData(responseData.data); // Setting fetched data
-          setLoading(false);
+          setLoadingQuestion(false);
         })
         .catch((error) => {
           console.error('Error fetching product details:', error);
@@ -740,11 +703,13 @@ const handleSendMessage = () => {
       }, [messages]);
  
 
-  const handleBackClick = () => {
-    // Correct syntax for query params
-    navigate(`/`);
-  };
-
+      const handleBackClick = () => {
+        navigate({
+          pathname: '/',
+          search: `?page=${currentPage}`
+        });
+      };
+      
   
     const handleUpdateProduct = (updatedProduct) => {
         console.log('3333111',updatedProduct)
@@ -757,7 +722,7 @@ const handleSendMessage = () => {
  
 
     useEffect(() => {
-      fetchProductDetails();
+      fetchProductDetails(id);
     }, []); // Empty dependency array means it runs only once after initial render
 
     const handleUpdateProductTotal = async () => {
@@ -793,30 +758,52 @@ const handleSendMessage = () => {
     
         const data = await response.json();
         console.log('Update response:', data);
-    
         if (data?.status) {
-          alert('Product updated successfully!');
-          fetchProductDetails(); // Refresh data after save
+          // ✅ Show success message in green
+          setSnackbarMessage('Product updated successfully!');
+setSnackbarSeverity('success');
+setSnackbarOpen(true);
+
+          setSnackbarOpen(true);
+          fetchProductDetails(id); // Refresh data after save
         } else {
-          alert('Update failed');
+          setSnackbarMessage('Update failed. Please try again.');
+          setSnackbarOpen(true);
         }
     
       } catch (error) {
         console.error('Error updating product:', error);
+        setSnackbarMessage('Something went wrong while updating the product.');
+        setSnackbarOpen(true);
       } finally {
         setLoading(false);
       }
     };
-    
+
+    useEffect(() => {
+      if (id && id !== 'undefined') {
+        fetchProductDetails(id);
+      }
+    }, [id]);
     
     // Function to fetch product details
-    const fetchProductDetails = () => {
+    const fetchProductDetails = (id) => {
       setLoading(true);
+    
       fetch(`https://product-assistant-gpt.onrender.com/productDetail/${id}`)
         .then((response) => response.json())
         .then((data) => {
-          setProduct(data.data.product);
-          setMainImage(data.data.product?.logo || 'default_image.png');
+          if (data?.data?.product) {
+            setProduct(data.data.product);
+            setMainImage(data.data.product.logo || 'default_image.png');
+            // setProductTab({
+            //   title: data?.data?.product?.ai_generated_title || [],
+            //   description: data?.data?.product?.ai_generated_description || [],
+            //   features: data?.data?.product?.ai_generated_features || [],
+            // });
+          } else {
+            console.warn("Product data not found for ID:", id);
+          }
           setLoading(false);
         })
         .catch((error) => {
@@ -843,6 +830,17 @@ const handleSendMessage = () => {
 
     return (
         <Container>
+
+<div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
+        <button onClick={handlePrevious} disabled={currentIndex === 0}>
+          ⬅️ Previous
+        </button>
+        <button onClick={handleNext} disabled={currentIndex === productIds.length - 1}>
+          Next ➡️
+        </button>
+      </div>
+      
+   
 
 <Box sx={{ display: "flex",marginLeft: '-30px', alignItems: "center", padding: "20px" }}>
               <IconButton sx={{ marginLeft: "-3%" }} onClick={handleBackClick}>
@@ -1036,7 +1034,7 @@ const handleSendMessage = () => {
   <Grid item xs={6} sx={{ width: '50%', fontFamily: 'Roboto, Helvetica, sans-serif' }}>
   {/* Product Features */}
   <Box display="flex" alignItems="center" mt={3} mb={1}>
-    <Typography variant="h6" mr={2} sx={{ fontSize: '14px', fontWeight: 600 }}>
+    <Typography variant="h6" mr={2} sx={{ fontSize: '18px', fontWeight: 600 }}>
       Features:
     </Typography>
   </Box>
@@ -1044,7 +1042,7 @@ const handleSendMessage = () => {
   <List>
     {product?.features?.map((feature, index) => (
       <ListItem key={index} sx={{ padding: '4px 0' }}>
-        <Typography sx={{ fontSize: '14px' }}>
+        <Typography sx={{ fontSize: '16px' }}>
           • {feature}
         </Typography>
       </ListItem>
@@ -1052,10 +1050,10 @@ const handleSendMessage = () => {
   </List>
 
   {/* Product Description */}
-  <Typography variant="h6" mt={3} mb={1} sx={{ fontSize: '14px', fontWeight: 600 }}>
+  <Typography variant="h6" mt={3} mb={1} sx={{ fontSize: '18px', fontWeight: 600 }}>
     Description:
   </Typography>
-  <Typography variant="body2" sx={{ fontSize: '14px' }}>
+  <Typography variant="body2" sx={{ fontSize: '16px' }}>
     {product?.long_description || 'No description available.'}
   </Typography>
 </Grid>
@@ -1204,13 +1202,15 @@ const handleSendMessage = () => {
 
                   {/* 👇 Show edit icon only for selected set */}
                   {/* {selectedFeatureSetIndex === listIndex && editingSetIndex === null && ( */}
+                  {productTab.features[listIndex]?.checked === true && (
                     <IconButton onClick={() => setEditingSetIndex(listIndex)} size="small">
                       <EditIcon fontSize="small" />
                     </IconButton>
+                  )}
                   {/* )} */}
 
                          {/* 👇 Show save only in edit mode */}
-        {editingSetIndex !== null && (
+        {productTab.features[listIndex]?.checked === true && editingSetIndex === listIndex && (
   <Box>
     <IconButton onClick={handleSaveClickFeatures}>
       <SaveIcon />
@@ -1338,69 +1338,83 @@ const handleSendMessage = () => {
   </Typography>
 
   {productTab?.description?.length > 0 ? (
-    <RadioGroup value={selectedDescription} onChange={handleDescriptionChange}>
-      {productTab.description.map((desc, index) => {
-        const descValue = desc?.value || '';
+  <RadioGroup value={selectedDescription} onChange={handleDescriptionChange}>
+    {productTab.description.map((desc, index) => {
+      const descValue = desc?.value || '';
+      const isSelected = selectedDescription === descValue;
 
-        return (
-          <ListItem
-            key={index}
-            sx={{
-              fontWeight: 'bold',
-              fontSize: '16px',
-              mb: 1,
-              maxWidth: '59ch',
-              overflowWrap: 'break-word',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            {editMode.description && selectedEditIndex === index ? (
-              <>
-                <TextField
-                  value={editedDescription}
-                  onChange={(e) => setEditedDescription(e.target.value)}
-                  label="Edit Description"
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  sx={{ mr: 1 }}
-                />
-                <IconButton onClick={handleSaveClickDescription}>
-                  <SaveIcon />
-                </IconButton>
-                <IconButton onClick={() => setEditMode({ ...editMode, description: false })}>
-                  <CancelIcon />
-                </IconButton>
-              </>
-            ) : (
-              <>
-                <FormControlLabel
-                  value={descValue}
-                  control={<Radio checked={selectedDescription === descValue} />} // Ensure radio button is checked
-                  label={<Typography variant="body2" sx={{ fontSize: '16px' }}>{descValue}</Typography>}
-                />
+      return (
+        <ListItem
+          key={index}
+          sx={{
+            fontWeight: 'bold',
+            fontSize: '16px',
+            mb: 1,
+            maxWidth: '59ch',
+            overflowWrap: 'break-word',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          {editMode.description && selectedEditIndex === index ? (
+            <>
+            <TextField
+  value={editedDescription}
+  onChange={(e) => setEditedDescription(e.target.value)}
+  label="Edit Description"
+  fullWidth
+  multiline
+  minRows={2}
+  maxRows={5}
+  variant="outlined"
+  size="small"
+  sx={{ mr: 1 }}
+/>
+
+              <IconButton onClick={handleSaveClickDescription}>
+                <SaveIcon />
+              </IconButton>
+              <IconButton onClick={() => setEditMode({ ...editMode, description: false })}>
+                <CancelIcon />
+              </IconButton>
+            </>
+          ) : (
+            <>
+              <FormControlLabel
+                value={descValue}
+                control={<Radio checked={isSelected} />}
+                label={
+                  <Typography variant="body2" sx={{ fontSize: '16px' }}>
+                    {descValue}
+                  </Typography>
+                }
+              />
+
+              {/* ✅ Only show edit icon if this item is selected */}
+              {isSelected && (
                 <IconButton
                   onClick={() => {
-                    setSelectedEditIndex(index); // Set the index to start editing
-                    setEditedDescription(descValue); // Set the description value to be edited
-                    setSelectedDescription(descValue); // Mark it as selected
-                    setEditMode({ ...editMode, description: true }); // Enable edit mode
+                    setSelectedEditIndex(index);
+                    setEditedDescription(descValue);
+                    setSelectedDescription(descValue);
+                    setEditMode({ ...editMode, description: true });
                   }}
                 >
                   <EditIcon />
                 </IconButton>
-              </>
-            )}
-          </ListItem>
-        );
-      })}
-    </RadioGroup>
-  ) : (
-    <Typography variant="body2" color="textSecondary">
-      No description available.
-    </Typography>
-  )}
+              )}
+            </>
+          )}
+        </ListItem>
+      );
+    })}
+  </RadioGroup>
+) : (
+  <Typography variant="body2" color="textSecondary">
+    No description available.
+  </Typography>
+)}
+
 </TabPanel>
 
 
@@ -1455,7 +1469,7 @@ const handleSendMessage = () => {
   {/* Minimize Button */}
   <Tooltip title="Minimize" arrow>
   <IconButton size="small" sx={{ color: 'black' }} onClick={handleMinimize}>
-    <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-10px' }} />
+    <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-12px' }} />
   </IconButton>
 </Tooltip>
 
@@ -1490,7 +1504,7 @@ const handleSendMessage = () => {
           }}
         >
           {/* Display Chat Messages */}
-          {data && data.length > 0 && (
+          {/* {data && data.length > 0 && (
             <Box sx={{ marginTop: 2 }}>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
                 Frequently Asked Questions:
@@ -1507,6 +1521,7 @@ const handleSendMessage = () => {
                     justifyContent: 'space-between',
                   }}
                 >
+                  
                   <Typography variant="body2">{item.question}</Typography>
                   <IconButton sx={{ padding: 0 }} onClick={() => handleQuestionClick(item.id)}>
                     <ArrowForwardIcon />
@@ -1514,9 +1529,11 @@ const handleSendMessage = () => {
                 </Box>
               ))}
             </Box>
-          )}
+          )} */}
 
-          {messages.length === 0 && (
+
+
+{messages.length === 0 && (
             <Typography
               sx={{
                 textAlign: 'center',
@@ -1528,6 +1545,45 @@ const handleSendMessage = () => {
               Hello! Ask me about this product.
             </Typography>
           )}
+
+{loadingQuestion ? (
+  // Loading state: show DotLoading inside a single Box
+  <Box
+    sx={{
+      backgroundColor: '#f9f9f9',
+      padding: '8px',
+      borderRadius: '5px',
+      marginTop: '5px',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}
+  >
+    <DotLoading />
+  </Box>
+) : (
+  // Loaded state: map through questions
+  data.map((item) => (
+    <Box
+      key={item.id}
+      sx={{
+        backgroundColor: '#f9f9f9',
+        padding: '8px',
+        borderRadius: '5px',
+        marginTop: '5px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}
+    >
+      <Typography variant="body2">{item.question}</Typography>
+      <IconButton sx={{ padding: 0 }} onClick={() => handleQuestionClick(item.id)}>
+        <ArrowForwardIcon />
+      </IconButton>
+    </Box>
+  ))
+)}
+
 
           {messages.map((message, index) => (
             <Box
@@ -1586,6 +1642,27 @@ const handleSendMessage = () => {
       </Box>
     )}
       
+    
+
+<Snackbar
+  open={snackbarOpen}
+  autoHideDuration={3000}
+  onClose={() => setSnackbarOpen(false)}
+  anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+>
+  <Alert
+    onClose={() => setSnackbarOpen(false)}
+    severity={
+      snackbarMessage === 'AI content generated successfully!' ||
+      snackbarMessage === 'Product updated successfully!'
+        ? 'success'
+        : 'error' // or 'warning' based on your need
+    }
+    sx={{ width: '100%' }}
+  >
+    {snackbarMessage}
+  </Alert>
+</Snackbar>
 
         
         </Container>

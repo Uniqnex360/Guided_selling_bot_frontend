@@ -38,7 +38,6 @@ import DotLoading from '../Loading/DotLoading';
 
 const ProductList = () => {
     const [products, setProducts] = useState([]);
-    const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredProducts, setFilteredProducts] = useState([]);
@@ -56,7 +55,11 @@ const ProductList = () => {
     const [selectedCategoryName, setSelectedCategoryName] = useState('');
     const [selectedFilters, setSelectedFilters] = useState({});
     const [categoryOptions, setCategoryOptions] = useState([]);
+    const queryParams = new URLSearchParams(window.location.search);
 
+    const initialPage = parseInt(queryParams.get('page'), 10) || 0; // Default to 0 if no page param exists
+    const [page, setPage] = useState(initialPage);
+  
     const [categoryFilters, setCategoryFilters] = useState([]);
 // const selectedCategory = categoryOptions.find(cat => cat.id === selectedCategoryId);
 
@@ -151,6 +154,7 @@ const handleCategoryChange = (event) => {
         setSelectedFilters({});
         setCategoryFilters([]);
         setCategoryOptions([]);
+        fetchCategories()
     };
 
     useEffect(() => {
@@ -175,7 +179,7 @@ const handleCategoryChange = (event) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                category_id: selectedCategoryId,
+                category_id: selectedCategoryId ? selectedCategoryId : '',
              
                 // collection_name: selectedCategoryName,
             }),
@@ -245,12 +249,20 @@ const handleCategoryChange = (event) => {
         setPage(0);
     };
 
-    // Clear search functionality
     const handleClearSearch = () => {
-        setSearchQuery('');
-        setFilteredProducts(products);
-        setPage(0);
-        setSortConfig({ key: 'sku', direction: 'asc' });
+      console.log('select',selectedCategoryId)
+      setSearchQuery('');
+      setFilteredProducts(products);
+      setPage(0);
+      setSortConfig({ key: 'sku', direction: 'asc' });
+    
+      // ✅ Clear category and refetch full list
+    if(selectedCategoryId){
+      fetchProducts('')
+      // fetchCategories()
+    }
+      // fetchProducts('');
+  
     
         // Show snackbar
         setOpenSnackbar(true);
@@ -261,16 +273,16 @@ const handleCategoryChange = (event) => {
         setViewMode(mode);
     };
 
-    if (loading) {
-        return (
-            <Container maxWidth="lg">
-                <Typography variant="h4" sx={{ fontSize: '18px' }} gutterBottom>
-                    Products
-                </Typography>
-                <div style={{marginTop:'10%'}}><DotLoading/></div>
-            </Container>
-        );
-    }
+    // if (loading) {
+    //     return (
+    //         <Container maxWidth="lg">
+    //             <Typography variant="h4" sx={{ fontSize: '18px' }} gutterBottom>
+    //                 Products
+    //             </Typography>
+    //             {/* <div style={{marginTop:'10%'}}><DotLoading/></div> */}
+    //         </Container>
+    //     );
+    // }
 
     return (
         <Container maxWidth="lg">
@@ -281,38 +293,42 @@ const handleCategoryChange = (event) => {
   </Typography>
   <Box sx={{ display: 'flex', alignItems: 'center' }}>
 
-<Box sx={{ marginRight: '5px' }}>
+  <Box sx={{ marginRight: '5px' }}>
   <Tooltip title="List View">
     <Button
-      variant={viewMode === 'list' ? 'contained' : 'outlined'}
+      variant="outlined"
       onClick={() => toggleViewMode('list')}
       sx={{
         marginRight: 1,
-        backgroundColor: viewMode === 'list' ? 'white' : '#9197ae',
-        color: viewMode === 'list' ? 'black' : 'white',
+        backgroundColor: viewMode === 'list' ? '#1a73e8' : 'white',
+        color: viewMode === 'list' ? 'white' : '#1a73e8',
+        borderColor: '#1a73e8',
         '&:hover': {
-          backgroundColor: viewMode === 'list' ? '#f0f0f0' : '#7a7f9a',
+          backgroundColor: viewMode === 'list' ? '#1669c1' : '#f0f0f0',
         },
         '&:active': {
-          backgroundColor: viewMode === 'list' ? '#e0e0e0' : '#6a6f8a',
+          backgroundColor: viewMode === 'list' ? '#0f5bb5' : '#e0e0e0',
         },
       }}
     >
       <ListAltIcon />
     </Button>
   </Tooltip>
+
   <Tooltip title="Grid View">
     <Button
-      variant={viewMode === 'grid' ? 'contained' : 'outlined'}
+      variant="outlined"
       onClick={() => toggleViewMode('grid')}
       sx={{
-        backgroundColor: viewMode === 'grid' ? 'white' : '#9197ae',
-        color: viewMode === 'grid' ? 'black' : 'white',
+        marginRight: '5px',
+        backgroundColor: viewMode === 'grid' ? '#1a73e8' : 'white',
+        color: viewMode === 'grid' ? 'white' : '#1a73e8',
+        borderColor: '#1a73e8',
         '&:hover': {
-          backgroundColor: viewMode === 'grid' ? '#f0f0f0' : '#7a7f9a',
+          backgroundColor: viewMode === 'grid' ? '#1669c1' : '#f0f0f0',
         },
         '&:active': {
-          backgroundColor: viewMode === 'grid' ? '#e0e0e0' : '#6a6f8a',
+          backgroundColor: viewMode === 'grid' ? '#0f5bb5' : '#e0e0e0',
         },
       }}
     >
@@ -320,6 +336,7 @@ const handleCategoryChange = (event) => {
     </Button>
   </Tooltip>
 </Box>
+
 
     <TextField
       label="Find your products"
@@ -329,185 +346,208 @@ const handleCategoryChange = (event) => {
       onChange={handleSearchChange}
       sx={{ minWidth: 300 }}
     />
+    <Tooltip title="Clear All">
     <Button onClick={handleClearSearch}>
-      <IconButton aria-label="refresh" sx={{ marginRight: 2 }}>
+      <IconButton aria-label="refresh" >
         <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
           <path d="M0 0h24v24H0z" fill="none" />
           <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.37-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
         </svg>
       </IconButton>
     </Button>
+    </Tooltip>
     <Typography variant="body2">Total Products: {products.length}</Typography>
   </Box>
 </Box>
 
 <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-                {noDataFound ? (
-                    <Typography variant="h6" align="center" sx={{ marginTop: '20px' }}>
-                        No Data Found
-                    </Typography>
-                ) : viewMode === 'list' ? (
-             
+  {viewMode === 'list' ? (
     <TableContainer sx={{ maxHeight: 440 }}>
-    <Table stickyHeader>
-      <TableHead>
-        <TableRow>
-          <TableCell sx={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#9197ae' }}>
-            Image
-          </TableCell>
-          <TableCell
-            sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#9197ae' }}
-            onClick={() => sortProducts('sku')}
-          >
-            SKU {getSortSymbol('sku')}
-          </TableCell>
-          <TableCell
-            sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#9197ae' }}
-            onClick={() => sortProducts('name')}
-          >
-            Title {getSortSymbol('name')}
-          </TableCell>
-          <TableCell
-            sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#9197ae' }}
-            onClick={() => sortProducts('mpn')}
-          >
-            MPN {getSortSymbol('mpn')}
-          </TableCell>
-          <TableCell
-            sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#9197ae' }}
-            onClick={() => sortProducts('category')}
-          >
-            Category {getSortSymbol('category')}
-          </TableCell>
-          <TableCell
-            sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#9197ae' }}
-            onClick={() => sortProducts('brand_name')}
-          >
-            Brand {getSortSymbol('brand_name')}
-          </TableCell>
-          <TableCell
-            sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#9197ae' }}
-            onClick={() => sortProducts('price')}
-          >
-            Price {getSortSymbol('price')}
-          </TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {filteredProducts
-          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-          .map((product) => (
-            <TableRow key={product.id}>
-              <TableCell sx={{ textAlign: 'center' }}>
-                <Link to={`/details/${product.id}`} style={{ textDecoration: 'none' }}>
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      objectFit: 'contain',
-                      borderRadius: '4px',
-                      border: '1px solid #ddd',
-                    }}
-                  />
-                </Link>
+      <Table stickyHeader>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}>
+              Image
+            </TableCell>
+            <TableCell
+              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
+              onClick={() => sortProducts('sku')}
+            >
+              SKU {getSortSymbol('sku')}
+            </TableCell>
+            <TableCell
+              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
+              onClick={() => sortProducts('name')}
+            >
+              Title {getSortSymbol('name')}
+            </TableCell>
+            <TableCell
+              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
+              onClick={() => sortProducts('mpn')}
+            >
+              MPN {getSortSymbol('mpn')}
+            </TableCell>
+            <TableCell
+              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
+              onClick={() => sortProducts('category')}
+            >
+              Category {getSortSymbol('category')}
+            </TableCell>
+            <TableCell
+              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
+              onClick={() => sortProducts('brand_name')}
+            >
+              Brand {getSortSymbol('brand_name')}
+            </TableCell>
+            <TableCell
+              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
+              onClick={() => sortProducts('price')}
+            >
+              Price {getSortSymbol('price')}
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={7} align="center">
+                <DotLoading />
               </TableCell>
-              <TableCell sx={{ textAlign: 'center' }}>
-                <Link to={`/details/${product.id}`} style={{ color: 'black', textDecoration: 'none' }}>
-                  {product.sku}
-                </Link>
-              </TableCell>
-              <TableCell sx={{ textAlign: 'center', minWidth: 120, wordBreak: 'break-word' }}>
-                <Link to={`/details/${product.id}`} style={{ color: 'black', textDecoration: 'none' }}>
-                  {product.name}
-                </Link>
-              </TableCell>
-              <TableCell sx={{ textAlign: 'center', minWidth: 100 }}>{product.mpn}</TableCell>
-              <TableCell sx={{ textAlign: 'center' }}>{product.category}</TableCell>
-              <TableCell sx={{ textAlign: 'center' }}>{product.brand_name || 'N/A'}</TableCell>
-              <TableCell sx={{ textAlign: 'center', minWidth: 100 }}>${product.price}</TableCell>
             </TableRow>
-          ))}
-      </TableBody>
-    </Table>
-  </TableContainer>
-                ) : (
-                    <Grid container spacing={2} justifyContent="center">
-                        {filteredProducts
-                            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                            .map((product) => (
-                                <Grid item xs={12} sm={12} md={4} sx={{ padding: '30px' }} key={product.id} display="flex" justifyContent="center">
-                                   <Card
-    sx={{
-        marginTop: '10px',
-        width: '300px',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: '10px',
-        border: '1px solid #ddd', // 👈 Add this line
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
-        transition: 'transform 0.3s, box-shadow 0.3s',
-        '&:hover': {
-            transform: 'scale(1.05)',
-            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-        },
-    }}
->
+          ) : filteredProducts.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} align="center">
+                No Data Found
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredProducts
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell sx={{ textAlign: 'center' }}>
+                    <Link to={`/details/${product.id}?page=${page}`} style={{ textDecoration: 'none' }}>
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          objectFit: 'contain',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                        }}
+                      />
+                    </Link>
+                  </TableCell>
+                  <TableCell sx={{ textAlign: 'center' }}>
+                    <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'black', minWidth: 120, textDecoration: 'none' }}>
+                      {product.sku}
+                    </Link>
+                  </TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: 120, wordBreak: 'break-word' }}>
+                    <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'black', textDecoration: 'none' }}>
+                      {product.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: 100 }}>{product.mpn}</TableCell>
+                  <TableCell sx={{ textAlign: 'center' }}>{product.category}</TableCell>
+                  <TableCell sx={{ textAlign: 'center' }}>{product.brand_name || 'N/A'}</TableCell>
+                  <TableCell sx={{ textAlign: 'center', minWidth: 100 }}>${product.price}</TableCell>
+                </TableRow>
+              ))
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  ) : (
+    <Grid container spacing={2} justifyContent="center" sx={{ p: 2 }}>
+      {loading ? (
+        <Grid item xs={12} sx={{ textAlign: 'center', mt: 2 }}>
+          <DotLoading />
+        </Grid>
+      ) : filteredProducts.length === 0 ? (
+        <Grid item xs={12} sx={{ textAlign: 'center', mt: 2 }}>
+          No Data Found
+        </Grid>
+      ) : (
+        <Grid container spacing={2} justifyContent="center">
+          {filteredProducts
+            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+            .map((product) => (
+              <Grid item xs={12} sm={12} md={4} sx={{ padding: '30px' }} key={product.id} display="flex" justifyContent="center">
+                <Card
+                  sx={{
+                    marginTop: '10px',
+                    width: '300px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: '10px',
+                    border: '1px solid #ddd',
+                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+                    transition: 'transform 0.3s, box-shadow 0.3s',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+                    },
+                  }}
+                >
+                  <Link
+                    to={`/details/${product.id}`}
+                    style={{
+                      textDecoration: 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                    }}
+                  >
+                    <CardMedia
+                      component="img"
+                      height="130"
+                      width="200"
+                      image={product.image_url}
+                      alt={product.name}
+                      sx={{
+                        objectFit: 'contain',
+                        borderTopLeftRadius: '10px',
+                        borderTopRightRadius: '10px',
+                      }}
+                    />
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          color: 'black',
+                          fontSize: '15px',
+                          fontWeight: 'bold',
+                          height: '3rem',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {product.name}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="textSecondary"
+                        sx={{ height: '2rem', color: 'black', overflow: 'hidden' }}
+                      >
+                        SKU: {product.sku}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Price: ${product.price}
+                      </Typography>
+                    </CardContent>
+                  </Link>
+                </Card>
+              </Grid>
+            ))}
+        </Grid>
+      )}
+    </Grid>
+  )}
+</Paper>
 
-                                        <Link
-                                            to={`/details/${product.id}`}
-                                            style={{
-                                                textDecoration: 'none',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                height: '100%',
-                                            }}
-                                        >
-                                            <CardMedia
-                                                component="img"
-                                                height="130"
-                                                width="200"
-                                                image={product.image_url}
-                                                alt={product.name}
-                                                sx={{
-                                                    objectFit: 'contain',
-                                                    borderTopLeftRadius: '10px',
-                                                    borderTopRightRadius: '10px',
-                                                }}
-                                            />
-                                            <CardContent sx={{ flexGrow: 1 }}>
-                                                <Typography
-                                                    variant="h6"
-                                                    sx={{
-                                                        color: 'black',
-                                                        fontSize: '15px',
-                                                        fontWeight: 'bold',
-                                                        height: '3rem',
-                                                        overflow: 'hidden',
-                                                    }}
-                                                >
-                                                    {product.name}
-                                                </Typography>
-                                                <Typography
-                                                    variant="body2"
-                                                    color="textSecondary"
-                                                    sx={{ height: '2rem', color: 'black', overflow: 'hidden' }}
-                                                >
-                                                    SKU: {product.sku}
-                                                </Typography>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    Price: ${product.price}
-                                                </Typography>
-                                            </CardContent>
-                                        </Link>
-                                    </Card>
-                                </Grid>
-                            ))}
-                    </Grid>
-                )}
-            </Paper>
 
             <TablePagination
                 rowsPerPageOptions={[10, 25, 50, 100]}
@@ -572,6 +612,7 @@ const handleCategoryChange = (event) => {
       marginTop:'30px',
       bottom: '80px', // adjust to appear above the ❓ button
       right: '20px',
+      height:'700px',
       margin: 0,
       borderRadius: '12px',
       zIndex: 1300

@@ -80,14 +80,14 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
             {/* Close button aligned at the top right */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 1,marginTop:'-10px' }}>
 
             <IconButton onClick={onClose} aria-label="close" sx={{ color: '#1976d2' }}>
     <CloseIcon />
   </IconButton>
   
 </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop:'-5px' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop:'-15px' }}>
   <Typography variant="h6" gutterBottom>
     Generate AI Content
   </Typography>
