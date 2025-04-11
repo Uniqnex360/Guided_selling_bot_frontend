@@ -1,0 +1,23 @@
+/* Base mobile-first styling */
+.container {
+    width: 100%;
+    padding: 10px;
+  }
+  
+  /* Medium screen (tablets and small desktops) */
+  @media (min-width: 768px) {
+    .container {
+      width: 90%;
+      margin: auto;
+      padding: 20px;
+    }
+  }
+  
+  /* Large screen (desktops) */
+  @media (min-width: 1200px) {
+    .container {
+      width: 70%;
+      padding: 30px;
+    }
+  }
+  

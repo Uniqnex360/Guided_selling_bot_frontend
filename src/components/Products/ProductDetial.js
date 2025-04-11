@@ -662,30 +662,99 @@ const handleSelectChange = (e) => {
   }
 };
 
-// Rewrite button API handler
+// // Rewrite button API handler
+// const sendSelectedPromptToAPI = async () => {
+//   const selectedPromptName = isAddingNewPrompt
+//     ? customPrompt
+//     : promptList.find((p) => p.id === selectedPrompt)?.name;
+
+//   // Prompt name validation
+//   if (!selectedPromptName || selectedPromptName.trim() === '') {
+//     alert('Please enter or select a prompt before submitting.');
+//     return;
+//   }
+
+//   // Required fields validation
+//   if (!getTitle || !getRewriteDescription || !getFeatures) {
+//     setSnackbarMessage('Title, description, and features are required!');
+//     setSnackbarOpen(true);
+//     return;
+//   }
+
+//   const requestPayload = {
+//     option: selectedPromptName,
+//     title: getTitle,
+//     description: getRewriteDescription,
+//     features: getFeatures,
+//     product_id: id,
+//   };
+
+//   try {
+//     const response = await fetch(
+//       'https://product-assistant-gpt.onrender.com/regenerateAiContents/',
+//       {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify(requestPayload),
+//       }
+//     );
+
+//     const result = await response.json();
+
+//     if (result.status) {
+//       setProductTab({
+//         title: result.data.title || [],
+//         description: result.data.description || [],
+//         features: result.data.features || [],
+//       });
+
+//       console.log('Updated productTab:', result.data);
+
+//       // ✅ Show success Snackbar
+//       setSnackbarMessage('AI content Rewrite successfully!');
+//       setSnackbarOpen(true);
+//     } else {
+//       setSnackbarMessage('Failed to regenerate AI content.');
+//       setSnackbarOpen(true);
+//     }
+//   } catch (error) {
+//     console.error('Error sending data to API:', error);
+//     setSnackbarMessage('Something went wrong. Please try again.');
+//     setSnackbarOpen(true);
+//   }
+// };
+
+
 const sendSelectedPromptToAPI = async () => {
   const selectedPromptName = isAddingNewPrompt
     ? customPrompt
     : promptList.find((p) => p.id === selectedPrompt)?.name;
 
   // Prompt name validation
+  console.log('oppo',getTitle,getRewriteDescription,getFeatures)
   if (!selectedPromptName || selectedPromptName.trim() === '') {
     alert('Please enter or select a prompt before submitting.');
     return;
   }
 
-  // Required fields validation
-  if (!getTitle || !getRewriteDescription || !getFeatures) {
-    setSnackbarMessage('Title, description, and features are required!');
-    setSnackbarOpen(true);
-    return;
-  }
+// Check if all fields are empty
+const isTitleEmpty = !getTitle || getTitle.length === 0;
+const isDescriptionEmpty = !getRewriteDescription || getRewriteDescription.length === 0;
+const isFeaturesEmpty = !getFeatures || getFeatures.length === 0;
+
+if (isTitleEmpty && isDescriptionEmpty && isFeaturesEmpty) {
+  setSnackbarMessage('Please provide at least one of title, description, or features!');
+  setSnackbarOpen(true);
+  return;
+}
 
   const requestPayload = {
     option: selectedPromptName,
-    title: getTitle,
-    description: getRewriteDescription,
-    features: getFeatures,
+    title: getTitle || '',
+    description: getRewriteDescription || '',
+    features: getFeatures || '',
     product_id: id,
   };
 
@@ -725,6 +794,7 @@ const sendSelectedPromptToAPI = async () => {
     setSnackbarOpen(true);
   }
 };
+
 
   
     // Handle the dropdown selection and trigger POST request
@@ -973,7 +1043,7 @@ setSnackbarOpen(true);
   
 
     return (
-        <Container>
+        <Container >
 
 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
         <button onClick={handlePrevious} disabled={currentIndex === 0}>
@@ -986,7 +1056,7 @@ setSnackbarOpen(true);
       
    
 
-<Box sx={{ display: "flex",marginLeft: '-30px', alignItems: "center", padding: "20px" }}>
+<Box sx={{ display: "flex",marginLeft: '-30px', alignItems: "center", padding: "35px" }}>
               <IconButton sx={{ marginLeft: "-3%" }} onClick={handleBackClick}>
                 <ArrowBack />
               </IconButton>
@@ -1175,7 +1245,7 @@ setSnackbarOpen(true);
        
    <Grid container  spacing={2}>
   {/* Left Side - Product Features and Description */}
-  <Grid item xs={6} sx={{ width: '50%', fontFamily: 'Roboto, Helvetica, sans-serif' }}>
+  <Grid item xs={6} sx={{ width: '50%', fontFamily: 'Roboto, Helvetica, sans-serif', marginBottom:'5%' }}>
   {/* Product Features */}
   <Box display="flex" alignItems="center" mt={3} mb={1}>
     <Typography variant="h6" mr={2} sx={{ fontSize: '18px', fontWeight: 600 }}>
