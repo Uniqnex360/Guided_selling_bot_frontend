@@ -726,29 +726,25 @@ const handleSelectChange = (e) => {
 //   }
 // };
 
-
 const sendSelectedPromptToAPI = async () => {
   const selectedPromptName = isAddingNewPrompt
     ? customPrompt
     : promptList.find((p) => p.id === selectedPrompt)?.name;
 
-  // Prompt name validation
-  console.log('oppo',getTitle,getRewriteDescription,getFeatures)
   if (!selectedPromptName || selectedPromptName.trim() === '') {
     alert('Please enter or select a prompt before submitting.');
     return;
   }
 
-// Check if all fields are empty
-const isTitleEmpty = !getTitle || getTitle.length === 0;
-const isDescriptionEmpty = !getRewriteDescription || getRewriteDescription.length === 0;
-const isFeaturesEmpty = !getFeatures || getFeatures.length === 0;
+  const isTitleEmpty = !getTitle || getTitle.length === 0;
+  const isDescriptionEmpty = !getRewriteDescription || getRewriteDescription.length === 0;
+  const isFeaturesEmpty = !getFeatures || getFeatures.length === 0;
 
-if (isTitleEmpty && isDescriptionEmpty && isFeaturesEmpty) {
-  setSnackbarMessage('Please provide at least one of title, description, or features!');
-  setSnackbarOpen(true);
-  return;
-}
+  if (isTitleEmpty && isDescriptionEmpty && isFeaturesEmpty) {
+    setSnackbarMessage('Please provide at least one of title, description, or features!');
+    setSnackbarOpen(true);
+    return;
+  }
 
   const requestPayload = {
     option: selectedPromptName,
@@ -773,27 +769,38 @@ if (isTitleEmpty && isDescriptionEmpty && isFeaturesEmpty) {
     const result = await response.json();
 
     if (result.status) {
+      const updatedTitle = result.data?.title || [];
+      const updatedDescription = result.data?.description || [];
+      const updatedFeaturesRes = result.data?.features || [];
+
       setProductTab({
-        title: result.data.title || [],
-        description: result.data.description || [],
-        features: result.data.features || [],
+        title: updatedTitle,
+        description: updatedDescription,
+        features: updatedFeaturesRes,
       });
 
-      console.log('Updated productTab:', result.data);
+      const selectedTitle = updatedTitle.find((item) => item?.checked)?.value || '';
+      setGetTitle(selectedTitle);
 
-      // ✅ Show success Snackbar
+      const selectedDescription = updatedDescription.find((item) => item?.checked)?.value || '';
+      setUpdateDesc(selectedDescription);
+  // const updatedFeatures = updatedFeaturesRes
+  //   .filter((item) => item?.checked)
+  //   .flatMap((item) => item.value); // flatten the array of arrays
+    setGetFeatures(result.data.features)
+      console.log('Updated productTab11111:', result.data.features);
       setSnackbarMessage('AI content Rewrite successfully!');
-      setSnackbarOpen(true);
     } else {
-      setSnackbarMessage('Failed to regenerate AI content.');
-      setSnackbarOpen(true);
+      setSnackbarMessage(result.message || 'Failed to regenerate AI content.');
     }
   } catch (error) {
     console.error('Error sending data to API:', error);
     setSnackbarMessage('Something went wrong. Please try again.');
-    setSnackbarOpen(true);
   }
+
+  setSnackbarOpen(true);
 };
+
 
 
   
@@ -948,7 +955,7 @@ const handleSendMessage = () => {
         ? getFeatures.find(item => item.checked)?.value || []
         : [];
     
-      console.log('getTitle:', getRewriteDescription);
+      console.log('getTitle:', selectedFeatures);
     
       console.log('selectedFeatures:', selectedFeatures);
     
@@ -1404,9 +1411,12 @@ setSnackbarOpen(true);
         </Box>
       ) : (
         <ListItem>
-          <Typography variant="body1" color="textSecondary">
-            No title found
-          </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+  <Typography variant="body1" sx={{ fontSize: '16px', textAlign: 'center' }} color="textSecondary">
+    No title found
+  </Typography>
+</Box>
+
         </ListItem>
       )}
     </TabPanel>
@@ -1415,9 +1425,9 @@ setSnackbarOpen(true);
     <TabPanel value={tabIndex} index={1}>
   <Box>
     <Box display="flex" alignItems="center" marginBottom={1} sx={{ width: '50%' }}>
-      <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
+      {/* <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
         Features:
-      </Typography>
+      </Typography> */}
     </Box>
 
     {editMode.features ? (
@@ -1483,7 +1493,7 @@ setSnackbarOpen(true);
             );
           })
         ) : (
-          <Typography variant="body1" color="textSecondary">
+          <Typography variant="body1" sx={{ fontSize: '16px' }} color="textSecondary">
             No features available.
           </Typography>
         )}
@@ -1550,7 +1560,7 @@ setSnackbarOpen(true);
       );
     })
   ) : (
-    <Typography variant="body1" color="textSecondary">
+    <Typography variant="body1" sx={{ fontSize: '16px' }} color="textSecondary">
       No features available.
     </Typography>
   )}
@@ -1566,9 +1576,9 @@ setSnackbarOpen(true);
 
 
 <TabPanel value={tabIndex} index={2}>
-  <Typography variant="h6" mt={1} mb={1} sx={{ fontSize: '1.2rem' }}>
+  {/* <Typography variant="h6" mt={1} mb={1} sx={{ fontSize: '1.2rem' }}>
     Description:
-  </Typography>
+  </Typography> */}
 
   {productTab?.description?.length > 0 ? (
   <RadioGroup value={selectedDescription} onChange={handleDescriptionChange}>
@@ -1643,7 +1653,7 @@ setSnackbarOpen(true);
     })}
   </RadioGroup>
 ) : (
-  <Typography variant="body2" color="textSecondary">
+  <Typography variant="body2" sx={{ fontSize: '16px' }} color="textSecondary">
     No description available.
   </Typography>
 )}
