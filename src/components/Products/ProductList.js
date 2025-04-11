@@ -293,7 +293,7 @@ const handleCategoryChange = (event) => {
     return (
         <Container  maxWidth={false} sx={{ maxWidth: '100% !important', width: '100%' }}>
           
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',marginTop:'15px', marginBottom: '20px', p: { xs: 1, sm: 2, md: 3 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px', p: { xs: 1, sm: 2, md: 3 } }}>
   <Typography variant="h4" gutterBottom sx={{fontSize:'21px'}}>
     Products
   </Typography>
@@ -368,7 +368,10 @@ const handleCategoryChange = (event) => {
 
 <Paper sx={{ width: '100%', overflow: 'hidden' }}>
   {viewMode === 'list' ? (
-    <TableContainer sx={{ maxHeight: 600 }}>
+    <TableContainer   sx={{
+      height: 'calc(100vh - 170px)', // Adjust 250px based on your layout (header + filters + padding)
+      overflowY: 'auto',
+    }}>
       <Table stickyHeader>
         <TableHead>
           <TableRow>
@@ -554,7 +557,7 @@ const handleCategoryChange = (event) => {
   )}
 </Paper>
 
-<Box sx={{paddingRight:'20px'}}>
+<Box sx={{paddingRight:'30px'}}>
             <TablePagination
                 rowsPerPageOptions={[10, 25, 50, 100]}
                 component="div"
