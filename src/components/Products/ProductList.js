@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useMediaQuery, useTheme } from '@mui/material';
+
 import {
     Container,
     Typography,
@@ -37,6 +39,7 @@ import { ListAlt as ListAltIcon, GridView as GridViewIcon } from '@mui/icons-mat
 import DotLoading from '../Loading/DotLoading';
 
 const ProductList = () => {
+  
     const [products, setProducts] = useState([]);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +51,9 @@ const ProductList = () => {
     const [allProducts, setAllProducts] = useState([]);
     const [selectedCategoryId, setSelectedCategoryId] = useState('');
     const [openSnackbar, setOpenSnackbar] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // 'success' or 'error'
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [productsPerPage] = useState(5);
@@ -62,6 +68,19 @@ const ProductList = () => {
   
     const [categoryFilters, setCategoryFilters] = useState([]);
 // const selectedCategory = categoryOptions.find(cat => cat.id === selectedCategoryId);
+const theme = useTheme();
+const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+const [maximized, setMaximized] = useState(true);
+const [dialogSize, setDialogSize] = useState({ width: 400, height: 450 }); // Initial size
+
+
+// Assume 'data' is the response from your API
+
+
+const toggleDialogSize = () => {
+    setMaximized(prev => !prev);
+};
 
     // Get the sort symbol for each column
     const getSortSymbol = (column) => {
@@ -97,16 +116,30 @@ const ProductList = () => {
     })
     .then(response => response.json())
     .then(data => {
+        // const filters = data.data.filters;
+        // const filtersWithCheckbox = filters.map(filter => {
+        //     return {
+        //         ...filter,
+        //         options: filter.config.options.map(option => ({
+        //             label: option.trim(),
+        //             checked: false,
+        //         }))
+        //     };
+        // });
+
         const filters = data.data.filters;
-        const filtersWithCheckbox = filters.map(filter => {
-            return {
-                ...filter,
-                options: filter.config.options.map(option => ({
-                    label: option.trim(),
-                    checked: false,
-                }))
-            };
-        });
+console.log('oppo',filters)
+const filtersWithCheckbox = filters.map((filter) => ({
+  ...filter,
+  options: filter.config.options.map((option) => ({
+    label: option.toString().trim(),
+    checked: false,
+  })),
+}));
+
+// Now set this to your state to render in the Accordion
+setCategoryFilters(filtersWithCheckbox);
+        console.log('lllllll',filters,   filtersWithCheckbox)
         setCategoryFilters(filtersWithCheckbox);
         setLoading(false); // Stop loading after filters are fetched
     })
@@ -126,9 +159,13 @@ const handleCategoryChange = (event) => {
     const selectedCategory = categoryOptions.find(cat => cat.id === categoryId);
     setSelectedCategoryName(selectedCategory ? selectedCategory.name : '');
 
-    // Fetch the filters for the selected category
+   
     if (categoryId) {
-        fetchFilters(categoryId);
+      fetchFilters(categoryId);
+      setSnackbarMessage('Category selected successfully!');
+      setSnackbarSeverity('success'); // green
+      setSnackbarOpen(true);
+    
     }
 };
 
@@ -155,11 +192,15 @@ const handleCategoryChange = (event) => {
         setCategoryFilters([]);
         setCategoryOptions([]);
         fetchCategories()
+        setSnackbarMessage('Reset successfully!');
+        setSnackbarSeverity('error'); // red
+        setSnackbarOpen(true);
+        fetchProducts()
     };
 
-    useEffect(() => {
-        fetchCategories();
-    }, []);
+    // useEffect(() => {
+    //     fetchCategories();
+    // }, []);
 
     useEffect(() => {
         if (selectedCategoryId) {
@@ -170,31 +211,38 @@ const handleCategoryChange = (event) => {
 
     useEffect(() => {
         fetchProducts();
-    }, []);
-    const fetchProducts = () => {
-        setLoading(true); // Start loading
-        fetch('https://product-assistant-gpt.onrender.com/productList/', {
-            method: 'POST', // Assuming the method is POST
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              ...(selectedCategoryId && { category_id: selectedCategoryId }),
-                search_query : ''
-                // collection_name: selectedCategoryName,
-            }),
-        })
-            .then(response => response.json())
-            .then(responseData => {
-                setProducts(responseData.data?.products || []);
-                setLoading(false); // Stop loading after data is fetched
-            })
-            .catch(error => {
-                console.error('Error fetching product data:', error);
-                setLoading(false); // Stop loading even if there's an error
-            });
-    };
+    }, [searchQuery]);
 
+    const fetchProducts = () => {
+      setLoading(true);
+      const transformedFilters = {
+        ...(Object.keys(selectedFilters).length > 0 && { attributes: selectedFilters ? selectedFilters :'' }),
+    };
+      fetch('https://product-assistant-gpt.onrender.com/productList/', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+              ...(selectedCategoryId && { category_id: selectedCategoryId }),
+              search_query: searchQuery || '',
+              ...transformedFilters
+          }),
+      })
+          .then(response => response.json())
+          .then(responseData => {
+              const productList = responseData.data?.products || [];
+              setProducts(productList);
+              setFilteredProducts(productList);
+              setLoading(false);
+              fetchCategories();
+          })
+          .catch(error => {
+              console.error('Error fetching product data:', error);
+              setLoading(false);
+          });
+  };
+  
     // Effect to fetch products when categoryId or filters change
     useEffect(() => {
         if (selectedCategoryId && Object.keys(selectedFilters).length > 0) {
@@ -202,21 +250,6 @@ const handleCategoryChange = (event) => {
         }
     }, [selectedCategoryId, selectedFilters]); // Depend on selectedCategoryId and selectedFilters
 
-    useEffect(() => {
-        if (searchQuery) {
-            const filtered = products.filter(product =>
-                product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                product.brand_name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-            setFilteredProducts(filtered);
-            setNoDataFound(filtered.length === 0); // Set No Data Found if no products match search query
-        } else {
-            setFilteredProducts(products);
-            setNoDataFound(products.length === 0); // Set No Data Found if no products available
-        }
-    }, [searchQuery, products]);
 
     // Sorting function
     const sortProducts = (key) => {
@@ -248,9 +281,9 @@ const handleCategoryChange = (event) => {
 
     const handleSearchChange = (event) => {
 
-      // if(searchQuery){
-      //   fetchProducts()
-      // }
+      if(searchQuery){
+        fetchProducts()
+      }
         setSearchQuery(event.target.value);
         setPage(0);
     };
@@ -263,10 +296,9 @@ const handleCategoryChange = (event) => {
       setSortConfig({ key: 'sku', direction: 'asc' });
     
       // ✅ Clear category and refetch full list
-    if(selectedCategoryId){
-      fetchProducts()
-      // fetchCategories()
-    }
+      setSnackbarMessage('Reset successfully!');
+      setSnackbarSeverity('error'); // red
+      setSnackbarOpen(true);
       // fetchProducts('');
   
     
@@ -279,17 +311,7 @@ const handleCategoryChange = (event) => {
         setViewMode(mode);
     };
 
-    // if (loading) {
-    //     return (
-    //         <Container maxWidth="lg">
-    //             <Typography variant="h4" sx={{ fontSize: '18px' }} gutterBottom>
-    //                 Products
-    //             </Typography>
-    //             {/* <div style={{marginTop:'10%'}}><DotLoading/></div> */}
-    //         </Container>
-    //     );
-    // }
-
+   
     return (
         <Container  maxWidth={false} sx={{ maxWidth: '100% !important', width: '100%' }}>
           
@@ -366,6 +388,7 @@ const handleCategoryChange = (event) => {
   </Box>
 </Box>
 
+{/* <Paper sx={{ width: '100%', overflow: 'hidden' }}></Paper> */}
 <Paper sx={{ width: '100%', overflow: 'hidden' }}>
   {viewMode === 'list' ? (
     <TableContainer   sx={{
@@ -373,100 +396,91 @@ const handleCategoryChange = (event) => {
       overflowY: 'auto',
     }}>
       <Table stickyHeader>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}>
-              Image
-            </TableCell>
-            <TableCell
-              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
-              onClick={() => sortProducts('sku')}
-            >
-              SKU {getSortSymbol('sku')}
-            </TableCell>
-            <TableCell
-              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
-              onClick={() => sortProducts('name')}
-            >
-              Title {getSortSymbol('name')}
-            </TableCell>
-            <TableCell
-              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
-              onClick={() => sortProducts('mpn')}
-            >
-              MPN {getSortSymbol('mpn')}
-            </TableCell>
-            <TableCell
-              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
-              onClick={() => sortProducts('category')}
-            >
-              Category {getSortSymbol('category')}
-            </TableCell>
-            <TableCell
-              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
-              onClick={() => sortProducts('brand_name')}
-            >
-              Brand {getSortSymbol('brand_name')}
-            </TableCell>
-            <TableCell
-              sx={{ textAlign: 'center', cursor: 'pointer', position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'rgb(224 224 224)' }}
-              onClick={() => sortProducts('price')}
-            >
-              Price {getSortSymbol('price')}
-            </TableCell>
-          </TableRow>
-        </TableHead>
+      <TableHead>
+    <TableRow>
+      {[
+        { label: 'Image' },
+        { label: 'SKU', key: 'sku' },
+        { label: 'Title', key: 'name' },
+        { label: 'MPN', key: 'mpn' },
+        { label: 'Category', key: 'category' },
+        { label: 'Brand', key: 'brand_name' },
+        { label: 'Price', key: 'price' },
+      ].map((col, index) => (
+        <TableCell
+          key={index}
+          sx={{
+            textAlign: 'center',
+            cursor: col.key ? 'pointer' : 'default',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            backgroundColor: 'rgb(224 224 224)',
+            padding: '4px 8px',
+            height: '40px', // Adjust height here
+            fontSize: '14px', // Optional: reduce font size for compact look
+          }}
+          onClick={col.key ? () => sortProducts(col.key) : undefined}
+        >
+          {col.label} {col.key ? getSortSymbol(col.key) : ''}
+        </TableCell>
+      ))}
+    </TableRow>
+  </TableHead>
+  
+
         <TableBody>
-          {loading ? (
-            <TableRow>
-              <TableCell colSpan={7} align="center">
-                <DotLoading />
-              </TableCell>
-            </TableRow>
-          ) : filteredProducts.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} align="center">
-                No Data Found
-              </TableCell>
-            </TableRow>
-          ) : (
-            filteredProducts
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell sx={{ textAlign: 'center' }}>
-                    <Link to={`/details/${product.id}?page=${page}`} style={{ textDecoration: 'none' }}>
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          objectFit: 'contain',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd',
-                        }}
-                      />
-                    </Link>
-                  </TableCell>
-                  <TableCell sx={{ textAlign: 'center' }}>
-                    <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'black', minWidth: 120, textDecoration: 'none' }}>
-                      {product.sku}
-                    </Link>
-                  </TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: 120, wordBreak: 'break-word' }}>
-                    <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'black', textDecoration: 'none' }}>
-                      {product.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: 100 }}>{product.mpn}</TableCell>
-                  <TableCell sx={{ textAlign: 'center' }}>{product.category}</TableCell>
-                  <TableCell sx={{ textAlign: 'center' }}>{product.brand_name || 'N/A'}</TableCell>
-                  <TableCell sx={{ textAlign: 'center', minWidth: 100 }}>${product.price}</TableCell>
-                </TableRow>
-              ))
-          )}
-        </TableBody>
+  {loading ? (
+    <TableRow>
+      <TableCell colSpan={7} align="center">
+        <DotLoading />
+      </TableCell>
+    </TableRow>
+  ) : filteredProducts.length === 0 ? (
+    <TableRow>
+      <TableCell colSpan={7} align="center">
+        No Data Found
+      </TableCell>
+    </TableRow>
+  ) : (
+    filteredProducts
+      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+      .map((product) => (
+        <TableRow key={product.id}>
+          <TableCell sx={{ textAlign: 'center' }}>
+            <Link to={`/details/${product.id}?page=${page}`} style={{ textDecoration: 'none' }}>
+              <img
+                src={product.image_url}
+                alt={product.name}
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  objectFit: 'contain',
+                  borderRadius: '4px',
+                  border: '1px solid #ddd',
+                }}
+              />
+            </Link>
+          </TableCell>
+          <TableCell sx={{ textAlign: 'center' }}>
+            <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'black', minWidth: 120, textDecoration: 'none' }}>
+              {product.sku}
+            </Link>
+          </TableCell>
+          <TableCell sx={{ textAlign: 'center', maxWidth: 270, wordBreak: 'break-word' }}>
+            <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'black', textDecoration: 'none' }}>
+              {product.name}
+            </Link>
+          </TableCell>
+          <TableCell sx={{ textAlign: 'center', minWidth: 100 }}>{product.mpn}</TableCell>
+          <TableCell sx={{ textAlign: 'center' }}>{product.category}</TableCell>
+          <TableCell sx={{ textAlign: 'center' }}>{product.brand_name || 'N/A'}</TableCell>
+          <TableCell sx={{ textAlign: 'center', minWidth: 100 }}>${product.price}</TableCell>
+        </TableRow>
+      ))
+  )}
+</TableBody>
+
       </Table>
     </TableContainer>
   ) : (
@@ -481,77 +495,130 @@ const handleCategoryChange = (event) => {
         </Grid>
       ) : (
         <Grid container spacing={2} justifyContent="center">
-          {filteredProducts
-            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-            .map((product) => (
-              <Grid item xs={12} sm={12} md={4} sx={{ padding: '30px' }} key={product.id} display="flex" justifyContent="center">
-                <Card
-                  sx={{
-                    marginTop: '10px',
-                    width: '300px',
-                    height: '100%',
+        {filteredProducts
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((product) => (
+            <Grid
+              item
+              xs={12} sm={2.4} md={2.4} lg={2.4}  // Adjust grid item to fit 5 cards in a row (20% each)
+              sx={{ padding: '10px' }}
+              key={product.id}
+              display="flex"
+              justifyContent="center"
+            >
+              <Card
+                sx={{
+                  marginTop: '10px',
+                  width: '250px',
+                  height: '300px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: '10px',
+                  border: '1px solid #ddd',
+                  boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.3s, box-shadow 0.3s',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+                  },
+                }}
+              >
+                <Link
+                  to={`/details/${product.id}`}
+                  style={{
+                    textDecoration: 'none',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRadius: '10px',
-                    border: '1px solid #ddd',
-                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
-                    transition: 'transform 0.3s, box-shadow 0.3s',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-                    },
+                    height: '100%',
                   }}
                 >
-                  <Link
-                    to={`/details/${product.id}`}
-                    style={{
-                      textDecoration: 'none',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      height: '100%',
+                  <CardMedia
+                    component="img"
+                    height="100"
+                    width="200"
+                    image={product.image_url}
+                    alt={product.name}
+                    sx={{
+                      objectFit: 'contain',
+                      borderTopLeftRadius: '10px',
+                      borderTopRightRadius: '10px',
                     }}
-                  >
-                    <CardMedia
-                      component="img"
-                      height="130"
-                      width="200"
-                      image={product.image_url}
-                      alt={product.name}
+                  />
+                  <CardContent sx={{ flexGrow: 1 }}>
+                  <Tooltip title={product.name} arrow>
+  <Typography
+    variant="h6"
+    sx={{
+      color: 'black',
+      fontSize: '15px',
+      fontWeight: 'bold',
+      height: '3rem',  // Restrict height to show only 2 lines
+      overflow: 'hidden',
+      display: '-webkit-box',
+      WebkitBoxOrient: 'vertical',
+      WebkitLineClamp: 2,  // Limit to two lines
+      transition: 'all 0.3s ease',  // Transition for smooth effect
+    }}
+  >
+    {product.name}
+  </Typography>
+</Tooltip>
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
                       sx={{
-                        objectFit: 'contain',
-                        borderTopLeftRadius: '10px',
-                        borderTopRightRadius: '10px',
+                        // height: '2rem',
+                        color: 'black',
+                        overflow: 'hidden',
                       }}
-                    />
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          color: 'black',
-                          fontSize: '15px',
-                          fontWeight: 'bold',
-                          height: '3rem',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {product.name}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="textSecondary"
-                        sx={{ height: '2rem', color: 'black', overflow: 'hidden' }}
-                      >
-                        SKU: {product.sku}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Price: ${product.price}
-                      </Typography>
-                    </CardContent>
-                  </Link>
-                </Card>
-              </Grid>
-            ))}
-        </Grid>
+                    >
+                      SKU: {product.sku}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      sx={{
+                      
+                        color: 'black',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      MPN: {product.mpn}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      sx={{
+                        // height: '2rem',
+                        color: 'black',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      Category: {product.category}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      sx={{
+                        // height: '2rem',
+                        color: 'black',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      Brand: {product.brand_name}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Price: ${product.price}
+                    </Typography>
+                  </CardContent>
+                </Link>
+              </Card>
+            </Grid>
+          ))}
+      </Grid>
+      
+      
+      
       )}
     </Grid>
   )}
@@ -601,7 +668,12 @@ const handleCategoryChange = (event) => {
                     fontSize: '24px',
                     zIndex: 9999
                 }}
-                onClick={() => setShowPopup(true)}
+                onClick={() => {
+                  setShowPopup(true);        // show popup
+                  setSearchQuery('');        // clear search input
+                  fetchProducts();           // fetch with cleared search
+                  setPage(0);                // reset pagination
+              }}
             >
                 ❓
             </Button>
@@ -610,7 +682,7 @@ const handleCategoryChange = (event) => {
 
 
 
-            <Dialog
+            {/* <Dialog
   open={showPopup}
   onClose={() => setShowPopup(false)}
   maxWidth="xs"
@@ -622,7 +694,7 @@ const handleCategoryChange = (event) => {
       marginTop:'30px',
       bottom: '80px', // adjust to appear above the ❓ button
       right: '20px',
-      height:'700px',
+      height:'450px',
       margin: 0,
       borderRadius: '12px',
       zIndex: 1300
@@ -697,7 +769,189 @@ const handleCategoryChange = (event) => {
                         Close
                     </Button>
                 </DialogActions>
-            </Dialog>
+            </Dialog> */}
+
+
+<Dialog
+    open={showPopup}
+    onClose={() => setShowPopup(false)}
+    maxWidth={false}
+    fullWidth={false}
+    hideBackdrop={false}
+    PaperProps={{
+        style: {
+            position: 'fixed',
+            bottom: '80px',
+            right: '20px',
+            margin: 0,
+            zIndex: 1300,
+            borderRadius: '12px',
+            width: isMobile ? '95%' : maximized ? dialogSize.width : 250,
+            height: isMobile ? '85%' : maximized ? dialogSize.height : 60,
+            transition: 'all 0.3s ease',
+            overflow: 'hidden',
+        },
+    }}
+>
+<DialogTitle
+    style={{
+        textAlign: 'center',
+        fontWeight: 'bold',
+        color: '#7B61FF',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingRight: '40px',
+    }}
+>
+    {maximized ? 'Product Finder' : 'PF'}
+
+    <Box
+    sx={{
+        position: 'absolute',
+        right: 10,
+        top: 10,
+        display: 'flex',
+        gap: '4px',
+        alignItems: 'center',
+    }}
+>
+    {/* Minimize Button */}
+    <Tooltip title="Minimize">
+        <span>
+            <Button
+                size="small"
+                onClick={() => maximized && toggleDialogSize()}
+                disabled={!maximized}
+                sx={{
+                    minWidth: '32px',
+                    height: '32px',
+                    marginTop:'-1px',
+                    padding: '4px',
+                    lineHeight: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+            >
+                🗕
+            </Button>
+        </span>
+    </Tooltip>
+
+    {/* Maximize Button */}
+    <Tooltip title="Maximize">
+        <span>
+            <Button
+                size="small"
+                onClick={() => !maximized && toggleDialogSize()}
+                disabled={maximized}
+                sx={{
+                    minWidth: '32px',
+                    height: '32px',
+                    marginTop:'10px',
+                    marginTop:'5px',
+                    padding: '4px',
+                    lineHeight: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+            >
+                🗖
+            </Button>
+        </span>
+    </Tooltip>
+
+    {/* Close Button */}
+    <Tooltip title="Close">
+        <Button
+            onClick={() => setShowPopup(false)}
+            size="small"
+            sx={{
+                minWidth: '32px',
+                height: '32px',
+                padding: '4px',
+                lineHeight: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+            }}
+        >
+            <CloseIcon fontSize="small" />
+        </Button>
+    </Tooltip>
+</Box>
+
+</DialogTitle>
+
+    {maximized && (
+        <>
+            <DialogContent dividers>
+                <FormControl fullWidth margin="normal">
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                        value={selectedCategoryId}
+                        label="Category"
+                        onChange={handleCategoryChange}
+                    >
+                        {categoryOptions.map((category) => (
+                            <MenuItem sx={{fontSize:'14px'}} key={category.id} value={category.id}>
+                                {category.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                {categoryFilters.map((filter, index) => (
+                    <Accordion key={index}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#cfd3df' }}>
+                            <Typography variant="subtitle1" sx={{fontSize:'14px'}}>{filter.name}</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+  {filter.options.map((option, optionIndex) => (
+    <FormControlLabel
+      key={optionIndex}
+      control={
+        <Checkbox 
+          checked={selectedFilters[filter.name]?.includes(option.label) || false}
+          onChange={() => handleFilterChange(filter.name, option.label)}
+        />
+      }
+      label={option.label}
+      sx={{
+        '& .MuiFormControlLabel-label': {
+          fontSize: '14px',
+        },
+      }}
+    />
+  ))}
+</AccordionDetails>
+
+                    </Accordion>
+                ))}
+
+                <div style={{ marginTop: '10px', textAlign: 'right' }}>
+                    <Button
+                        variant="text"
+                        color="error"
+                        onClick={handleClearFilters}
+                        style={{ fontWeight: 'bold' }}
+                    >
+                        ❌ Reset All
+                    </Button>
+                </div>
+            </DialogContent>
+
+            <DialogActions>
+                <Button onClick={() => setShowPopup(false)} color="primary">
+                    Close
+                </Button>
+            </DialogActions>
+        </>
+    )}
+</Dialog>
+
 
 
             <Snackbar
@@ -708,6 +962,25 @@ const handleCategoryChange = (event) => {
 >
   <Alert onClose={() => setOpenSnackbar(false)} severity="success" sx={{ width: '100%' }}>
      cleared successfully!
+  </Alert>
+</Snackbar>
+
+
+
+<Snackbar
+  open={snackbarOpen}
+  autoHideDuration={3000}
+  onClose={() => setSnackbarOpen(false)}
+  anchorOrigin={{ vertical: 'top', horizontal: 'right' }} // 👈 top-right
+>
+  <Alert
+    onClose={() => setSnackbarOpen(false)}
+    severity={snackbarSeverity} // success or error dynamically
+    sx={{ width: '100%' }}
+    elevation={6}
+    variant="filled"
+  >
+    {snackbarMessage}
   </Alert>
 </Snackbar>
 

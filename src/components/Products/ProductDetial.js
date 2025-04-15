@@ -1050,20 +1050,27 @@ setSnackbarOpen(true);
   
 
     return (
-        <Container >
+<Container sx={{ maxWidth: '100%', margin: '0 auto' }}>
+  {/* Navigation Buttons */}
+  <Box
+    sx={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      mt: 2,
+      flexWrap: 'wrap',
+      gap: 1,
+    }}
+  >
+    <button onClick={handlePrevious} disabled={currentIndex === 0}>
+      ⬅️ Previous
+    </button>
+    <button onClick={handleNext} disabled={currentIndex === productIds.length - 1}>
+      Next ➡️
+    </button>
+  </Box>
 
-<div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-        <button onClick={handlePrevious} disabled={currentIndex === 0}>
-          ⬅️ Previous
-        </button>
-        <button onClick={handleNext} disabled={currentIndex === productIds.length - 1}>
-          Next ➡️
-        </button>
-      </div>
-      
-   
 
-<Box sx={{ display: "flex",marginLeft: '-30px', alignItems: "center", padding: "35px" }}>
+<Box sx={{ display: "flex", alignItems: "center", padding: "35px" }}>
               <IconButton sx={{ marginLeft: "-3%" }} onClick={handleBackClick}>
                 <ArrowBack />
               </IconButton>
@@ -1090,45 +1097,70 @@ setSnackbarOpen(true);
             <Grid container spacing={3} marginTop={3}>
                 {/* Left Section: Image & Thumbnails */}
                 <Grid item xs={12} md={6} >
-  <Box display="flex" flexDirection="row" alignItems="flex-start" gap={2}>
-    {/* Thumbnails on the left - vertical */}
-    <Box display="flex" flexDirection="column" gap={2}>
-      {product?.images?.map((img, index) => {
-        if (!img) return null;
-        return (
-          <CardMedia
-            key={`${img}-${index}`}
-            component="img"
-            image={img}
-            alt={`Thumbnail ${index + 1}`}
-            sx={{
-              borderRadius: "4px",
-              height: "60px",
-              width: "60px",
-              cursor: "pointer",
-              border: mainImage === img ? "2px solid #000" : "1px solid #ccc",
-              objectFit: "cover"
-            }}
-            onClick={() => setMainImage(img)}
-          />
-        );
-      })}
-    </Box>
-
-    {/* Main Image on the right */}
-    <CardMedia
-      component="img"
-      image={mainImage || soonImg}
-      alt="Product Image"
-      sx={{
-        width: "500px",
-        height: "300px",
-        borderRadius: "4px",
-        objectFit: "contain",
-        cursor: "pointer"
-      }}
-    />
+                <Box
+  display="flex"
+  flexDirection={{ xs: "column", sm: "row" }}
+  alignItems={{ xs: "center", sm: "flex-start" }}
+  gap={2}
+>
+  {/* Thumbnails - responsive orientation */}
+  <Box
+  display="flex"
+  flexDirection={{ xs: "column", sm: "row" }}
+  alignItems={{ xs: "center", sm: "flex-start" }}
+  gap={2}
+>
+  {/* Thumbnails - responsive orientation */}
+  <Box
+    display="flex"
+    flexDirection={{ xs: "row", sm: "column" }}
+    gap={2}
+    sx={{
+      overflowX: { xs: "auto", sm: "visible" },
+      maxWidth: { xs: "100%", sm: "unset" },
+    }}
+  >
+    {product?.images?.map((img, index) => {
+      if (!img) return null;
+      return (
+        <CardMedia
+          key={`${img}-${index}`}
+          component="img"
+          image={img}
+          alt={`Thumbnail ${index + 1}`}
+          sx={{
+            borderRadius: "4px",
+            height: "60px",
+            width: "60px",
+            cursor: "pointer",
+            border: mainImage === img ? "2px solid #000" : "1px solid #ccc",
+            objectFit: "cover",
+            flexShrink: 0,
+          }}
+          onClick={() => setMainImage(img)}
+        />
+      );
+    })}
   </Box>
+
+  {/* Main Image */}
+  <CardMedia
+    component="img"
+    image={mainImage || soonImg}
+    alt="Product Image"
+    sx={{
+      width: { xs: "100%", sm: "400px", md: "500px" },
+      height: { xs: "auto", sm: "300px" },
+      borderRadius: "4px",
+      objectFit: "contain",
+      cursor: "pointer",
+    }}
+  />
+</Box>
+
+
+</Box>
+
 </Grid>
 
 
@@ -1137,114 +1169,139 @@ setSnackbarOpen(true);
                     {loading ? (
                         <CircularProgress />
                     ) : (
-                        <Box>
+                      <Box sx={{ width: '100%', px: { xs: 2, sm: 3, md: 4 } }}>
+                      {/* Product Title */}
+                      <Typography
+                        variant="h5"
+                        sx={{
+                          fontWeight: 'bold',
+                          mb: 1,
+                          maxWidth: '35ch',
+                          overflowWrap: 'break-word',
+                          fontSize: { xs: '18px', sm: '20px', md: '24px' },
+                          textAlign: { xs: 'center', sm: 'left' },
+                        }}
+                      >
+                        {product?.product_name || 'Product Title Not Available'}
+                      </Typography>
+                    
+                      {/* Price Section */}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 2, gap: 1 }}>
+                        {currentPrice !== undefined && currentPrice !== null && (
                           <Typography
-  variant="h5"
-  sx={{
-    fontWeight: 'bold',
-    mb: 1,
-    maxWidth: '40ch',  // Maximum width based on character count
-    overflowWrap: 'break-word',  // Ensures text wraps when it exceeds the width
-  }}
->
-  {product?.product_name || 'Product Title Not Available'}
-</Typography>
-
-{/* SKU & MPN */}
-<Box sx={{ display: 'flex', flexDirection: 'column', mb: 1, alignItems: 'flex-start' }}>
-
-
-
-<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                {currentPrice !== undefined && currentPrice !== null && (
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a73e8', mr: 1, fontSize: '25px' }}>
-                        {currency}{currentPrice}
-                    </Typography>
-                )}
-                {originalPrice !== undefined && originalPrice !== null && originalPrice > currentPrice && (
-                    <Typography variant="body2" sx={{ color: '#777', textDecoration: 'line-through', mr: 1, fontSize: '0.9rem' }}>
-                        {currency}{originalPrice}
-                    </Typography>
-                )}
-                {discountPercentage && (
-                    <Typography variant="body2" sx={{ color: 'green', fontWeight: 'bold', fontSize: '21px' }}>
-                        {discountPercentage} OFF
-                    </Typography>
-                )}
-            </Box>
-            
-<Box sx={{ display: 'flex', alignItems: 'center', marginBottom: 0.5 }}>
-
-
-
-                    <DetailLabel>SKU:</DetailLabel>
-                    <DetailValue>{product?.sku_number_product_code_item_number || 'N/A'}</DetailValue>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: 0.5 }}>
-                    <DetailLabel>MPN:</DetailLabel>
-                    <DetailValue>{product?.mpn || 'N/A'}</DetailValue>
-                </Box>
-            </Box>
-
-            {/* Category & Vendor & Brand */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', mb: 1, alignItems: 'flex-start' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: 0.5 }}>
-                    <DetailLabel>Category:</DetailLabel>
-                    <DetailValue>{product?.end_level_category || 'N/A'}</DetailValue>
-                </Box>
-                {/* Assuming you have a 'vendor' field in your product data */}
-                {product?.vendor && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: 0.5 }}>
-                        <DetailLabel>Vendor:</DetailLabel>
-                        <DetailValue>{product?.vendor || 'N/A'}</DetailValue>
-                    </Box>
-                )}
-                <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: 0.5 }}>
-                    <DetailLabel>Brand:</DetailLabel>
-                    <DetailValue>{product?.brand_name || 'N/A'}</DetailValue>
-                </Box>
-            
-    <Box sx={{ display: 'flex', justifyContent: 'flex-start', marginBottom:'20px' }}>
-        <Button variant="outlined" sx={{backgroundColor:'#f2f3ae',  color:'black'}} color="primary" onClick={handleAIOptions} size="small">
-            Generate Content With AI
-        </Button>
-    </Box>
-</Box>
-
-{/* Modal Component */}
-<Modal
-    open={aiModalOpen}
-    onClose={handleCloseAIModal}
-    aria-labelledby="ai-modal-title"
-    aria-describedby="ai-modal-description"
->
-    <Box sx={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: 300,
-        height: 300,
-        bgcolor: 'background.paper',
-        border: '2px solid #000',
-        boxShadow: 24,
-        p: 2,
-        borderRadius: '8px',
-    }}>
-        <div id="ai-modal-description">
-            {/* Render the FetchApi component here */}
-            <FetchApi onClose={handleCloseAIModal} onUpdateProduct={handleUpdateProduct} />
-
-        </div>
-        {/* <Button onClick={handleCloseAIModal} sx={{ mt: 2 }}>Close</Button> */}
-    </Box>
-</Modal>
-
-
-                            {/* <Divider sx={{ my: 2 }} /> */}
-            
-
+                            variant="h6"
+                            sx={{
+                              fontWeight: 'bold',
+                              color: '#1a73e8',
+                              fontSize: { xs: '20px', sm: '25px' },
+                            }}
+                          >
+                            {currency}{currentPrice}
+                          </Typography>
+                        )}
+                        {originalPrice !== undefined && originalPrice !== null && originalPrice > currentPrice && (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: '#777',
+                              textDecoration: 'line-through',
+                              fontSize: { xs: '14px', sm: '16px' },
+                            }}
+                          >
+                            {currency}{originalPrice}
+                          </Typography>
+                        )}
+                        {discountPercentage && (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'green',
+                              fontWeight: 'bold',
+                              fontSize: { xs: '16px', sm: '18px' },
+                            }}
+                          >
+                            {discountPercentage} OFF
+                          </Typography>
+                        )}
+                      </Box>
+                    
+                      {/* SKU & MPN */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 2 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                          <DetailLabel>SKU:</DetailLabel>
+                          <DetailValue>{product?.sku_number_product_code_item_number || 'N/A'}</DetailValue>
                         </Box>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                          <DetailLabel>MPN:</DetailLabel>
+                          <DetailValue>{product?.mpn || 'N/A'}</DetailValue>
+                        </Box>
+                      </Box>
+                    
+                      {/* Category, Vendor, Brand */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 2 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                          <DetailLabel>Category:</DetailLabel>
+                          <DetailValue>{product?.end_level_category || 'N/A'}</DetailValue>
+                        </Box>
+                        {product?.vendor && (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                            <DetailLabel>Vendor:</DetailLabel>
+                            <DetailValue>{product?.vendor}</DetailValue>
+                          </Box>
+                        )}
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                          <DetailLabel>Brand:</DetailLabel>
+                          <DetailValue>{product?.brand_name || 'N/A'}</DetailValue>
+                        </Box>
+                      </Box>
+                    
+                      {/* Generate Content Button */}
+                      <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 2 }}>
+                        <Button
+                          variant="outlined"
+                          sx={{
+                            backgroundColor: '#f2f3ae',
+                            color: 'black',
+                            textTransform: 'none',
+                            fontSize: { xs: '12px', sm: '14px' },
+                          }}
+                          onClick={handleAIOptions}
+                          size="small"
+                        >
+                          Generate Content With AI
+                        </Button>
+                      </Box>
+                    
+                      {/* Modal Component */}
+                      <Modal
+                        open={aiModalOpen}
+                        onClose={handleCloseAIModal}
+                        aria-labelledby="ai-modal-title"
+                        aria-describedby="ai-modal-description"
+                      >
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: { xs: 280, sm: 300 },
+                            height: { xs: 280, sm: 300 },
+                            bgcolor: 'background.paper',
+                            border: '2px solid #000',
+                            boxShadow: 24,
+                            p: 2,
+                            borderRadius: '8px',
+                          }}
+                        >
+                          <div id="ai-modal-description">
+                            <FetchApi onClose={handleCloseAIModal} onUpdateProduct={handleUpdateProduct} />
+                          </div>
+                        </Box>
+                      </Modal>
+                    </Box>
+                    
+                    
                     )}
                 </Grid>
             </Grid>
@@ -1281,13 +1338,23 @@ setSnackbarOpen(true);
 
 
 
-
-  {/* Right Side - Empty */}
-  <Grid  item xs={6}>
-  <Box>
-
-    <Tabs value={tabIndex} onChange={handleTabChange} aria-label="product details tabs" sx={{marginTop:'-20px'}}>
-      <Tab label="Product Title" {...a11yProps(0)} />
+<Grid item xs={12} sm={12} md={6}>
+  <Box sx={{ width: '100%', overflowX: 'auto', marginTop: { xs: '0px', md: '-20px' } }}>
+    <Tabs
+      value={tabIndex}
+      onChange={handleTabChange}
+      aria-label="product details tabs"
+      variant="scrollable"
+      scrollButtons="auto"
+      sx={{
+        minHeight: '40px',
+        '& .MuiTab-root': {
+          minHeight: '40px', // reduce tab height
+          fontSize: '14px',  // responsive font
+        },
+      }}
+    >
+       <Tab label="Product Title" {...a11yProps(0)} />
       <Tab label="Features" {...a11yProps(1)} />
       <Tab label="Description" {...a11yProps(2)} />
     </Tabs>
@@ -1347,20 +1414,22 @@ setSnackbarOpen(true);
 
 {/* Tab feilds */}
 
-
 <TabPanel value={tabIndex} index={0}>
-      {Array.isArray(productTab?.title) && productTab.title.length > 0 ? (
-        <Box>
-          <List
-            sx={{
-              padding: 0,
-              fontSize: '14px',
-              fontWeight: 'bold',
-              mb: 1,
-              maxWidth: '59ch',
-              overflowWrap: 'break-word',
-            }}
-          >
+  {Array.isArray(productTab?.title) && productTab.title.length > 0 ? (
+    <Box sx={{ width: '100%' }}>
+      <List
+        sx={{
+          padding: 0,
+          mb: 1,
+          width: '100%',
+          maxWidth: { xs: '100%', sm: '90%', md: '80%', lg: '59ch' }, // responsive width
+          fontSize: { xs: '13px', md: '14px' }, // font size adjusts
+          fontWeight: 'bold',
+          wordWrap: 'break-word',
+          overflowWrap: 'break-word',
+          whiteSpace: 'normal',
+        }}
+      >
             {productTab.title.map((title, index) => (
               <ListItem key={index}>
                 <FormControlLabel
@@ -1413,7 +1482,7 @@ setSnackbarOpen(true);
         <ListItem>
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
   <Typography variant="body1" sx={{ fontSize: '16px', textAlign: 'center' }} color="textSecondary">
-    No title found
+    No title available
   </Typography>
 </Box>
 
@@ -1424,7 +1493,7 @@ setSnackbarOpen(true);
 
     <TabPanel value={tabIndex} index={1}>
   <Box>
-    <Box display="flex" alignItems="center" marginBottom={1} sx={{ width: '50%' }}>
+    <Box display="flex" alignItems="center" marginBottom={1} sx={{ width: '60%' }}>
       {/* <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
         Features:
       </Typography> */}
@@ -1468,7 +1537,7 @@ setSnackbarOpen(true);
                 {featureList.map((feature, featureIndex) => (
                   <Box
                     key={featureIndex}
-                    sx={{ marginBottom: 1, maxWidth: '59ch', overflowWrap: 'break-word' }}
+                    sx={{ marginBottom: 1, marginLeft:'3px', maxWidth: '59ch', overflowWrap: 'break-word' }}
                   >
                     {editingSetIndex === listIndex ? (
                       <TextField
@@ -1483,7 +1552,7 @@ setSnackbarOpen(true);
                         margin="normal"
                       />
                     ) : (
-                      <Typography variant="body1" sx={{ paddingLeft: '16px' }}>
+                      <Typography variant="body1" sx={{ paddingLeft: '16px', marginLeft:'35px' }}>
                         • {feature}
                       </Typography>
                     )}
@@ -1493,7 +1562,7 @@ setSnackbarOpen(true);
             );
           })
         ) : (
-          <Typography variant="body1" sx={{ fontSize: '16px' }} color="textSecondary">
+          <Typography variant="body1" sx={{ fontSize: '16px',  }} color="textSecondary">
             No features available.
           </Typography>
         )}
@@ -1512,7 +1581,7 @@ setSnackbarOpen(true);
 
       return (
         <React.Fragment key={listIndex}>
-          <ListItem sx={{ display: 'flex', alignItems: 'center' }}>
+          <ListItem sx={{ display: 'flex', alignItems: 'center' ,}}>
             <FormControlLabel
               value={listIndex}
               control={
@@ -1551,6 +1620,7 @@ setSnackbarOpen(true);
                 fontSize: '0.9rem',
                 maxWidth: '59ch',
                 overflowWrap: 'break-word',
+                paddingLeft:'18px'
               }}
             >
               <Typography variant="body1">• {feature}</Typography>
@@ -1593,7 +1663,7 @@ setSnackbarOpen(true);
             fontWeight: 'bold',
             fontSize: '16px',
             mb: 1,
-            maxWidth: '59ch',
+            maxWidth: '60ch',
             overflowWrap: 'break-word',
             display: 'flex',
             alignItems: 'center',
