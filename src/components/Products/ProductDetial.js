@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import {
-    Button, Container, Grid,RadioGroup, Tooltip,Radio, Typography,Paper,FormControlLabel, Checkbox, Box, Badge, TextField, Modal, List, ListItem, CircularProgress, IconButton, Divider, Link, Tabs, Tab
+    Button, Container, Grid,RadioGroup,useMediaQuery, Tooltip,Radio, Typography,Paper,FormControlLabel, Checkbox, Box, Badge, TextField, Modal, List, ListItem, CircularProgress, IconButton, Divider, Link, Tabs, Tab
 } from '@mui/material';
+
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
 import { useFetcher, useParams } from 'react-router-dom';
@@ -18,9 +19,11 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 
+import TextareaAutosize from '@mui/material/TextareaAutosize';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import soonImg from "../assets/soon-img.png";
 import { useNavigate, useLocation } from "react-router-dom";
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import {
 
     ArrowBack
@@ -87,7 +90,10 @@ const [isAddingNewPrompt, setIsAddingNewPrompt] = useState(false);
     const [userMessage, setUserMessage] = useState('');
     const [aiSuggestions, setAISuggestions] = useState([]);
     const [aiModalOpen, setAIModalOpen] = useState(false);
-    const [mainImage, setMainImage] = useState('');
+    // const [mainImage, setMainImage] = useState('');
+    const isMobile = useMediaQuery("(max-width:600px)");
+const [mainImage, setMainImage] = useState(product?.images?.[0] || soonImg);
+
     const { id } = useParams();
     const [productTab, setProductTab] = useState({
       title: [],
@@ -1053,47 +1059,68 @@ setSnackbarOpen(true);
 <Container sx={{ maxWidth: '100%', margin: '0 auto' }}>
   {/* Navigation Buttons */}
   <Box
-    sx={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      mt: 2,
-      flexWrap: 'wrap',
-      gap: 1,
-    }}
-  >
-    <button onClick={handlePrevious} disabled={currentIndex === 0}>
-      ⬅️ Previous
-    </button>
-    <button onClick={handleNext} disabled={currentIndex === productIds.length - 1}>
-      Next ➡️
-    </button>
+  mb={2}
+  sx={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    mt: 2,
+    flexWrap: 'wrap',
+  }} 
+>
+  {/* Left Side - Back to Products */}
+  <Box>
+    <Button
+      startIcon={<ArrowBackIcon />}
+      onClick={handleBackClick}
+      sx={{ fontSize:'16px', textTransform: 'none' }}
+    >
+      Back to Products
+    </Button>
   </Box>
 
+{/* Right Side - Prev and Next Icon Buttons Only */}
+<Box sx={{ display: 'flex', gap: 1 }}>
+  {/* Prev Icon Button */}
+  <IconButton
+    onClick={handlePrevious}
+    disabled={currentIndex === 0}
+    sx={{
+      bgcolor: '#fbc02d',
+      color: 'white',
+      borderRadius: '50%',
+      minWidth: '32px',
+      minHeight: '32px',
+      '&:hover': {
+        bgcolor: '#f9a825',
+      },
+    }}
+  >
+    <ArrowBackIcon fontSize="small" />
+  </IconButton>
 
-<Box sx={{ display: "flex", alignItems: "center", padding: "35px" }}>
-              <IconButton sx={{ marginLeft: "-3%" }} onClick={handleBackClick}>
-                <ArrowBack />
-              </IconButton>
-              <Typography gutterBottom sx={{ fontSize: "18px", marginTop: "7px" }}>
-               Back to Products
-              </Typography>
+  {/* Next Icon Button */}
+  <IconButton
+    onClick={handleNext}
+    disabled={currentIndex === productIds.length - 1}
+    sx={{
+      bgcolor: '#66bb6a',
+      color: 'white',
+      borderRadius: '50%',
+      minWidth: '32px',
+      minHeight: '32px',
+      '&:hover': {
+        bgcolor: '#43a047',
+      },
+    }}
+  >
+    <ArrowForwardIcon fontSize="small" />
+  </IconButton>
+</Box>
 
-              
-              <Button
-  onClick={handleUpdateProductTotal}
-  disabled={loading}
-  color="primary"
-  sx={{
-    marginLeft: "auto",
-    backgroundColor: theme => theme.palette.primary.main, // Using primary color from the theme
-    textTransform: 'capitalize',
-    color: 'white',
-  }}
->
-  {loading ? 'Updating...' : ' Update'}
-</Button>
 
-            </Box>
+</Box>
+
             <Grid container spacing={3} marginTop={3}>
                 {/* Left Section: Image & Thumbnails */}
                 <Grid item xs={12} md={6} >
@@ -1104,59 +1131,65 @@ setSnackbarOpen(true);
   gap={2}
 >
   {/* Thumbnails - responsive orientation */}
-  <Box
-  display="flex"
-  flexDirection={{ xs: "column", sm: "row" }}
-  alignItems={{ xs: "center", sm: "flex-start" }}
-  gap={2}
->
-  {/* Thumbnails - responsive orientation */}
-  <Box
-    display="flex"
-    flexDirection={{ xs: "row", sm: "column" }}
-    gap={2}
-    sx={{
-      overflowX: { xs: "auto", sm: "visible" },
-      maxWidth: { xs: "100%", sm: "unset" },
-    }}
-  >
-    {product?.images?.map((img, index) => {
-      if (!img) return null;
-      return (
-        <CardMedia
-          key={`${img}-${index}`}
-          component="img"
-          image={img}
-          alt={`Thumbnail ${index + 1}`}
-          sx={{
-            borderRadius: "4px",
-            height: "60px",
-            width: "60px",
-            cursor: "pointer",
-            border: mainImage === img ? "2px solid #000" : "1px solid #ccc",
-            objectFit: "cover",
-            flexShrink: 0,
-          }}
-          onClick={() => setMainImage(img)}
-        />
-      );
-    })}
-  </Box>
 
-  {/* Main Image */}
-  <CardMedia
-    component="img"
-    image={mainImage || soonImg}
+        
+  <Box 
+      display="flex"
+      flexDirection={isMobile ? "column" : "row"}
+      gap={2}
+      justifyContent="center"
+      alignItems="flex-start"
+    >
+      {/* Thumbnails */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          width: isMobile ? '100%' : '70px',
+          alignItems: 'center',
+        
+        }}
+      >
+        {product?.images?.map((img, index) => {
+          if (!img) return null;
+          return (
+            <CardMedia
+              key={`${img}-${index}`}
+              component="img"
+              image={img}
+              alt={`Thumbnail ${index + 1}`}
+              sx={{
+                borderRadius: "4px",
+                height: "60px",
+                width: "60px",
+                cursor: "pointer",
+                border: mainImage === img ? "2px solid #000" : "1px solid #ccc",
+                objectFit: "cover",
+              }}
+              onClick={() => setMainImage(img)}
+            />
+          );
+        })}
+      </Box>
+
+      {/* Main Image with Hover Zoom using react-image-magnify */}
+      <Box sx={{ width: isMobile ? '100%' : '400px' }}>
+
+      
+  <img
     alt="Product Image"
-    sx={{
-      width: { xs: "100%", sm: "400px", md: "500px" },
-      height: { xs: "auto", sm: "300px" },
-      borderRadius: "4px",
-      objectFit: "contain",
-      cursor: "pointer",
+    src={mainImage || soonImg}
+    style={{
+      width: isMobile ? '100%' : '300px',
+      height: isMobile ? undefined : '225px',
+      objectFit: 'contain',
+      borderRadius: '4px',
+      cursor: 'zoom-in'
     }}
   />
 </Box>
+    </Box>
 
 
 </Box>
@@ -1172,105 +1205,211 @@ setSnackbarOpen(true);
                       <Box sx={{ width: '100%', px: { xs: 2, sm: 3, md: 4 } }}>
                       {/* Product Title */}
                       <Typography
-                        variant="h5"
-                        sx={{
-                          fontWeight: 'bold',
-                          mb: 1,
-                          maxWidth: '35ch',
-                          overflowWrap: 'break-word',
-                          fontSize: { xs: '18px', sm: '20px', md: '24px' },
-                          textAlign: { xs: 'center', sm: 'left' },
-                        }}
-                      >
-                        {product?.product_name || 'Product Title Not Available'}
-                      </Typography>
-                    
-                      {/* Price Section */}
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 2, gap: 1 }}>
-                        {currentPrice !== undefined && currentPrice !== null && (
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              fontWeight: 'bold',
-                              color: '#1a73e8',
-                              fontSize: { xs: '20px', sm: '25px' },
-                            }}
-                          >
-                            {currency}{currentPrice}
-                          </Typography>
-                        )}
-                        {originalPrice !== undefined && originalPrice !== null && originalPrice > currentPrice && (
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: '#777',
-                              textDecoration: 'line-through',
-                              fontSize: { xs: '14px', sm: '16px' },
-                            }}
-                          >
-                            {currency}{originalPrice}
-                          </Typography>
-                        )}
-                        {discountPercentage && (
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: 'green',
-                              fontWeight: 'bold',
-                              fontSize: { xs: '16px', sm: '18px' },
-                            }}
-                          >
-                            {discountPercentage} OFF
-                          </Typography>
-                        )}
-                      </Box>
-                    
-                      {/* SKU & MPN */}
-                      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 2 }}>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
-                          <DetailLabel>SKU:</DetailLabel>
-                          <DetailValue>{product?.sku_number_product_code_item_number || 'N/A'}</DetailValue>
-                        </Box>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
-                          <DetailLabel>MPN:</DetailLabel>
-                          <DetailValue>{product?.mpn || 'N/A'}</DetailValue>
-                        </Box>
-                      </Box>
-                    
-                      {/* Category, Vendor, Brand */}
-                      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 2 }}>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
-                          <DetailLabel>Category:</DetailLabel>
-                          <DetailValue>{product?.end_level_category || 'N/A'}</DetailValue>
-                        </Box>
-                        {product?.vendor && (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
-                            <DetailLabel>Vendor:</DetailLabel>
-                            <DetailValue>{product?.vendor}</DetailValue>
-                          </Box>
-                        )}
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
-                          <DetailLabel>Brand:</DetailLabel>
-                          <DetailValue>{product?.brand_name || 'N/A'}</DetailValue>
-                        </Box>
-                      </Box>
-                    
-                      {/* Generate Content Button */}
-                      <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 2 }}>
-                        <Button
-                          variant="outlined"
-                          sx={{
-                            backgroundColor: '#f2f3ae',
-                            color: 'black',
-                            textTransform: 'none',
-                            fontSize: { xs: '12px', sm: '14px' },
-                          }}
-                          onClick={handleAIOptions}
-                          size="small"
-                        >
-                          Generate Content With AI
-                        </Button>
-                      </Box>
+  variant="h4"
+  gutterBottom
+  sx={{
+    fontSize: { xs: '18px', sm: '20px', md: '24px', lg: '28px' }, // responsive font sizes
+    maxWidth: { xs: '100%', sm: '90%', md: '80%', lg: '37ch' }, // responsive max width
+    fontWeight: 'bold',
+    wordWrap: 'break-word',
+    overflowWrap: 'break-word',
+    whiteSpace: 'normal',
+  }}
+>
+  {product?.product_name || 'Product Title Not Available'}
+</Typography>
+
+             
+                         {/* Price Section */}
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 2, gap: 1 }}>
+                                              {currentPrice !== undefined && currentPrice !== null && (
+                                                <Typography
+                                                 
+                                                  sx={{
+                                                    fontWeight: 'bold',
+                                                    color: '#1a73e8',
+                                                    fontSize: { xs: '16px', sm: '20px' },
+                                                  }}
+                                                >
+                                                  {currency}{currentPrice}
+                                                </Typography>
+                                              )}
+                                              {originalPrice !== undefined && originalPrice !== null && originalPrice > currentPrice && (
+                                                <Typography
+                                                  variant="body2"
+                                                  sx={{
+                                                    color: '#777',
+                                                    textDecoration: 'line-through',
+                                                    fontSize: { xs: '14px', sm: '16px' },
+                                                  }}
+                                                >
+                                                  {currency}{originalPrice}
+                                                </Typography>
+                                              )}
+                                              {discountPercentage && (
+                                                <Typography
+                                                  variant="body2"
+                                                  sx={{
+                                                    color: 'green',
+                                                    fontWeight: 'bold',
+                                                    fontSize: { xs: '14px', sm: '16px' },
+                                                  }}
+                                                >
+                                                  {discountPercentage} OFF
+                                                </Typography>
+                                              )}
+                                            </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'row', mb: 2, gap: 4 }}>
+               <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                 <DetailLabel>SKU:</DetailLabel>
+                 <DetailValue>{product?.sku_number_product_code_item_number || 'N/A'}</DetailValue>
+               </Box>
+               <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                 <DetailLabel>MPN:</DetailLabel>
+                 <DetailValue>{product?.mpn || 'N/A'}</DetailValue>
+               </Box>
+             </Box>
+
+
+             {/* Category, Vendor, Brand */}
+             <Box sx={{ display: 'flex', flexDirection: 'row', mb: 2, gap: 4, flexWrap: 'wrap' }}>
+               <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                 <DetailLabel>Category:</DetailLabel>
+                 <DetailValue>{product?.end_level_category || 'N/A'}</DetailValue>
+               </Box>
+               {product?.vendor && (
+                 <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                   <DetailLabel>Vendor:</DetailLabel>
+                   <DetailValue>{product?.vendor}</DetailValue>
+                 </Box>
+               )}
+               <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                 <DetailLabel>Brand:</DetailLabel>
+                 <DetailValue>{product?.brand_name || 'N/A'}</DetailValue>
+               </Box>
+             </Box>
+             
+                   
+                  
+                    <Box mt={2}>
+                            <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 2 }}>
+                                                  <Button
+                                                    variant="outlined"
+                                                    sx={{
+                                                      backgroundColor: '#f2f3ae',
+                                                      color: 'black',
+                                                      textTransform: 'none',
+                                                      fontSize: { xs: '14px', sm: '16px' },
+                                                    }}
+                                                    onClick={handleAIOptions}
+                                                    size="small"
+                                                  >
+                                                    Generate Content With AI
+                                                  </Button>
+                                                </Box>
+                 
+                   {/* Modal Component */}
+                                       <Modal
+                                         open={aiModalOpen}
+                                         onClose={handleCloseAIModal}
+                                         aria-labelledby="ai-modal-title"
+                                         aria-describedby="ai-modal-description"
+                                       >
+                                         <Box
+                                           sx={{
+                                             position: 'absolute',
+                                             top: '50%',
+                                             left: '50%',
+                                             transform: 'translate(-50%, -50%)',
+                                             width: { xs: 280, sm: 300 },
+                                             height: { xs: 280, sm: 300 },
+                                             bgcolor: 'background.paper',
+                                             border: '2px solid #000',
+                                             boxShadow: 24,
+                                             p: 2,
+                                             borderRadius: '8px',
+                                           }}
+                                         >
+                                           <div id="ai-modal-description">
+                                             <FetchApi onClose={handleCloseAIModal} onUpdateProduct={handleUpdateProduct} />
+                                           </div>
+                                         </Box>
+                                       </Modal>
+                                     
+                 
+                 
+                           </Box>
+                 
+                           <Box mt={2} display="flex" gap={2} alignItems="center">
+                                <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
+                              {/* Dropdown to select prompt */}
+                              <div>
+                              {!isAddingNewPrompt ? (
+                                <select
+                                  value={selectedPrompt}
+                                  onChange={handleSelectChange}
+                                  style={{ padding: '8px', fontSize: '14px' }}
+                                >
+                                  <option value="">Select a Prompt</option>
+                                  {promptList.map((prompt) => (
+                                    <option key={prompt.id} value={prompt.id}>
+                                      {prompt.name}
+                                    </option>
+                                  ))}
+                                  <option value="__add_new__">➕ Enter new Prompt</option>
+                                </select>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <input
+                                    type="text"
+                                    placeholder="Enter custom prompt"
+                                    value={customPrompt}
+                                    onChange={(e) => setCustomPrompt(e.target.value)}
+                                    style={{ padding: '8px', fontSize: '14px', width: '200px' }}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      setCustomPrompt('');
+                                      setIsAddingNewPrompt(false); // Go back to dropdown
+                                    }}
+                                    style={{ padding: '6px 10px' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            
+                            
+                            
+                            
+                              {/* Button to trigger API call */}
+                              <Button 
+                                variant="contained" 
+                                color="primary" 
+                                onClick={() => sendSelectedPromptToAPI()}  // Trigger the API call when clicked
+                                sx={{ ml: 2, textTransform:'capitalize' }} // Optional margin for spacing between dropdown and button
+                              >
+                                Rewrite
+                              </Button>
+                 
+                                    <Button
+                                onClick={handleUpdateProductTotal}
+                                disabled={loading}
+                                color="primary"
+                                sx={{
+                                 marginLeft:'5px',
+                                 
+                                  backgroundColor: theme => theme.palette.primary.main, // Using primary color from the theme
+                                  textTransform: 'capitalize',
+                                  color: 'white',
+                                }}
+                              >
+                                {loading ? 'Updating...' : ' Update'}
+                              </Button>
+                            </Box>
+                            
+                           </Box>
                     
                       {/* Modal Component */}
                       <Modal
@@ -1309,7 +1448,23 @@ setSnackbarOpen(true);
        
    <Grid container  spacing={2}>
   {/* Left Side - Product Features and Description */}
-  <Grid item xs={6} sx={{ width: '50%', fontFamily: 'Roboto, Helvetica, sans-serif', marginBottom:'5%' }}>
+  <Box
+  sx={{
+    mt: 6,
+    maxWidth: {
+      xs: '100%',   // full width on small screens
+      sm: '100%',
+      md: '530px',  // fixed max width on medium and larger screens
+    },
+    px: {
+      xs: 2,        // horizontal padding on small screens
+      sm: 2,
+      md: 0,
+    },
+  }}
+>
+  {/* Product Features */}
+  <Box sx={{maxWidth: '510px', marginTop:'-100px' }}>
   {/* Product Features */}
   <Box display="flex" alignItems="center" mt={3} mb={1}>
     <Typography variant="h6" mr={2} sx={{ fontSize: '18px', fontWeight: 600 }}>
@@ -1321,11 +1476,33 @@ setSnackbarOpen(true);
     {product?.features?.map((feature, index) => (
       <ListItem key={index} sx={{ padding: '4px 0' }}>
         <Typography sx={{ fontSize: '16px' }}>
-          • {feature}
+          {/* Check if the feature contains an anchor tag */}
+          {feature.includes('<a') ? (
+            <span dangerouslySetInnerHTML={{ __html: feature }} />
+          ) : (
+            `• ${feature}`
+          )}
         </Typography>
       </ListItem>
     ))}
   </List>
+
+  {/* Example URL link */}
+  <Box mt={2}>
+  {product?.pdfUrl && (
+    <a
+      href={product.pdfUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ fontSize: '16px', textDecoration: 'underline' }}
+    >
+      View the PDF
+    </a>
+  )}
+</Box>
+
+</Box>
+
 
   {/* Product Description */}
   <Typography variant="h6" mt={3} mb={1} sx={{ fontSize: '18px', fontWeight: 600 }}>
@@ -1334,84 +1511,52 @@ setSnackbarOpen(true);
   <Typography variant="body2" sx={{ fontSize: '16px' }}>
     {product?.long_description || 'No description available.'}
   </Typography>
-</Grid>
-
+</Box>
 
 
 <Grid item xs={12} sm={12} md={6}>
   <Box sx={{ width: '100%', overflowX: 'auto', marginTop: { xs: '0px', md: '-20px' } }}>
-    <Tabs
-      value={tabIndex}
-      onChange={handleTabChange}
-      aria-label="product details tabs"
-      variant="scrollable"
-      scrollButtons="auto"
-      sx={{
+        <Tabs
+    value={tabIndex}
+    onChange={handleTabChange}
+    aria-label="product details tabs"
+    variant="scrollable"
+    scrollButtons="auto"
+    sx={{
+      marginTop:'30px',
+      minHeight: '40px',
+      '& .MuiTab-root': {
         minHeight: '40px',
-        '& .MuiTab-root': {
-          minHeight: '40px', // reduce tab height
-          fontSize: '14px',  // responsive font
-        },
-      }}
-    >
+        fontSize: '16px',
+        textTransform: 'capitalize',
+        color: 'black',
+      },
+      '& .Mui-selected': {
+        color: 'black !important',
+      },
+    }}
+  >
        <Tab label="Product Title" {...a11yProps(0)} />
       <Tab label="Features" {...a11yProps(1)} />
       <Tab label="Description" {...a11yProps(2)} />
     </Tabs>
-    <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
-  {/* Dropdown to select prompt */}
-  <div>
-  {!isAddingNewPrompt ? (
-    <select
-      value={selectedPrompt}
-      onChange={handleSelectChange}
-      style={{ padding: '8px', fontSize: '14px' }}
-    >
-      <option value="">Select a Prompt</option>
-      {promptList.map((prompt) => (
-        <option key={prompt.id} value={prompt.id}>
-          {prompt.name}
-        </option>
-      ))}
-      <option value="__add_new__">➕ Enter new Prompt</option>
-    </select>
-  ) : (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <input
-        type="text"
-        placeholder="Enter custom prompt"
-        value={customPrompt}
-        onChange={(e) => setCustomPrompt(e.target.value)}
-        style={{ padding: '8px', fontSize: '14px', width: '200px' }}
-      />
-      <button
-        onClick={() => {
-          setCustomPrompt('');
-          setIsAddingNewPrompt(false); // Go back to dropdown
-        }}
-        style={{ padding: '6px 10px' }}
-      >
-        Cancel
-      </button>
-    </div>
-  )}
-</div>
+    {/* <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
 
 
 
-
-  {/* Button to trigger API call */}
-  <Button 
-    variant="contained" 
-    color="primary" 
-    onClick={() => sendSelectedPromptToAPI()}  // Trigger the API call when clicked
-    sx={{ ml: 2, textTransform:'capitalize' }} // Optional margin for spacing between dropdown and button
-  >
-    Rewrite
-  </Button>
-</Box>
+</Box> */}
 
 
+<Box
+  sx={{
+    mt: 2,
+    width: {
+      xs: '100%',   // Extra small screens (mobile)
+      sm: '100%',   // Small screens (tablets)
+      md: '600px',  // Medium screens and above
+    },
+  }}
+>
 {/* Tab feilds */}
 
 <TabPanel value={tabIndex} index={0}>
@@ -1422,7 +1567,7 @@ setSnackbarOpen(true);
           padding: 0,
           mb: 1,
           width: '100%',
-          maxWidth: { xs: '100%', sm: '90%', md: '80%', lg: '59ch' }, // responsive width
+          maxWidth: { xs: '100%', sm: '90%', md: '80%', lg: '90ch' }, // responsive width
           fontSize: { xs: '13px', md: '14px' }, // font size adjusts
           fontWeight: 'bold',
           wordWrap: 'break-word',
@@ -1537,11 +1682,11 @@ setSnackbarOpen(true);
                 {featureList.map((feature, featureIndex) => (
                   <Box
                     key={featureIndex}
-                    sx={{ marginBottom: 1, marginLeft:'3px', maxWidth: '59ch', overflowWrap: 'break-word' }}
+                    sx={{ marginBottom: 1, marginLeft:'3px', maxWidth: '90ch', overflowWrap: 'break-word' }}
                   >
                     {editingSetIndex === listIndex ? (
                       <TextField
-                        sx={{ maxWidth: '59ch' }}
+                        sx={{ maxWidth: '90ch' }}
                         value={editingFeatures[listIndex]?.[featureIndex] || feature}
                         onChange={(e) =>
                           handleFeatureChange(listIndex, featureIndex, e.target.value)
@@ -1618,7 +1763,7 @@ setSnackbarOpen(true);
               sx={{
                 padding: '4px 0',
                 fontSize: '0.9rem',
-                maxWidth: '59ch',
+                maxWidth: '90ch',
                 overflowWrap: 'break-word',
                 paddingLeft:'18px'
               }}
@@ -1663,7 +1808,7 @@ setSnackbarOpen(true);
             fontWeight: 'bold',
             fontSize: '16px',
             mb: 1,
-            maxWidth: '60ch',
+            maxWidth: '90ch',
             overflowWrap: 'break-word',
             display: 'flex',
             alignItems: 'center',
@@ -1671,17 +1816,20 @@ setSnackbarOpen(true);
         >
           {editMode.description && selectedEditIndex === index ? (
             <>
-            <TextField
+            <TextareaAutosize
   value={editedDescription}
   onChange={(e) => setEditedDescription(e.target.value)}
-  label="Edit Description"
-  fullWidth
-  multiline
+  placeholder="Edit Description"
   minRows={2}
-  maxRows={5}
-  variant="outlined"
-  size="small"
-  sx={{ mr: 1 }}
+  style={{
+    width: '100%',
+    maxWidth: '550px',
+    fontSize: '14px',
+    padding: '10px',
+    borderRadius: '4px',
+    border: '1px solid #ccc',
+    fontFamily: 'Roboto, Helvetica, sans-serif', // Add this line to inherit the parent's font family
+  }}
 />
 
               <IconButton onClick={handleSaveClickDescription}>
@@ -1730,7 +1878,7 @@ setSnackbarOpen(true);
 
 </TabPanel>
 
-
+</Box>
 
 
   </Box>
@@ -1887,10 +2035,12 @@ setSnackbarOpen(true);
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        cursor:'pointer'
       }}
+      onClick={() => handleQuestionClick(item.id)}
     >
       <Typography variant="body2">{item.question}</Typography>
-      <IconButton sx={{ padding: 0 }} onClick={() => handleQuestionClick(item.id)}>
+      <IconButton sx={{ padding: 0 }}>
         <ArrowForwardIcon />
       </IconButton>
     </Box>

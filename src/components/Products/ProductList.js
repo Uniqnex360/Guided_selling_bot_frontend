@@ -215,18 +215,25 @@ const handleCategoryChange = (event) => {
 
     const fetchProducts = () => {
       setLoading(true);
-      const transformedFilters = {
-        ...(Object.keys(selectedFilters).length > 0 && { attributes: selectedFilters ? selectedFilters :'' }),
-    };
+      const transformedFilters = {};
+
+      if (
+        selectedFilters &&
+        Object.keys(selectedFilters).length > 0 &&
+        Object.values(selectedFilters).some(arr => Array.isArray(arr) && arr.length > 0)
+      ) {
+        transformedFilters.attributes = selectedFilters;
+      }
+      
       fetch('https://product-assistant-gpt.onrender.com/productList/', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-              ...(selectedCategoryId && { category_id: selectedCategoryId }),
-              search_query: searchQuery || '',
-              ...transformedFilters
+            ...(selectedCategoryId && { category_id: selectedCategoryId }),
+  search_query: searchQuery || '',
+  ...transformedFilters
           }),
       })
           .then(response => response.json())
