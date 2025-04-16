@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import SendIcon from '@mui/icons-material/Send';
 
 import {
     Button, Container, Grid,RadioGroup,useMediaQuery, Tooltip,Radio, Typography,Paper,FormControlLabel, Checkbox, Box, Badge, TextField, Modal, List, ListItem, CircularProgress, IconButton, Divider, Link, Tabs, Tab
 } from '@mui/material';
-
+// import AddIcon from '@mui/icons-material/Add';
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
 import { useFetcher, useParams } from 'react-router-dom';
@@ -18,6 +19,7 @@ import CropSquareIcon from '@mui/icons-material/CropSquare';
 import CancelIcon from '@mui/icons-material/Cancel';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import AddIcon from '@mui/icons-material/Add';
 
 import TextareaAutosize from '@mui/material/TextareaAutosize';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -72,7 +74,9 @@ function a11yProps(index) {
 }
 
 const ProductDetail = () => {
-    
+  const defaultHeight = '450px';
+  const defaultWidth = '320px';
+  
   const navigate = useNavigate();
   
   const location = useLocation();
@@ -129,6 +133,9 @@ const [updatedDescription, setUpdatedDescription] = useState(productTab?.descrip
   const [editedTitle, setEditedTitle] = useState(''); // Likely managed in TitleTab
   const [editModeTitle, setEditModeTitle] = useState(false); // Likely managed in TitleTab
   const [getTitle, setGetTitle] = useState([]);
+  const [getTitleRewrite, setGetTitleRewrite] = useState([]);
+
+  
   const [getFeatures, setGetFeatures] = useState([]);
   const [getDescription, setGetDescription] = useState([]);
   const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(null);
@@ -168,9 +175,24 @@ const [isMaximized, setIsMaximized] = useState(false);
 const [selectedEditIndex, setSelectedEditIndex] = useState(null);
 const [editedDescription, setEditedDescription] = useState('');
 const [updateDesc, setUpdateDesc] = useState('');
+const chatbotRef = useRef(null);
 
 
+const handleClickOutside = (e) => {
+  if (chatbotRef.current && !chatbotRef.current.contains(e.target)) {
+    setChatOpen(false);
+  }
+};
 
+useEffect(() => {
+  // Add event listener on mount
+  document.addEventListener('mousedown', handleClickOutside);
+
+  // Clean up event listener on unmount
+  return () => {
+    document.removeEventListener('mousedown', handleClickOutside);
+  };
+}, []);
 
 // const currentIndex = productIds.findIndex(
 //   (pid) => pid.toString() === id.toString()
@@ -357,7 +379,6 @@ const handleLocalUpdate = (updatedFields) => {
     ...updatedFields,
   };
 
-  console.log('Local state updated with:', updatedProductTab);
 
   // ✅ Handle description
   const checkedDescription = updatedProductTab.description?.find(desc => desc.checked);
@@ -365,12 +386,15 @@ const handleLocalUpdate = (updatedFields) => {
 
   // ✅ Handle title and features
   setGetTitle(updatedProductTab.title || []);
+  console.log('last',updatedProductTab.title)
   setGetFeatures(updatedProductTab.features || []);
   setGetRewriteDescription(updatedProductTab.description || []);
 
-
+  setGetTitleRewrite(updatedProductTab.title || [])
   // ✅ Update the entire productTab state
   setProductTab(updatedProductTab);
+  console.log('Local state updated with:', updatedProductTab);
+
 };
 
 
@@ -397,6 +421,7 @@ const handleDescriptionChange = (event) => {
 
   console.log('✅ Selected Description:', longDescription);
 };
+
 
 
 const handleSaveClickDescription = () => {
@@ -527,8 +552,8 @@ const handleTitleChange = (index) => {
 
   // Assuming handleLocalUpdate updates the productTab state
   handleLocalUpdate({ title: updatedTitles });
-
-  console.log('oppo',updateTitle)
+  setGetTitle(updatedTitles)
+  console.log('oppo',updatedTitles)
 };
 
 
@@ -752,9 +777,14 @@ const sendSelectedPromptToAPI = async () => {
     return;
   }
 
+  const titleData = productTab.title;
+  setGetTitleRewrite(titleData)
+  console.log('Title Only:', productTab, getFeatures,getDescription);
+  
+
   const requestPayload = {
     option: selectedPromptName,
-    title: getTitle || '',
+    title:  getTitleRewrite || '',
     description: getRewriteDescription || '',
     features: getFeatures || '',
     product_id: id,
@@ -771,42 +801,44 @@ const sendSelectedPromptToAPI = async () => {
         body: JSON.stringify(requestPayload),
       }
     );
-
+  
     const result = await response.json();
-
-    if (result.status) {
+  
+    if (result.status && result.message === 'success') {
       const updatedTitle = result.data?.title || [];
       const updatedDescription = result.data?.description || [];
       const updatedFeaturesRes = result.data?.features || [];
-
+  
       setProductTab({
         title: updatedTitle,
         description: updatedDescription,
         features: updatedFeaturesRes,
       });
-
+  
       const selectedTitle = updatedTitle.find((item) => item?.checked)?.value || '';
       setGetTitle(selectedTitle);
-
+  
       const selectedDescription = updatedDescription.find((item) => item?.checked)?.value || '';
       setUpdateDesc(selectedDescription);
-  // const updatedFeatures = updatedFeaturesRes
-  //   .filter((item) => item?.checked)
-  //   .flatMap((item) => item.value); // flatten the array of arrays
-    setGetFeatures(result.data.features)
-      console.log('Updated productTab11111:', result.data.features);
+  
+      const selectedFeatures = updatedFeaturesRes
+        .filter((item) => item?.checked)
+        .flatMap((item) => item?.value || []);
+      setGetFeatures(selectedFeatures);
+  
+      console.log('Updated Features:', selectedFeatures);
+  
       setSnackbarMessage('AI content Rewrite successfully!');
     } else {
-      setSnackbarMessage(result.message || 'Failed to regenerate AI content.');
+      setSnackbarMessage('Something went wrong. Please try again.');
     }
   } catch (error) {
     console.error('Error sending data to API:', error);
     setSnackbarMessage('Something went wrong. Please try again.');
   }
-
+  
   setSnackbarOpen(true);
-};
-
+}  
 
 
   
@@ -1313,21 +1345,22 @@ setSnackbarOpen(true);
                                          open={aiModalOpen}
                                          onClose={handleCloseAIModal}
                                          aria-labelledby="ai-modal-title"
-                                         aria-describedby="ai-modal-description"
+                                         aria-describedby="ai-modal-description"  
                                        >
                                          <Box
                                            sx={{
+                                            borderRadius: '40px',
                                              position: 'absolute',
                                              top: '50%',
                                              left: '50%',
                                              transform: 'translate(-50%, -50%)',
                                              width: { xs: 280, sm: 300 },
-                                             height: { xs: 280, sm: 300 },
+                                             height: { xs: 272, sm: 300 },
                                              bgcolor: 'background.paper',
                                              border: '2px solid #000',
                                              boxShadow: 24,
                                              p: 2,
-                                             borderRadius: '8px',
+                                             borderRadius: '15px',
                                            }}
                                          >
                                            <div id="ai-modal-description">
@@ -1340,77 +1373,81 @@ setSnackbarOpen(true);
                  
                            </Box>
                  
-                           <Box mt={2} display="flex" gap={2} alignItems="center">
-                                <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
-                              {/* Dropdown to select prompt */}
-                              <div>
-                              {!isAddingNewPrompt ? (
-                                <select
-                                  value={selectedPrompt}
-                                  onChange={handleSelectChange}
-                                  style={{ padding: '8px', fontSize: '14px' }}
-                                >
-                                  <option value="">Select a Prompt</option>
-                                  {promptList.map((prompt) => (
-                                    <option key={prompt.id} value={prompt.id}>
-                                      {prompt.name}
-                                    </option>
-                                  ))}
-                                  <option value="__add_new__">➕ Enter new Prompt</option>
-                                </select>
-                              ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <input
-                                    type="text"
-                                    placeholder="Enter custom prompt"
-                                    value={customPrompt}
-                                    onChange={(e) => setCustomPrompt(e.target.value)}
-                                    style={{ padding: '8px', fontSize: '14px', width: '200px' }}
-                                  />
-                                  <button
-                                    onClick={() => {
-                                      setCustomPrompt('');
-                                      setIsAddingNewPrompt(false); // Go back to dropdown
-                                    }}
-                                    style={{ padding: '6px 10px' }}
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                            
-                            
-                            
-                            
-                              {/* Button to trigger API call */}
-                              <Button 
-                                variant="contained" 
-                                color="primary" 
-                                onClick={() => sendSelectedPromptToAPI()}  // Trigger the API call when clicked
-                                sx={{ ml: 2, textTransform:'capitalize' }} // Optional margin for spacing between dropdown and button
-                              >
-                                Rewrite
-                              </Button>
-                 
-                                    <Button
-                                onClick={handleUpdateProductTotal}
-                                disabled={loading}
-                                color="primary"
-                                sx={{
-                                 marginLeft:'5px',
-                                 
-                                  backgroundColor: theme => theme.palette.primary.main, // Using primary color from the theme
-                                  textTransform: 'capitalize',
-                                  color: 'white',
-                                }}
-                              >
-                                {loading ? 'Updating...' : ' Update'}
-                              </Button>
-                            </Box>
-                            
-                           </Box>
-                    
+                       
+<Box mt={2} display="flex" gap={2} alignItems="center">
+  {/* Prompt selection or custom input */}
+  {!isAddingNewPrompt ? (
+    <Box display="flex" alignItems="center" gap={1}>
+      <select
+        value={selectedPrompt}
+        onChange={handleSelectChange}
+        style={{ padding: '8px', fontSize: '14px' }}
+      >
+        <option value="">Select a Prompt</option>
+        {promptList.map((prompt) => (
+          <option key={prompt.id} value={prompt.id}>
+            {prompt.name}
+          </option>
+        ))}
+      </select>
+
+      {/* Add button with icon */}
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => setIsAddingNewPrompt(true)}
+        sx={{ textTransform: 'capitalize' }}
+      >
+        Add
+      </Button>
+    </Box>
+  ) : (
+    <Box display="flex" alignItems="center" gap={1}>
+      <input
+        type="text"
+        placeholder="Enter custom prompt"
+        value={customPrompt}
+        onChange={(e) => setCustomPrompt(e.target.value)}
+        style={{ padding: '8px', fontSize: '14px', width: '200px' }}
+      />
+      <Button
+        onClick={() => {
+          setCustomPrompt('');
+          setIsAddingNewPrompt(false);
+        }}
+        sx={{ textTransform: 'capitalize' }}
+      >
+        Cancel
+      </Button>
+    </Box>
+  )}
+
+  {/* Rewrite button */}
+  <Button
+    variant="contained"
+    color="primary"
+    onClick={sendSelectedPromptToAPI}
+    sx={{ textTransform: 'capitalize' }}
+  >
+    Rewrite
+  </Button>
+
+  {/* Update button */}
+  <Button
+    onClick={handleUpdateProductTotal}
+    disabled={loading}
+    color="primary"
+    sx={{
+      marginLeft: '5px',
+      backgroundColor: (theme) => theme.palette.primary.main,
+      textTransform: 'capitalize',
+      color: 'white',
+    }}
+  >
+    {loading ? 'Updating...' : 'Update'}
+  </Button>
+</Box>
+
                       {/* Modal Component */}
                       <Modal
                         open={aiModalOpen}
@@ -1472,20 +1509,31 @@ setSnackbarOpen(true);
     </Typography>
   </Box>
 
-  <List>
-    {product?.features?.map((feature, index) => (
-      <ListItem key={index} sx={{ padding: '4px 0' }}>
-        <Typography sx={{ fontSize: '16px' }}>
-          {/* Check if the feature contains an anchor tag */}
-          {feature.includes('<a') ? (
-            <span dangerouslySetInnerHTML={{ __html: feature }} />
-          ) : (
-            `• ${feature}`
-          )}
-        </Typography>
-      </ListItem>
-    ))}
-  </List>
+  <List sx={{
+  '& a': {
+    color: 'blue !important', // Use !important to override other styles
+    textDecoration: 'underline', // Optional, if you want the underline
+  },
+  '& a:visited': { // Style for visited links
+    color: 'blue !important',
+  },
+  '& a:hover': { // Optional: style for hover state
+    color: 'darkblue !important',
+  },
+}}>
+  {product?.features?.map((feature, index) => (
+    <ListItem key={index} sx={{ padding: '4px 0' }}>
+      <Typography sx={{ fontSize: '16px' }}>
+        {feature.includes('<a') ? (
+          <span dangerouslySetInnerHTML={{ __html: feature }} />
+        ) : (
+          `• ${feature}`
+        )}
+      </Typography>
+    </ListItem>
+  ))}
+</List>
+
 
   {/* Example URL link */}
   <Box mt={2}>
@@ -1494,12 +1542,17 @@ setSnackbarOpen(true);
       href={product.pdfUrl}
       target="_blank"
       rel="noopener noreferrer"
-      style={{ fontSize: '16px', textDecoration: 'underline' }}
+      style={{ 
+        fontSize: '16px', 
+        textDecoration: 'underline', 
+        color: 'blue'  // 👈 This sets the link color to blue
+      }}
     >
       View the PDF
     </a>
   )}
 </Box>
+
 
 </Box>
 
@@ -1697,7 +1750,7 @@ setSnackbarOpen(true);
                         margin="normal"
                       />
                     ) : (
-                      <Typography variant="body1" sx={{ paddingLeft: '16px', marginLeft:'35px' }}>
+                      <Typography variant="body1" sx={{ paddingLeft: '16px', }}>
                         • {feature}
                       </Typography>
                     )}
@@ -1707,7 +1760,7 @@ setSnackbarOpen(true);
             );
           })
         ) : (
-          <Typography variant="body1" sx={{ fontSize: '16px',  }} color="textSecondary">
+          <Typography variant="body1" sx={{ fontSize: '16px', marginLeft:'20px', }} color="textSecondary">
             No features available.
           </Typography>
         )}
@@ -1775,7 +1828,7 @@ setSnackbarOpen(true);
       );
     })
   ) : (
-    <Typography variant="body1" sx={{ fontSize: '16px' }} color="textSecondary">
+    <Typography variant="body1" sx={{ fontSize: '16px',marginLeft:'25px'  }} color="textSecondary">
       No features available.
     </Typography>
   )}
@@ -1871,7 +1924,7 @@ setSnackbarOpen(true);
     })}
   </RadioGroup>
 ) : (
-  <Typography variant="body2" sx={{ fontSize: '16px' }} color="textSecondary">
+  <Typography variant="body2" sx={{ fontSize: '16px', marginLeft:'25px' }} color="textSecondary">
     No description available.
   </Typography>
 )}
@@ -1904,22 +1957,24 @@ setSnackbarOpen(true);
 
 
       {chatOpen && (
-      <Box
-        sx={{
-          position: 'fixed',
-          width: isMaximized ? '31%' : '320px', // Maximized window will take 100% width
-          height: isMinimized ? '50px' : isMaximized ? '80%' : '450px', // Minimized height is small, maximized height is full
-          transition: 'all 0.3s',
-          bottom: 90,
-          right: 20,
-          bgcolor: '#fff',
-          borderRadius: 2,
-          boxShadow: 6,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+   <Box
+   ref={chatbotRef}
+   sx={{
+     position: 'fixed',
+     width: isMaximized ? defaultWidth : defaultWidth,
+     height: isMinimized ? '50px' : isMaximized ? '80%' : defaultHeight,
+     transition: 'all 0.3s',
+     bottom: 90,
+     right: 20,
+     bgcolor: '#fff',
+     borderRadius: 2,
+     boxShadow: 6,
+     overflow: 'hidden',
+     display: 'flex',
+     flexDirection: 'column',
+   }}
+ >
+ 
         {/* Header */}
         <Box sx={{ bgcolor: '#007bff', color: '#fff', p: 1.5, position: 'relative' }}>
           <Typography variant="subtitle1" fontWeight="bold">
@@ -2098,9 +2153,22 @@ setSnackbarOpen(true);
               }
             }}
           />
-          <Button variant="contained" sx={{ textTransform: 'capitalize' }} onClick={handleSendMessage}>
-            Send
-          </Button>
+<Button
+  variant="contained"
+  onClick={handleSendMessage}
+  sx={{
+    minWidth: '40px',          // 👈 Makes the button rounder
+    height: '40px',
+    borderRadius: '50%',       // 👈 Circular shape
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }}
+>
+  <SendIcon sx={{ fontSize: 18 }} /> {/* 👈 Smaller icon */}
+</Button>
+
         </Box>
       </Box>
     )}

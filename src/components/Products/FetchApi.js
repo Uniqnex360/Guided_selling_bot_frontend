@@ -79,7 +79,7 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column',     borderRadius: '40px', height: '100%', justifyContent: 'space-between' }}>
             {/* Close button aligned at the top right */}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 1,marginTop:'-10px' }}>
 

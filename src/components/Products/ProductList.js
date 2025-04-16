@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useMediaQuery, useTheme } from '@mui/material';
-
+import MinimizeOutlinedIcon from '@mui/icons-material/MinimizeOutlined';
+import MaximizeOutlinedIcon from '@mui/icons-material/MaximizeOutlined';
+import CropSquareIcon from '@mui/icons-material/CropSquare';
+import CancelIcon from '@mui/icons-material/Cancel';
 import {
     Container,
     Typography,
@@ -215,26 +218,28 @@ const handleCategoryChange = (event) => {
 
     const fetchProducts = () => {
       setLoading(true);
-      const transformedFilters = {};
-
+    
+      const requestBody = {
+        ...(selectedCategoryId && { category_id: selectedCategoryId }),
+        search_query: searchQuery?.trim() || '',
+      };
+    
+      // Only add attributes if category_id exists and selectedFilters are valid
       if (
+        selectedCategoryId &&
         selectedFilters &&
         Object.keys(selectedFilters).length > 0 &&
         Object.values(selectedFilters).some(arr => Array.isArray(arr) && arr.length > 0)
       ) {
-        transformedFilters.attributes = selectedFilters;
+        requestBody.attributes = selectedFilters;
       }
-      
+    
       fetch('https://product-assistant-gpt.onrender.com/productList/', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...(selectedCategoryId && { category_id: selectedCategoryId }),
-  search_query: searchQuery || '',
-  ...transformedFilters
-          }),
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
       })
           .then(response => response.json())
           .then(responseData => {
@@ -289,29 +294,93 @@ const handleCategoryChange = (event) => {
     const handleSearchChange = (event) => {
 
       if(searchQuery){
-        fetchProducts()
+        // fetchProducts()
       }
         setSearchQuery(event.target.value);
         setPage(0);
     };
 
+
     const handleClearSearch = () => {
-      console.log('select',selectedCategoryId)
+      console.log('Before clear:', selectedCategoryId);
+    
+      // Clear selected category and search query
+      setSelectedCategoryId('');
       setSearchQuery('');
-      setFilteredProducts(products);
       setPage(0);
       setSortConfig({ key: 'sku', direction: 'asc' });
     
-      // ✅ Clear category and refetch full list
-      setSnackbarMessage('Reset successfully!');
-      setSnackbarSeverity('error'); // red
-      setSnackbarOpen(true);
-      // fetchProducts('');
+      // Prepare request body
+      const requestBody = {
+        search_query: ''
+      };
+    
+      // Fetch full product list
+      fetch('https://product-assistant-gpt.onrender.com/productList/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+        .then(response => response.json())
+        .then(responseData => {
+          const productList = responseData.data?.products || [];
+          setProducts(productList);
+          setFilteredProducts(productList); // Make sure filtered list is also updated
+    
+          // Show success snackbar after data is updated
+          setSnackbarMessage('Reset successfully!');
+          setSnackbarSeverity('error'); // if this is a success message, change to 'success'
+          setSnackbarOpen(true);
+        })
+        .catch(error => {
+          console.error('Error fetching products:', error);
+          setSnackbarMessage('Something went wrong!');
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
+        });
+    
+      // Optional: If you already have a fetchProducts() function that does this, you can just call it instead
+      // fetchProducts();
+    };
+    
+  //   const handleClearSearch = () => {
+  //     console.log('select',selectedCategoryId)
+  //     setSelectedCategoryId('')
+  //     console.log('select11111',selectedCategoryId)
+  //  if(selectedCategoryId){
+  //      requestBody ={
+  //       search_query:''
+  //      }
+  //   fetch('https://product-assistant-gpt.onrender.com/productList/', {
+  //     method: 'POST',
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: JSON.stringify(requestBody),
+  //   })
+  //       .then(response => response.json())
+  //       .then(responseData => {
+  //           const productList = responseData.data?.products || [];
+  //           setProducts(productList);
+  //       })
+  //  }
+  //     setSearchQuery('');
+  //     setFilteredProducts(products);
+  //     setPage(0);
+  //     setSortConfig({ key: 'sku', direction: 'asc' });
+  //     // ✅ Clear category and refetch full list
+  //     setSnackbarMessage('Reset successfully!');
+  //     fetchProducts()
+  //     setSnackbarSeverity('error'); // red
+  //     setSnackbarOpen(true);
+  //     // fetchProducts('');
   
     
-        // Show snackbar
-        setOpenSnackbar(true);
-    };
+  //       // Show snackbar
+  //       setOpenSnackbar(true);
+  //   };
     
     // Toggle between grid and list view
     const toggleViewMode = (mode) => {
@@ -631,7 +700,7 @@ const handleCategoryChange = (event) => {
   )}
 </Paper>
 
-<Box sx={{paddingRight:'30px'}}>
+<Box sx={{paddingRight:'35px'}}>
             <TablePagination
                 rowsPerPageOptions={[10, 25, 50, 100]}
                 component="div"
@@ -667,7 +736,7 @@ const handleCategoryChange = (event) => {
                 color="primary"
                 style={{
                     position: 'fixed',
-                    bottom: '30px',
+                    bottom: '15px',
                     right: '10px',
                     width: '60px',
                     height: '60px',
@@ -811,7 +880,15 @@ const handleCategoryChange = (event) => {
         paddingRight: '40px',
     }}
 >
-    {maximized ? 'Product Finder' : 'PF'}
+<Typography
+  sx={{
+    marginTop:'5px',
+    fontSize: maximized ? '18px' : '14px', // 👈 change size based on state
+    fontWeight: 600,
+  }}
+>
+  Product Finder
+</Typography>
 
     <Box
     sx={{
@@ -832,8 +909,8 @@ const handleCategoryChange = (event) => {
                 disabled={!maximized}
                 sx={{
                     minWidth: '32px',
+                    color:'black',
                     height: '32px',
-                    marginTop:'-1px',
                     padding: '4px',
                     lineHeight: 1,
                     display: 'flex',
@@ -841,7 +918,7 @@ const handleCategoryChange = (event) => {
                     justifyContent: 'center',
                 }}
             >
-                🗕
+               <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-5px' }} />
             </Button>
         </span>
     </Tooltip>
@@ -856,8 +933,9 @@ const handleCategoryChange = (event) => {
                 sx={{
                     minWidth: '32px',
                     height: '32px',
-                    marginTop:'10px',
                     marginTop:'5px',
+                    color:'black',
+                    // marginTop:'5px',
                     padding: '4px',
                     lineHeight: 1,
                     display: 'flex',
@@ -865,7 +943,7 @@ const handleCategoryChange = (event) => {
                     justifyContent: 'center',
                 }}
             >
-                🗖
+                <CropSquareIcon fontSize="small" />
             </Button>
         </span>
     </Tooltip>
@@ -876,6 +954,8 @@ const handleCategoryChange = (event) => {
             onClick={() => setShowPopup(false)}
             size="small"
             sx={{
+              marginTop:'5px',
+              color:'black',
                 minWidth: '32px',
                 height: '32px',
                 padding: '4px',
@@ -885,7 +965,7 @@ const handleCategoryChange = (event) => {
                 justifyContent: 'center',
             }}
         >
-            <CloseIcon fontSize="small" />
+             <CloseIcon fontSize="small" />
         </Button>
     </Tooltip>
 </Box>
@@ -896,11 +976,13 @@ const handleCategoryChange = (event) => {
         <>
             <DialogContent dividers>
                 <FormControl fullWidth margin="normal">
-                    <InputLabel>Category</InputLabel>
+                    <InputLabel sx={{ fontSize: '14px' }}>Category</InputLabel>
                     <Select
                         value={selectedCategoryId}
                         label="Category"
                         onChange={handleCategoryChange}
+                        sx={{ fontSize: '14px' }} // This sets the font size of the selected value
+                        
                     >
                         {categoryOptions.map((category) => (
                             <MenuItem sx={{fontSize:'14px'}} key={category.id} value={category.id}>
