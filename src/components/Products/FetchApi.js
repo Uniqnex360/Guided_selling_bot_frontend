@@ -68,6 +68,7 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
                 if (data?.status) {
                     // Update product details with AI response
                     onUpdateProduct(updatedProduct);  // Pass updated product details back to parent component
+               
                 }
             })
             

@@ -973,6 +973,7 @@ const handleSendMessage = () => {
     const handleUpdateProduct = (updatedProduct) => {
         console.log('3333111',updatedProduct)
         setProductTab(updatedProduct); // Update the product details in parent component
+        fetchProductDetails(id);
     };
 
     const handleCloseAIModal = () => {
@@ -1525,14 +1526,21 @@ setSnackbarOpen(true);
  {product?.features && product.features.length > 0 ? (
   product.features.map((feature, index) => (
     <ListItem key={index} sx={{ padding: '4px 0' }}>
-      <Typography sx={{ fontSize: '16px' }}>
-        {feature.includes('<a') ? (
-          <span dangerouslySetInnerHTML={{ __html: feature }} />
-        ) : (
-          `• ${feature}`
-        )}
-      </Typography>
-    </ListItem>
+    <Typography sx={{ fontSize: '16px' }}>
+      {/<a|<img/.test(feature) ? (
+        <span
+          dangerouslySetInnerHTML={{
+            __html: feature
+              .replace(/<img /g, '<img style="width: 500px; display: block; margin: 10px 0;" ')
+          }}
+        />
+      ) : (
+        `• ${feature}`
+      )}
+    </Typography>
+  </ListItem>
+  
+  
   ))
 ) : (
   <Typography sx={{ fontSize: '16px',  color: 'gray' }}>
