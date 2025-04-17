@@ -3,6 +3,7 @@ import { useMediaQuery, useTheme } from '@mui/material';
 import MinimizeOutlinedIcon from '@mui/icons-material/MinimizeOutlined';
 import MaximizeOutlinedIcon from '@mui/icons-material/MaximizeOutlined';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import CancelIcon from '@mui/icons-material/Cancel';
 import {
     Container,
@@ -194,11 +195,28 @@ const handleCategoryChange = (event) => {
         setSelectedFilters({});
         setCategoryFilters([]);
         setCategoryOptions([]);
-        fetchCategories()
         setSnackbarMessage('Reset successfully!');
         setSnackbarSeverity('error'); // red
         setSnackbarOpen(true);
-        fetchProducts()
+        const requestBody = {
+          search_query: ''
+        };
+      
+        // Fetch full product list
+        fetch('https://product-assistant-gpt.onrender.com/productList/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        })
+          .then(response => response.json())
+          .then(responseData => {
+            const productList = responseData.data?.products || [];
+            setProducts(productList);
+            setFilteredProducts(productList); // Make sure filtered list is also updated
+            fetchCategories()
+          })  
     };
 
     // useEffect(() => {
@@ -295,6 +313,7 @@ const handleCategoryChange = (event) => {
 
       if(searchQuery){
         // fetchProducts()
+        setSelectedCategoryId('');
       }
         setSearchQuery(event.target.value);
         setPage(0);
@@ -747,7 +766,7 @@ const handleCategoryChange = (event) => {
                 onClick={() => {
                   setShowPopup(true);        // show popup
                   setSearchQuery('');        // clear search input
-                  fetchProducts();           // fetch with cleared search
+                  // fetchProducts();           // fetch with cleared search
                   setPage(0);                // reset pagination
               }}
             >
@@ -871,6 +890,8 @@ const handleCategoryChange = (event) => {
 >
 <DialogTitle
     style={{
+      
+    backgroundColor:'#1976d2',
         textAlign: 'center',
         fontWeight: 'bold',
         color: '#7B61FF',
@@ -885,6 +906,7 @@ const handleCategoryChange = (event) => {
     marginTop:'5px',
     fontSize: maximized ? '18px' : '14px', // 👈 change size based on state
     fontWeight: 600,
+    color:'white'
   }}
 >
   Product Finder
@@ -918,7 +940,7 @@ const handleCategoryChange = (event) => {
                     justifyContent: 'center',
                 }}
             >
-               <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-5px' }} />
+               <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-6px' }} />
             </Button>
         </span>
     </Tooltip>
@@ -1020,23 +1042,31 @@ const handleCategoryChange = (event) => {
                     </Accordion>
                 ))}
 
-                <div style={{ marginTop: '10px', textAlign: 'right' }}>
-                    <Button
-                        variant="text"
-                        color="error"
-                        onClick={handleClearFilters}
-                        style={{ fontWeight: 'bold' }}
-                    >
-                        ❌ Reset All
-                    </Button>
-                </div>
+
             </DialogContent>
 
             <DialogActions>
-                <Button onClick={() => setShowPopup(false)} color="primary">
-                    Close
-                </Button>
-            </DialogActions>
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+    {/* Left Side - Reset Button */}
+    <Tooltip title="Reset All Filters" arrow>
+      <Button
+        variant="text"
+        color="error"
+        onClick={handleClearFilters}
+        sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
+      >
+        <RestartAltIcon fontSize="small" />
+        Reset All
+      </Button>
+    </Tooltip>
+
+    {/* Right Side - Close Button */}
+    <Button onClick={() => setShowPopup(false)} color="primary">
+      Close
+    </Button>
+  </Box>
+</DialogActions>
+
         </>
     )}
 </Dialog>

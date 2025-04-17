@@ -1488,7 +1488,8 @@ setSnackbarOpen(true);
   <Box
   sx={{
     mt: 6,
-    maxWidth: {
+    width: '526px',
+        maxWidth: {
       xs: '100%',   // full width on small screens
       sm: '100%',
       md: '530px',  // fixed max width on medium and larger screens
@@ -1521,7 +1522,8 @@ setSnackbarOpen(true);
     color: 'darkblue !important',
   },
 }}>
-  {product?.features?.map((feature, index) => (
+ {product?.features && product.features.length > 0 ? (
+  product.features.map((feature, index) => (
     <ListItem key={index} sx={{ padding: '4px 0' }}>
       <Typography sx={{ fontSize: '16px' }}>
         {feature.includes('<a') ? (
@@ -1531,7 +1533,13 @@ setSnackbarOpen(true);
         )}
       </Typography>
     </ListItem>
-  ))}
+  ))
+) : (
+  <Typography sx={{ fontSize: '16px',  color: 'gray' }}>
+    No features available
+  </Typography>
+)}
+
 </List>
 
 
@@ -1561,9 +1569,13 @@ setSnackbarOpen(true);
   <Typography variant="h6" mt={3} mb={1} sx={{ fontSize: '18px', fontWeight: 600 }}>
     Description:
   </Typography>
-  <Typography variant="body2" sx={{ fontSize: '16px' }}>
-    {product?.long_description || 'No description available.'}
-  </Typography>
+  <Typography
+  variant="body2"
+  sx={{ fontSize: '16px', color: product?.long_description ? 'inherit' : 'gray' }}
+>
+  {product?.long_description || 'No description available.'}
+</Typography>
+
 </Box>
 
 
@@ -1678,11 +1690,16 @@ setSnackbarOpen(true);
         </Box>
       ) : (
         <ListItem>
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-  <Typography variant="body1" sx={{ fontSize: '16px', textAlign: 'center' }} color="textSecondary">
+   {/* <Box sx={{ display: 'flex', justifyContent: 'center' }}> */}
+  <Typography
+    variant="body1"
+    sx={{ fontSize: '16px', textAlign: 'center',marginLeft:'19%' }}
+    color="textSecondary"
+  >
     No title available
   </Typography>
-</Box>
+{/* </Box> */}
+
 
         </ListItem>
       )}
@@ -1760,7 +1777,7 @@ setSnackbarOpen(true);
             );
           })
         ) : (
-          <Typography variant="body1" sx={{ fontSize: '16px', marginLeft:'20px', }} color="textSecondary">
+          <Typography variant="body1" sx={{ fontSize: '16px', marginLeft:'18%' }} color="textSecondary">
             No features available.
           </Typography>
         )}
@@ -1828,7 +1845,7 @@ setSnackbarOpen(true);
       );
     })
   ) : (
-    <Typography variant="body1" sx={{ fontSize: '16px',marginLeft:'25px'  }} color="textSecondary">
+    <Typography variant="body1" sx={{ fontSize: '16px',marginLeft:'18%' }} color="textSecondary">
       No features available.
     </Typography>
   )}
@@ -1860,39 +1877,42 @@ setSnackbarOpen(true);
           sx={{
             fontWeight: 'bold',
             fontSize: '16px',
-            mb: 1,
+            // mb: 1,
             maxWidth: '90ch',
             overflowWrap: 'break-word',
             display: 'flex',
             alignItems: 'center',
           }}
         >
-          {editMode.description && selectedEditIndex === index ? (
-            <>
-            <TextareaAutosize
-  value={editedDescription}
-  onChange={(e) => setEditedDescription(e.target.value)}
-  placeholder="Edit Description"
-  minRows={2}
-  style={{
-    width: '100%',
-    maxWidth: '550px',
-    fontSize: '14px',
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontFamily: 'Roboto, Helvetica, sans-serif', // Add this line to inherit the parent's font family
-  }}
-/>
+        {editMode.description && selectedEditIndex === index ? (
+  <Box sx={{ position: 'relative', width: '100%', maxWidth: '550px' }}>
+    {/* Button group aligned top-right */}
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end',  }}>
+      <IconButton onClick={handleSaveClickDescription}>
+        <SaveIcon />
+      </IconButton>
+      <IconButton onClick={() => setEditMode({ ...editMode, description: false })}>
+        <CancelIcon />
+      </IconButton>
+    </Box>
 
-              <IconButton onClick={handleSaveClickDescription}>
-                <SaveIcon />
-              </IconButton>
-              <IconButton onClick={() => setEditMode({ ...editMode, description: false })}>
-                <CancelIcon />
-              </IconButton>
-            </>
-          ) : (
+    {/* Editable Textarea */}
+    <TextareaAutosize
+      value={editedDescription}
+      onChange={(e) => setEditedDescription(e.target.value)}
+      placeholder="Edit Description"
+      minRows={3}
+      style={{
+        width: '100%',
+        fontSize: '14px',
+        padding: '10px',
+        borderRadius: '4px',
+        border: '1px solid #ccc',
+        fontFamily: 'Roboto, Helvetica, sans-serif',
+      }}
+    />
+  </Box>
+) : (
             <>
               <FormControlLabel
                 value={descValue}
@@ -1904,7 +1924,7 @@ setSnackbarOpen(true);
                 }
               />
 
-              {/* ✅ Only show edit icon if this item is selected */}
+            
               {isSelected && (
                 <IconButton
                   onClick={() => {
@@ -1924,7 +1944,7 @@ setSnackbarOpen(true);
     })}
   </RadioGroup>
 ) : (
-  <Typography variant="body2" sx={{ fontSize: '16px', marginLeft:'25px' }} color="textSecondary">
+  <Typography variant="body2" sx={{ fontSize: '16px', marginLeft:'15%',alignItems:'center' }} color="textSecondary">
     No description available.
   </Typography>
 )}
@@ -1976,7 +1996,7 @@ setSnackbarOpen(true);
  >
  
         {/* Header */}
-        <Box sx={{ bgcolor: '#007bff', color: '#fff', p: 1.5, position: 'relative' }}>
+        <Box sx={{ bgcolor: '#1976d2', color: '#fff', p: 1.5, position: 'relative' }}>
           <Typography variant="subtitle1" fontWeight="bold">
             Product Chat Assistant
           </Typography>
@@ -1984,18 +2004,30 @@ setSnackbarOpen(true);
           <Box sx={{ position: 'absolute', right: 8, top: 8, display: 'flex', gap: 1 }}>
   {/* Minimize Button */}
   <Tooltip title="Minimize" arrow>
-  <IconButton size="small" sx={{ color: 'black' }} onClick={handleMinimize}>
-    <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-12px' }} />
-  </IconButton>
-</Tooltip>
-
+    <span>
+      <IconButton
+        size="small"
+        sx={{ color: 'black' }}
+        onClick={handleMinimize}
+        disabled={isMinimized}
+      >
+        <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-10px' }} />
+      </IconButton>
+    </span>
+  </Tooltip>
 
   {/* Maximize Button */}
   <Tooltip title="Maximize" arrow>
-    <IconButton size="small" sx={{ color: 'black' }} onClick={handleMaximize}>
-      <CropSquareIcon fontSize="small" />
-      {/* CropSquareIcon matches the Windows maximize icon better */}
-    </IconButton>
+    <span>
+      <IconButton
+        size="small"
+        sx={{ color: 'black' }}
+        onClick={handleMaximize}
+        disabled={isMaximized}
+      >
+        <CropSquareIcon fontSize="small" />
+      </IconButton>
+    </span>
   </Tooltip>
 
   {/* Close Button */}
@@ -2005,6 +2037,7 @@ setSnackbarOpen(true);
     </IconButton>
   </Tooltip>
 </Box>
+
 
         </Box>
 
