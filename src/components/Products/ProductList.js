@@ -472,7 +472,7 @@ const ProductList = () => {
 
                 <Divider sx={{ my: 2 }} />
 
-                {/* Price Range Section - UPDATED TO MATCH IMAGE */}
+                {/* Price Range Section */}
                 <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, fontSize: '16px', color: '#333' }}>
                         Price Range
@@ -524,7 +524,6 @@ const ProductList = () => {
                                 </Box>
                             }
                             sx={{
-                                // Ensure the entire FormControlLabel behaves as a single line
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
@@ -532,9 +531,8 @@ const ProductList = () => {
                                 width: '100%',
                                 margin: 0,
                                 padding: '4px 0',
-                                // This targets the label content specifically
                                 '& .MuiFormControlLabel-label': {
-                                    flexGrow: 1,
+                                    width: '100%',
                                     marginLeft: '8px',
                                     display: 'flex',
                                     justifyContent: 'space-between',
@@ -764,7 +762,7 @@ const ProductList = () => {
                 {/* Content Area */}
                 <Box sx={{ flex: 1, overflow: 'auto', p: 2, backgroundColor: '#f1f3f6' }}>
                     {viewMode === 'list' ? (
-                        <TableContainer component={Paper}>
+                        <TableContainer component={Paper} sx={{ maxHeight: '100%' }}>
                             <Table stickyHeader>
                                 <TableHead>
                                     <TableRow>
