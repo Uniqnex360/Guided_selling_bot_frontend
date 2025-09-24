@@ -228,10 +228,13 @@ const ProductList = () => {
     };
 
     const handleBrandChange = (brandName) => {
-        const newSelectedBrands = selectedBrands.includes(brandName)
-            ? selectedBrands.filter(name => name !== brandName)
-            : [...selectedBrands, brandName];
-        setSelectedBrands(newSelectedBrands);
+        setSelectedBrands(prevSelectedBrands => {
+            if (prevSelectedBrands.includes(brandName)) {
+                return prevSelectedBrands.filter(name => name !== brandName);
+            } else {
+                return [...prevSelectedBrands, brandName];
+            }
+        });
     };
 
     const handlePriceRangeChange = (rangeId) => {
@@ -435,13 +438,19 @@ const ProductList = () => {
                                 </Box>
                             }
                             sx={{
-                                display: 'block',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
                                 mb: 0.5,
                                 width: '100%',
                                 margin: 0,
+                                padding: '4px 0',
                                 '& .MuiFormControlLabel-label': {
                                     width: '100%',
-                                    marginLeft: '8px'
+                                    marginLeft: '8px',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
                                 }
                             }}
                         />
@@ -463,13 +472,13 @@ const ProductList = () => {
 
                 <Divider sx={{ my: 2 }} />
 
-                {/* Price Range Section */}
+                {/* Price Range Section - UPDATED TO MATCH IMAGE */}
                 <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, fontSize: '16px', color: '#333' }}>
                         Price Range
                     </Typography>
 
-                    {/* Show all link */}
+                    {/* Show all link based on your new image */}
                     <Button
                         variant="text"
                         color="primary"
@@ -477,9 +486,16 @@ const ProductList = () => {
                         sx={{
                             mb: 2,
                             textTransform: 'none',
-                            fontSize: '12px',
-                            padding: '4px 0',
-                            textDecoration: 'underline'
+                            fontSize: '14px',
+                            padding: '0px',
+                            textDecoration: 'none',
+                            fontWeight: 400,
+                            color: '#2563EB',
+                            '&:hover': {
+                                backgroundColor: 'transparent',
+                                textDecoration: 'underline',
+                            },
+                            justifyContent: 'flex-start',
                         }}
                     >
                         Show all
@@ -508,20 +524,28 @@ const ProductList = () => {
                                 </Box>
                             }
                             sx={{
-                                display: 'block',
+                                // Ensure the entire FormControlLabel behaves as a single line
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
                                 mb: 0.5,
                                 width: '100%',
                                 margin: 0,
+                                padding: '4px 0',
+                                // This targets the label content specifically
                                 '& .MuiFormControlLabel-label': {
-                                    width: '100%',
-                                    marginLeft: '8px'
+                                    flexGrow: 1,
+                                    marginLeft: '8px',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
                                 }
                             }}
                         />
                     ))}
 
                     {/* Price Slider */}
-                    <Box sx={{ mt: 3, px: 1 }}>
+                    <Box sx={{ mt: 3, px: 0 }}>
                         <Slider
                             value={priceRange}
                             onChange={(event, newValue) => setPriceRange(newValue)}
@@ -531,29 +555,54 @@ const ProductList = () => {
                             sx={{
                                 color: '#2563EB',
                                 '& .MuiSlider-thumb': {
-                                    width: 16,
-                                    height: 16,
+                                    width: 12,
+                                    height: 12,
+                                    backgroundColor: 'white',
+                                    border: '1px solid #2563EB',
+                                    boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                                    '&:focus, &:hover, &.Mui-active': {
+                                        boxShadow: '0 1px 8px rgba(0,0,0,0.3), 0 0 0 4px rgba(37,99,235,0.16)',
+                                    },
                                 },
                                 '& .MuiSlider-rail': {
                                     height: 4,
+                                    backgroundColor: '#e0e0e0',
+                                    borderRadius: '2px',
                                 },
                                 '& .MuiSlider-track': {
                                     height: 4,
+                                    backgroundColor: '#2563EB',
+                                    borderRadius: '2px',
+                                },
+                                '& .MuiSlider-valueLabel': {
+                                    backgroundColor: '#2563EB',
                                 },
                             }}
                         />
 
-                        {/* Price input fields */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+                        {/* Price input fields and GO button */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2 }}>
                             <TextField
                                 size="small"
                                 value={priceRange[0]}
                                 onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
                                 sx={{
-                                    width: 60,
+                                    width: 80,
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: '4px',
+                                        '& fieldset': {
+                                            borderColor: '#ddd',
+                                        },
+                                        '&:hover fieldset': {
+                                            borderColor: '#999',
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                            borderColor: '#2563EB',
+                                        },
+                                    },
                                     '& .MuiInputBase-input': {
-                                        fontSize: '12px',
-                                        padding: '6px 8px'
+                                        fontSize: '14px',
+                                        padding: '8px 10px'
                                     }
                                 }}
                             />
@@ -563,24 +612,38 @@ const ProductList = () => {
                                 value={priceRange[1]}
                                 onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 140])}
                                 sx={{
-                                    width: 60,
+                                    width: 80,
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: '4px',
+                                        '& fieldset': {
+                                            borderColor: '#ddd',
+                                        },
+                                        '&:hover fieldset': {
+                                            borderColor: '#999',
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                            borderColor: '#2563EB',
+                                        },
+                                    },
                                     '& .MuiInputBase-input': {
-                                        fontSize: '12px',
-                                        padding: '6px 8px'
+                                        fontSize: '14px',
+                                        padding: '8px 10px'
                                     }
                                 }}
                             />
                             <Button
                                 variant="contained"
-                                size="small"
+                                onClick={() => {}}
                                 sx={{
                                     minWidth: 'auto',
-                                    padding: '6px 12px',
-                                    fontSize: '12px',
+                                    padding: '8px 16px',
+                                    fontSize: '14px',
                                     textTransform: 'uppercase',
                                     backgroundColor: '#2563EB',
+                                    boxShadow: 'none',
                                     '&:hover': {
                                         backgroundColor: '#1e4baf',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                                     }
                                 }}
                             >
@@ -589,12 +652,25 @@ const ProductList = () => {
                         </Box>
 
                         {/* Current price display */}
-                        <Typography sx={{ fontSize: '12px', color: '#6c757d', mt: 1 }}>
-                            Current: ${priceRange[0]} - ${priceRange[1]}
-                        </Typography>
+                        <Box sx={{
+                            mt: 2,
+                            px: 1,
+                            py: 1,
+                            backgroundColor: '#e6f0ff',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                        }}>
+                            <Typography sx={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>
+                                Current
+                            </Typography>
+                            <Typography sx={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>
+                                ${priceRange[0]} - ${priceRange[1]}
+                            </Typography>
+                        </Box>
                     </Box>
                 </Box>
-
                 {/* Clear All Button */}
                 <Box sx={{ mt: 3 }}>
                     <Button
@@ -918,7 +994,6 @@ const ProductList = () => {
                                                                 sx={{
                                                                     fontSize: '12px',
                                                                     fontWeight: 400,
-                                                                    color: '#212121',
                                                                     lineHeight: 1.3,
                                                                     mb: 1,
                                                                     overflow: 'hidden',
@@ -927,6 +1002,7 @@ const ProductList = () => {
                                                                     WebkitBoxOrient: 'vertical',
                                                                     WebkitLineClamp: 2,
                                                                     minHeight: '30px',
+                                                                    color: '#2563EB',
                                                                 }}
                                                             >
                                                                 {product.name}
