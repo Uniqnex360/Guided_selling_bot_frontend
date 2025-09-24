@@ -156,6 +156,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import SendIcon from '@mui/icons-material/Send';
 
 import DotLoading from '../Loading/DotLoading';
+import { API_BASE_URL } from "../../utils/config";
 // function Example() {
 
 
@@ -253,7 +254,7 @@ const Example = () => {
   const [selectedEditIndex, setSelectedEditIndex] = useState(null);
   const [editedDescription, setEditedDescription] = useState('');
   const [updateDesc, setUpdateDesc] = useState('');
-  
+
   
   const handleTabChange = (event, newValue) => {
     setTabIndex(newValue);
@@ -336,7 +337,7 @@ const Example = () => {
   
   const fetchProducts = () => {
     setLoading(true);
-    fetch('https://product-assistant-gpt.onrender.com/productList/', {
+    fetch(`${API_BASE_URL}/productList/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -442,7 +443,7 @@ const Example = () => {
   
     if(updatedFeatures){
   
-        fetch('https://product-assistant-gpt.onrender.com/updategeneratedContent/', {
+        fetch(`${API_BASE_URL}/updategeneratedContent/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -585,7 +586,7 @@ const Example = () => {
     setEditMode({ ...editMode, description: false });
     setSelectedEditIndex(null);
     if(updatedDescriptions){
-      fetch('https://product-assistant-gpt.onrender.com/updategeneratedContent/', {
+      fetch(`${API_BASE_URL}/updategeneratedContent/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -636,7 +637,7 @@ const Example = () => {
       // 5. Send only that checked+edited value to API
       if (updatedTitles) {
      
-          fetch('https://product-assistant-gpt.onrender.com/updategeneratedContent/', {
+          fetch(`${API_BASE_URL}/updategeneratedContent/`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -798,7 +799,7 @@ const Example = () => {
   useEffect(() => {
     const fetchPromptList = async () => {
       try {
-        const response = await fetch('https://product-assistant-gpt.onrender.com/fetchPromptList/');
+        const response = await fetch(`${API_BASE_URL}/fetchPromptList/`);
         const data = await response.json();
         
         if (data?.status && Array.isArray(data.data)) {
@@ -853,7 +854,7 @@ const Example = () => {
   
     try {
       const response = await fetch(
-        'https://product-assistant-gpt.onrender.com/regenerateAiContents/',
+        `${API_BASE_URL}/regenerateAiContents/`,
         {
           method: 'POST',
           headers: {
@@ -927,7 +928,7 @@ const Example = () => {
   useEffect(() => {
       if (chatOpen && id) {
         setLoadingQuestion(true);
-        fetch(`https://product-assistant-gpt.onrender.com/fetchProductQuestions/${id}`)
+        fetch(`${API_BASE_URL}/fetchProductQuestions/${id}`)
           .then((response) => response.json())
           .then((responseData) => {
             setData(responseData.data); // Setting fetched data
@@ -963,7 +964,7 @@ const Example = () => {
   
       // Simulate delay before API call
       setTimeout(() => {
-        fetch('https://product-assistant-gpt.onrender.com/chatbotView/', {
+        fetch('${API_BASE_URL}/chatbotView/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1051,7 +1052,7 @@ const Example = () => {
         setLoading(true);
       
         try {
-          const response = await fetch('https://product-assistant-gpt.onrender.com/updateProductContent/', {
+          const response = await fetch(`${API_BASE_URL}/updateProductContent/`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -1100,7 +1101,7 @@ const Example = () => {
       const fetchProductDetails = (id) => {
         setLoading(true);
       
-        fetch(`https://product-assistant-gpt.onrender.com/productDetail/${id}`)
+        fetch(`${API_BASE_URL}/productDetail/${id}`)
           .then((response) => response.json())
           .then((data) => {
             if (data?.data?.product) {

@@ -41,6 +41,7 @@ import { Edit as EditIcon } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { ListAlt as ListAltIcon, GridView as GridViewIcon } from '@mui/icons-material';
 import DotLoading from '../Loading/DotLoading';
+import { API_BASE_URL } from '../../utils/config';
 
 const ProductList = () => {
   
@@ -96,7 +97,7 @@ const toggleDialogSize = () => {
 
     const fetchCategories = () => {
         setLoading(true);
-        fetch("https://product-assistant-gpt.onrender.com/fourth_level_categories/")
+        fetch(`${API_BASE_URL}/fourth_level_categories/`)
             .then(response => response.json())
             .then(data => {
                 setCategoryOptions(data.data.categories || []);
@@ -112,7 +113,7 @@ const toggleDialogSize = () => {
   // Fetch filters based on categoryId
   const fetchFilters = (categoryId) => {
     setLoading(true); // Start loading for filters
-    fetch(`https://product-assistant-gpt.onrender.com/category_filters/?category_id=${categoryId}`, {
+    fetch(`${API_BASE_URL}/category_filters/?category_id=${categoryId}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -203,7 +204,7 @@ const handleCategoryChange = (event) => {
         };
       
         // Fetch full product list
-        fetch('https://product-assistant-gpt.onrender.com/productList/', {
+        fetch(`${API_BASE_URL}/productList/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -252,7 +253,7 @@ const handleCategoryChange = (event) => {
         requestBody.attributes = selectedFilters;
       }
     
-      fetch('https://product-assistant-gpt.onrender.com/productList/', {
+      fetch(`${API_BASE_URL}/productList/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -335,7 +336,7 @@ const handleCategoryChange = (event) => {
       };
     
       // Fetch full product list
-      fetch('https://product-assistant-gpt.onrender.com/productList/', {
+      fetch(`${API_BASE_URL}/productList/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -6,6 +6,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit'; // Import the Edit icon
 import SaveIcon from '@mui/icons-material/Save'; // Import Save icon
 import CancelIcon from '@mui/icons-material/Cancel';
+import { API_BASE_URL } from '../../utils/config';
 
 
 function TabPanel(props) {
@@ -121,7 +122,7 @@ const handleTabChange = (event, newTabIndex) => {
     // Modify this payload as per your API requirements
     try {
       const response = await fetch(
-        'https://product-assistant-gpt.onrender.com/regenerateAiContents/',
+        `${API_BASE_URL}/regenerateAiContents/`,
         {
           method: 'POST',
           headers: {

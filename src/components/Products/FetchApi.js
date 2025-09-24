@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button, FormControl, FormGroup, FormControlLabel, Checkbox, Box, IconButton, Typography, CircularProgress } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
+import { API_BASE_URL } from '../../utils/config';
 
 export default function FetchApi({ onClose, onUpdateProduct }) {
     const { id } = useParams();
@@ -18,7 +19,7 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
     });
 
     useEffect(() => {
-        fetch(`https://product-assistant-gpt.onrender.com/productDetail/${id}`)
+        fetch(`${API_BASE_URL}/productDetail/${id}`)
             .then((response) => response.json())
             .then((data) => {
                 setProduct(data.data.product);
@@ -47,7 +48,7 @@ export default function FetchApi({ onClose, onUpdateProduct }) {
 
         setLoading(true); // Show loading indicator during API call
 
-        fetch(`https://product-assistant-gpt.onrender.com/fetchAiContent/`, {
+        fetch(`${API_BASE_URL}/fetchAiContent/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
