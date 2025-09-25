@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import SendIcon from "@mui/icons-material/Send";
 
 import {
@@ -12,31 +12,25 @@ import {
   Typography,
   Paper,
   FormControlLabel,
-  Checkbox,
   Box,
-  Badge,
   TextField,
   Modal,
   List,
   ListItem,
   CircularProgress,
   IconButton,
-  Divider,
-  Link,
   Tabs,
   Tab,
 } from "@mui/material";
-// import AddIcon from '@mui/icons-material/Add';
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
-import { useFetcher, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import CardMedia from "@mui/material/CardMedia";
 import { styled } from "@mui/material/styles";
 import FetchApi from "./FetchApi";
-import EditIcon from "@mui/icons-material/Edit"; // Import the Edit icon
-import SaveIcon from "@mui/icons-material/Save"; // Import Save icon
+import EditIcon from "@mui/icons-material/Edit";
+import SaveIcon from "@mui/icons-material/Save";
 import MinimizeOutlinedIcon from "@mui/icons-material/MinimizeOutlined";
-import MaximizeOutlinedIcon from "@mui/icons-material/MaximizeOutlined";
 import CropSquareIcon from "@mui/icons-material/CropSquare";
 import CancelIcon from "@mui/icons-material/Cancel";
 import Snackbar from "@mui/material/Snackbar";
@@ -48,15 +42,14 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import soonImg from "../assets/soon-img.png";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowBack } from "@mui/icons-material";
 import DotLoading from "../Loading/DotLoading";
 import { API_BASE_URL } from "../../utils/config";
 
 // Custom Typography for product details labels
 const DetailLabel = styled(Typography)(({ theme }) => ({
-  fontWeight: 600, // Semi-bold for better emphasis
-  fontSize: "0.9rem", // Slightly larger than body text
-  color: theme.palette.text.secondary, // Muted color
+  fontWeight: 600,
+  fontSize: "0.9rem",
+  color: theme.palette.text.secondary,
   marginRight: theme.spacing(1),
 }));
 
@@ -94,26 +87,19 @@ const ProductDetail = () => {
   const defaultWidth = "320px";
 
   const navigate = useNavigate();
-
   const location = useLocation();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingQuestion, setLoadingQuestion] = useState(true);
-  // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-
   const [isAddingNewPrompt, setIsAddingNewPrompt] = useState(false);
-
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [userMessage, setUserMessage] = useState("");
-  const [aiSuggestions, setAISuggestions] = useState([]);
   const [aiModalOpen, setAIModalOpen] = useState(false);
-  // const [mainImage, setMainImage] = useState('');
   const isMobile = useMediaQuery("(max-width:600px)");
   const [mainImage, setMainImage] = useState(product?.images?.[0] || soonImg);
-
   const { id } = useParams();
   const [productTab, setProductTab] = useState({
     title: [],
@@ -121,79 +107,40 @@ const ProductDetail = () => {
     features: [],
   });
   const [tabIndex, setTabIndex] = useState(0);
-  // const [productTab, setProductTab] = useState('');
-  const [selectedTitles, setSelectedTitles] = useState([]);
-  const [selectedDescriptions, setSelectedDescriptions] = useState([]);
-  const [responseChat, setResponseChat] = useState("");
-  const messagesEndRef = useRef(null); // Reference for the end of the chat messages
-  const [isBotTyping, setIsBotTyping] = useState(false); // State for bot typing indicator
-  const currentPrice = product?.list_price;
-  const originalPrice = product?.was_price;
-  const discountPercentage = product?.discount;
   const [selectedDescription, setSelectedDescription] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState("");
   const [promptList, setPromptList] = useState([]);
-  const [showCustomPromptInput, setShowCustomPromptInput] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
-
-  const [selectedFeatureSetIndex, setSelectedFeatureSetIndex] = useState(0); // To track selected feature set
-  const [selectedFeatures, setSelectedFeatures] = useState(
-    productTab?.features || []
-  );
-  // State for the updated title, features, and description
-  const [updateTitle, setUpdateTitle] = useState("");
-  const [updateFeatures, setUpdateFeatures] = useState([]);
-  const [updateDescription, setUpdateDescription] = useState("");
-  const [updatedDescription, setUpdatedDescription] = useState(
-    productTab?.description || []
-  );
-  // State for Title Tab (managed within TitleTab)
-  const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // or error, info
-  const [selectedTitleIndex, setSelectedTitleIndex] = useState(null);
-  const [editedTitle, setEditedTitle] = useState(""); // Likely managed in TitleTab
-  const [editModeTitle, setEditModeTitle] = useState(false); // Likely managed in TitleTab
-  const [getTitle, setGetTitle] = useState([]);
-  const [getTitleRewrite, setGetTitleRewrite] = useState([]);
-
-  const [getFeatures, setGetFeatures] = useState([]);
-  const [getDescription, setGetDescription] = useState([]);
-  const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(null);
-  const [selectedFeatureValue, setSelectedFeatureValue] = useState("");
+  const messagesEndRef = useRef(null);
+  const [isBotTyping, setIsBotTyping] = useState(false);
+  const currentPrice = product?.list_price;
+  const originalPrice = product?.was_price;
+  const discountPercentage = product?.discount;
+  const [selectedFeatureSetIndex, setSelectedFeatureSetIndex] = useState(0);
   const [editingSetIndex, setEditingSetIndex] = useState(null);
   const [editingFeatures, setEditingFeatures] = useState([]);
+  const [updateDesc, setUpdateDesc] = useState("");
+  const [getTitle, setGetTitle] = useState([]);
+  const [getFeatures, setGetFeatures] = useState([]);
   const [getRewriteDescription, setGetRewriteDescription] = useState([]);
-
-  const [editedValueDec, setEditedValueDec] = useState([]);
-  const [editValueFeatures, setEditValueFeatures] = useState([]);
-
-  const [finalTitle, setFinalTitle] = useState("");
-  const [finalDescription, setFinalDescription] = useState("");
-  const [editModeDescription, setEditModeDescription] = useState(false); // Likely managed in DescriptionTab
-  const queryParams = new URLSearchParams(location.search);
-  const currentPage = queryParams.get("page") || 0;
-
-  const { searchQuery } = location.state || {};
-  console.log("searchQuery-Details:", searchQuery);
-  const [productIds, setProductIds] = useState([]);
-
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
+  const [selectedEditIndex, setSelectedEditIndex] = useState(null);
   const [editMode, setEditMode] = useState({
     title: false,
     features: false,
     description: false,
   });
-  const currency = product?.currency || "$"; // Default to $ if currency is not available
   const [selectedTitle, setSelectedTitle] = useState("");
-  const [data, setData] = useState([]); // to hold the fetched questions
-
-  // Minimize
-  const [editValueTitle, seteditValueTitle] = useState("");
-
+  const [data, setData] = useState([]);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [selectedEditIndex, setSelectedEditIndex] = useState(null);
-  const [editedDescription, setEditedDescription] = useState("");
-  const [updateDesc, setUpdateDesc] = useState("");
   const chatbotRef = useRef(null);
+  const currency = product?.currency || "$";
+
+  const queryParams = new URLSearchParams(location.search);
+  const currentPage = queryParams.get("page") || 0;
+  const [productIds, setProductIds] = useState([]);
 
   const handleClickOutside = (e) => {
     if (chatbotRef.current && !chatbotRef.current.contains(e.target)) {
@@ -202,23 +149,13 @@ const ProductDetail = () => {
   };
 
   useEffect(() => {
-    // Add event listener on mount
     document.addEventListener("mousedown", handleClickOutside);
-
-    // Clean up event listener on unmount
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  // const currentIndex = productIds.findIndex(
-  //   (pid) => pid.toString() === id.toString()
-  // );
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = () => {
+  const fetchProducts = useCallback(() => {
     setLoading(true);
     fetch(`${API_BASE_URL}/productList/`, {
       method: "POST",
@@ -240,9 +177,12 @@ const ProductDetail = () => {
         console.error("Error fetching product data:", error);
         setLoading(false);
       });
-  };
+  }, []);
 
-  // Get current index **after** productIds is available
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
   const currentIndex = productIds.findIndex((pid) => pid === id);
 
   const handleNext = () => {
@@ -260,9 +200,7 @@ const ProductDetail = () => {
   };
 
   useEffect(() => {
-    const checkedFeatureSet = productTab?.features?.findIndex(
-      (f) => f?.checked
-    );
+    const checkedFeatureSet = productTab?.features?.findIndex((f) => f?.checked);
     if (checkedFeatureSet !== -1) {
       setSelectedFeatureSetIndex(checkedFeatureSet);
     }
@@ -270,22 +208,14 @@ const ProductDetail = () => {
 
   const handleFeatureSetSelect = (e, index) => {
     setSelectedFeatureSetIndex(index);
-    setEditingSetIndex(null); // Reset any edit mode
+    setEditingSetIndex(null);
 
     const updatedFeatures = productTab.features.map((set, i) => ({
       ...set,
       checked: i === index,
     }));
-
     handleLocalUpdate({ features: updatedFeatures });
   };
-
-  useEffect(() => {
-    const defaultIndex = productTab?.features?.findIndex((set) => set.checked);
-    if (defaultIndex !== -1 && defaultIndex !== undefined) {
-      setSelectedFeatureSetIndex(defaultIndex);
-    }
-  }, [productTab?.features]);
 
   const handleFeatureChange = (setIndex, featureIndex, newValue) => {
     const updated = [...editingFeatures];
@@ -299,12 +229,12 @@ const ProductDetail = () => {
         return {
           ...feature,
           value: editingFeatures[index],
-          checked: true, // ✅ Only edited one is checked
+          checked: true,
         };
       } else {
         return {
           ...feature,
-          checked: false, // ✅ Others must be unchecked
+          checked: false,
         };
       }
     });
@@ -315,12 +245,10 @@ const ProductDetail = () => {
     };
 
     setProductTab(updatedProductTab);
-    setGetFeatures(updatedFeatures); // optional but helpful for local getFeatures
+    setGetFeatures(updatedFeatures);
     setEditMode({ ...editMode, features: false });
     setEditingSetIndex(null);
-    setSelectedFeatureSetIndex(editingSetIndex); // ✅ Reflect the checked one as selected
-    console.log("oppo", updatedFeatures);
-    setEditValueFeatures(updatedFeatures);
+    setSelectedFeatureSetIndex(editingSetIndex);
 
     if (updatedFeatures) {
       fetch(`${API_BASE_URL}/updategeneratedContent/`, {
@@ -330,18 +258,15 @@ const ProductDetail = () => {
         },
         body: JSON.stringify({
           product_id: id,
-
-          features: updatedFeatures, // replace with getFeatures if needed
+          features: updatedFeatures,
         }),
       })
         .then((response) => response.json())
         .then((data) => {
           console.log("Save success:", data);
-          // Optionally show success snackbar or update UI
         })
         .catch((error) => {
           console.error("Save error:", error);
-          // Optionally show error snackbar
         })
         .finally(() => {
           setLoading(false);
@@ -352,35 +277,10 @@ const ProductDetail = () => {
   const handleCancelFeatures = () => {
     setEditingSetIndex(null);
     setEditMode({ ...editMode, features: false });
-
-    // Reset editingFeatures so we don’t retain edited values
-    const checkedFeature = productTab.features.find((f) => f.checked);
     const featuresCopy = productTab.features.map((set) => [...set.value]);
     setEditingFeatures(featuresCopy);
-
     const checkedIndex = productTab.features.findIndex((f) => f.checked);
     setSelectedFeatureSetIndex(checkedIndex !== -1 ? checkedIndex : null);
-  };
-
-  const handleEditClickFeatures = (featureIndex) => {
-    setSelectedFeatureIndex(featureIndex);
-    const featureValue =
-      productTab.features[selectedFeatureSetIndex]?.value[featureIndex];
-    setSelectedFeatureValue(featureValue || "");
-  };
-
-  const handleFeatureSetChange = (event, listIndex) => {
-    const updatedSelectedFeatures = [...selectedFeatures];
-    if (event.target.checked) {
-      // Select all features in this feature set
-      updatedSelectedFeatures[listIndex] = productTab.features[listIndex].map(
-        (_, featureIndex) => featureIndex
-      );
-    } else {
-      // Deselect all features in this feature set
-      updatedSelectedFeatures[listIndex] = [];
-    }
-    setSelectedFeatures(updatedSelectedFeatures);
   };
 
   const handleLocalUpdate = (updatedFields) => {
@@ -388,81 +288,49 @@ const ProductDetail = () => {
       ...productTab,
       ...updatedFields,
     };
-
-    // ✅ Handle description
     const checkedDescription = updatedProductTab.description?.find(
       (desc) => desc.checked
     );
-    setGetDescription(checkedDescription ? checkedDescription.value : "");
-
-    // ✅ Handle title and features
+    setUpdateDesc(checkedDescription ? checkedDescription.value : "");
     setGetTitle(updatedProductTab.title || []);
-    console.log("last", updatedProductTab.title);
     setGetFeatures(updatedProductTab.features || []);
     setGetRewriteDescription(updatedProductTab.description || []);
-
-    setGetTitleRewrite(updatedProductTab.title || []);
-    // ✅ Update the entire productTab state
     setProductTab(updatedProductTab);
-    console.log("Local state updated with:", updatedProductTab);
   };
 
   const handleDescriptionChange = (event) => {
     const value = event.target.value;
     setSelectedDescription(value);
     setEditedDescription(value);
-
-    // Update the descriptions and mark the selected one as checked
     const updatedDescriptions = productTab.description.map((desc) => ({
       ...desc,
       checked: desc.value === value,
     }));
-
-    // Update local product tab state
     handleLocalUpdate({ description: updatedDescriptions });
-
-    // Get only the checked value
     const selectedChecked = updatedDescriptions.find((desc) => desc.checked);
     const longDescription = selectedChecked ? selectedChecked.value : "";
-
-    // Set to state
     setUpdateDesc(longDescription);
-
-    console.log("✅ Selected Description:", longDescription);
   };
 
   const handleSaveClickDescription = () => {
     const updatedDescriptions = [...productTab.description];
-
-    // Update the selected index with edited value and set checked true
     updatedDescriptions[selectedEditIndex] = {
       ...updatedDescriptions[selectedEditIndex],
-      value: editedDescription.trim(), // Optional: Trim whitespace
+      value: editedDescription.trim(),
       checked: true,
     };
-
-    // Update the state with new descriptions
     setProductTab((prev) => ({
       ...prev,
       description: updatedDescriptions,
     }));
     setGetRewriteDescription(updatedDescriptions);
-    setEditedValueDec(updatedDescriptions);
-    console.log("query one", updatedDescriptions);
-    // Filter out only checked descriptions
     const checkedDescriptions = updatedDescriptions.filter(
       (item) => item.checked
     );
-
-    // Extract values and join them into a single string
     const longDescription = checkedDescriptions
       .map((item) => item.value)
       .join("\n\n");
-
-    // Set the final long description into state
     setUpdateDesc(longDescription);
-
-    // Close edit mode
     setEditMode({ ...editMode, description: false });
     setSelectedEditIndex(null);
     if (updatedDescriptions) {
@@ -473,45 +341,29 @@ const ProductDetail = () => {
         },
         body: JSON.stringify({
           product_id: id,
-
           description: updatedDescriptions,
         }),
       })
         .then((response) => response.json())
         .then((data) => {
           console.log("Save success:", data);
-          // Optionally show success snackbar or update UI
         })
         .catch((error) => {
           console.error("Save error:", error);
-          // Optionally show error snackbar
         })
         .finally(() => {
           setLoading(false);
         });
     }
-
-    // Debug log
-    console.log("✅ Final Long Description:", longDescription);
   };
 
   const handleSaveClick = (type) => {
     if (type === "title") {
-      // 1. Update the specific title using index
       const updatedTitles = productTab.title.map((title, index) =>
         index === selectedEditIndex ? { ...title, value: editedTitle } : title
       );
-
-      // 2. Update the state for display or local changes
       handleLocalUpdate({ ...productTab, title: updatedTitles });
 
-      // 3. Set the updated list to another state (for API)
-      seteditValueTitle(updatedTitles);
-      console.log("0000", updatedTitles);
-      // 4. Find the checked title's updated value
-      const checkedTitle = updatedTitles.find((t) => t.checked)?.value || "";
-
-      // 5. Send only that checked+edited value to API
       if (updatedTitles) {
         fetch(`${API_BASE_URL}/updategeneratedContent/`, {
           method: "POST",
@@ -526,37 +378,26 @@ const ProductDetail = () => {
           .then((response) => response.json())
           .then((data) => {
             console.log("Save success:", data);
-            // Optionally show success snackbar or update UI
           })
           .catch((error) => {
             console.error("Save error:", error);
-            // Optionally show error snackbar
           })
           .finally(() => {
             setLoading(false);
           });
       }
     }
-
-    // 6. Close edit state
     setSelectedTitle(editedTitle);
     setEditMode({ ...editMode, title: false });
     setSelectedEditIndex(null);
   };
 
   const handleTitleChange = (index) => {
-    setSelectedTitleIndex(index);
-
-    // Update the checked property for each title
     const updatedTitles = productTab.title.map((title, idx) => ({
       ...title,
       checked: idx === index,
     }));
-
-    // Assuming handleLocalUpdate updates the productTab state
     handleLocalUpdate({ title: updatedTitles });
-    setGetTitle(updatedTitles);
-    console.log("oppo", updatedTitles);
   };
 
   useEffect(() => {
@@ -564,11 +405,9 @@ const ProductDetail = () => {
     if (checkedTitle) {
       setSelectedTitle(checkedTitle.value);
     } else if (productTab?.title?.length > 0) {
-      setSelectedTitle(productTab.title[0].value); // fallback to first
+      setSelectedTitle(productTab.title[0].value);
     }
   }, [productTab?.title]);
-
-  // Title select
 
   useEffect(() => {
     const checkedTitle = productTab?.title?.find((title) => title?.checked);
@@ -577,48 +416,21 @@ const ProductDetail = () => {
     }
   }, [productTab?.title]);
 
-  const handleRadioChange = (type, index, value) => {
-    setSelectedTitle(value);
-    const updatedTitles = productTab.title.map((title, i) => ({
-      ...title,
-      checked: i === index,
-    }));
-    handleLocalUpdate({ ...productTab, title: updatedTitles });
-    // handleBackendUpdate({ title: updatedTitles });
-  };
-
   const handleEditClickTitle = (type, index) => {
     setEditMode({ ...editMode, [type]: true });
     setSelectedEditIndex(index);
     if (type === "title" && productTab?.title?.[index]?.value) {
-      setEditedTitle(productTab.title[index].value); // Set the edited title
-      setSelectedTitle(productTab.title[index].value); // Preserve selected title
+      setEditedTitle(productTab.title[index].value);
+      setSelectedTitle(productTab.title[index].value);
     }
   };
 
   useEffect(() => {
-    // Initialize selectedDescription with the checked value on mount
-    const checkedDescription = productTab?.description?.find(
-      (desc) => desc?.checked
-    );
+    const checkedDescription = productTab?.description?.find((desc) => desc?.checked);
     if (checkedDescription) {
       setSelectedDescription(checkedDescription.value);
     }
   }, [productTab?.description]);
-
-  const handleLocalUpdateDescription = (updatedProductTab) => {
-    console.log("Local state updated with:", updatedProductTab);
-
-    // Get the selected title based on checked item
-    const selectedTitle =
-      updatedProductTab.title.find((item) => item.checked)?.value || "";
-    setFinalTitle(selectedTitle);
-
-    // Get the selected description based on checked item
-    const selectedDescription =
-      updatedProductTab.description.find((item) => item.checked)?.value || "";
-    setFinalDescription(selectedDescription);
-  };
 
   const handleEditClickDescription = (index) => {
     setEditMode({ ...editMode, description: true });
@@ -629,121 +441,147 @@ const ProductDetail = () => {
 
   const handleMinimize = () => {
     setIsMinimized(true);
-    setIsMaximized(false); // Reset maximize when minimized
+    setIsMaximized(false);
   };
 
-  // Handle maximize action
   const handleMaximize = () => {
     setIsMaximized(true);
-    setIsMinimized(false); // Reset minimize when maximized
-  };
-
-  // Handle restore window size
-  const handleRestore = () => {
-    setIsMaximized(false);
     setIsMinimized(false);
   };
 
-  // Initialize selectedFeatures once productTab.features is available
+  const toggleChat = () => setChatOpen(!chatOpen);
+
   useEffect(() => {
-    if (Array.isArray(productTab?.features)) {
-      // Initialize selectedFeatures as an empty array for each feature set
-      const initialSelectedFeatures = productTab.features.map(() => []);
-      setSelectedFeatures(initialSelectedFeatures);
+    if (chatOpen && id) {
+      setLoadingQuestion(true);
+      fetch(`${API_BASE_URL}/fetchProductQuestions/${id}`)
+        .then((response) => response.json())
+        .then((responseData) => {
+          setData(responseData.data);
+          setLoadingQuestion(false);
+        })
+        .catch((error) => {
+          console.error("Error fetching product details:", error);
+        });
     }
-  }, [productTab?.features]);
+  }, [chatOpen, id]);
 
-  useEffect(() => {
-    const fetchPromptList = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/fetchPromptList/`);
-        const data = await response.json();
-
-        if (data?.status && Array.isArray(data.data)) {
-          setPromptList(data.data); // ✅ Correctly setting prompt list
-        }
-      } catch (error) {
-        console.error("Error fetching prompt list:", error);
-      }
-    };
-
-    fetchPromptList();
-  }, []);
-
-  const handleSelectChange = (e) => {
-    const value = e.target.value;
-    if (value === "__add_new__") {
-      setIsAddingNewPrompt(true);
-      setSelectedPrompt("");
-    } else {
-      setSelectedPrompt(value);
-      setIsAddingNewPrompt(false);
+  const handleQuestionClick = (questionId) => {
+    const question = data.find((item) => item.id === questionId);
+    if (question) {
+      setMessages([...messages, { sender: "user", text: question.question }]);
+      sendMessageToAPI(question.question);
     }
   };
 
-  // // Rewrite button API handler
-  // const sendSelectedPromptToAPI = async () => {
-  //   const selectedPromptName = isAddingNewPrompt
-  //     ? customPrompt
-  //     : promptList.find((p) => p.id === selectedPrompt)?.name;
+  const sendMessageToAPI = (messageText) => {
+    const requestPayload = {
+      message: messageText,
+      product_id: id,
+    };
+    setIsBotTyping(true);
+    setTimeout(() => {
+      fetch(`${API_BASE_URL}/chatbotView/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestPayload),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          const apiResponse =
+            data?.data?.response || "Sorry, I couldn't understand your query.";
+          const newMessages = [
+            ...messages,
+            { sender: "user", text: messageText },
+            { sender: "chatbot", text: apiResponse },
+          ];
+          setMessages(newMessages);
+          setIsBotTyping(false);
+        })
+        .catch((error) => {
+          console.error("Error sending message to API:", error);
+          const errorResponse = "Something went wrong. Please try again.";
+          const newMessages = [
+            ...messages,
+            { sender: "user", text: messageText },
+            { sender: "chatbot", text: errorResponse },
+          ];
+          setMessages(newMessages);
+          setIsBotTyping(false);
+        });
+    }, 1000);
+  };
 
-  //   // Prompt name validation
-  //   if (!selectedPromptName || selectedPromptName.trim() === '') {
-  //     alert('Please enter or select a prompt before submitting.');
-  //     return;
-  //   }
+  const handleSendMessage = () => {
+    if (userMessage.trim() !== "") {
+      const newMessages = [...messages, { sender: "user", text: userMessage }];
+      setMessages(newMessages);
+      sendMessageToAPI(userMessage);
+      setUserMessage("");
+    }
+  };
 
-  //   // Required fields validation
-  //   if (!getTitle || !getRewriteDescription || !getFeatures) {
-  //     setSnackbarMessage('Title, description, and features are required!');
-  //     setSnackbarOpen(true);
-  //     return;
-  //   }
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
-  //   const requestPayload = {
-  //     option: selectedPromptName,
-  //     title: getTitle,
-  //     description: getRewriteDescription,
-  //     features: getFeatures,
-  //     product_id: id,
-  //   };
+  const handleBackClick = () => {
+    navigate({
+      pathname: "/",
+      search: `?page=${currentPage}`,
+    });
+  };
 
-  //   try {
-  //     const response = await fetch(
-  //       'https://product-assistant-gpt.onrender.com/regenerateAiContents/',
-  //       {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //         body: JSON.stringify(requestPayload),
-  //       }
-  //     );
+  const handleUpdateProduct = (updatedProduct) => {
+    setProductTab(updatedProduct);
+    fetchProductDetails(id);
+  };
 
-  //     const result = await response.json();
+  const handleCloseAIModal = () => {
+    setAIModalOpen(false);
+  };
 
-  //     if (result.status) {
-  //       setProductTab({
-  //         title: result.data.title || [],
-  //         description: result.data.description || [],
-  //         features: result.data.features || [],
-  //       });
+  const fetchProductDetails = useCallback(
+    (productId) => {
+      setLoading(true);
+      fetch(`${API_BASE_URL}/productDetail/${productId}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data?.data?.product) {
+            setProduct(data.data.product);
+            setMainImage(data.data.product.logo || "default_image.png");
+            setProductTab({
+              title: data?.data?.product?.ai_generated_title || [],
+              description:
+                data?.data?.product?.ai_generated_description || [],
+              features: data?.data?.product?.ai_generated_features || [],
+            });
+          } else {
+            console.warn("Product data not found for ID:", productId);
+          }
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error("Error fetching product:", error);
+          setLoading(false);
+        });
+    },
+    [setLoading, setProduct, setMainImage, setProductTab]
+  );
 
-  //       console.log('Updated productTab:', result.data);
+  useEffect(() => {
+    if (id && id !== "undefined") {
+      fetchProductDetails(id);
+    }
+  }, [id, fetchProductDetails]);
 
-  //       // ✅ Show success Snackbar
-  //       setSnackbarMessage('AI content Rewrite successfully!');
-  //       setSnackbarOpen(true);
-  //     } else {
-  //       setSnackbarMessage('Failed to regenerate AI content.');
-  //       setSnackbarOpen(true);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error sending data to API:', error);
-  //     setSnackbarMessage('Something went wrong. Please try again.');
-  //     setSnackbarOpen(true);
-  //   }
-  // };
+  const handleTabChange = (event, newTabIndex) => {
+    setTabIndex(newTabIndex);
+  };
 
   const sendSelectedPromptToAPI = async () => {
     const selectedPromptName = isAddingNewPrompt
@@ -767,19 +605,13 @@ const ProductDetail = () => {
       setSnackbarOpen(true);
       return;
     }
-
-    const titleData = productTab.title;
-    setGetTitleRewrite(titleData);
-    console.log("Title Only:", productTab, getFeatures, getDescription);
-
     const requestPayload = {
       option: selectedPromptName,
-      title: getTitleRewrite || "",
+      title: getTitle || "",
       description: getRewriteDescription || "",
       features: getFeatures || "",
       product_id: id,
     };
-
     try {
       const response = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
         method: "POST",
@@ -790,7 +622,6 @@ const ProductDetail = () => {
       });
 
       const result = await response.json();
-
       if (result.status && result.message === "success") {
         const updatedTitle = result.data?.title || [];
         const updatedDescription = result.data?.description || [];
@@ -815,8 +646,6 @@ const ProductDetail = () => {
           .flatMap((item) => item?.value || []);
         setGetFeatures(selectedFeatures);
 
-        console.log("Updated Features:", selectedFeatures);
-
         setSnackbarMessage("AI content Rewrite successfully!");
       } else {
         setSnackbarMessage("Something went wrong. Please try again.");
@@ -825,161 +654,17 @@ const ProductDetail = () => {
       console.error("Error sending data to API:", error);
       setSnackbarMessage("Something went wrong. Please try again.");
     }
-
     setSnackbarOpen(true);
   };
 
-  // Handle the dropdown selection and trigger POST request
-
-  useEffect(() => {
-    if (productTab?.features && Array.isArray(productTab.features)) {
-      setSelectedFeatures(
-        productTab.features.map((featureList) => {
-          // Ensure featureList.value is an array, if it's not, default it to an empty array.
-          return Array.isArray(featureList.value) ? [...featureList.value] : [];
-        })
-      );
-    }
-  }, [productTab]);
-
-  const handleAIOptions = () => {
-    setAIModalOpen(true);
-  };
-
-  // Chat pot
-
-  const toggleChat = () => setChatOpen(!chatOpen);
-
-  useEffect(() => {
-    if (chatOpen && id) {
-      setLoadingQuestion(true);
-      fetch(`${API_BASE_URL}/fetchProductQuestions/${id}`)
-        .then((response) => response.json())
-        .then((responseData) => {
-          setData(responseData.data); // Setting fetched data
-          setLoadingQuestion(false);
-        })
-        .catch((error) => {
-          console.error("Error fetching product details:", error);
-          // setLoading(false);
-        });
-    }
-  }, [chatOpen, id]);
-
-  const handleQuestionClick = (questionId) => {
-    console.log("Question clicked:", questionId);
-    // Example: Send the clicked question as a message
-    const question = data.find((item) => item.id === questionId);
-    if (question) {
-      setMessages([...messages, { sender: "user", text: question.question }]);
-      sendMessageToAPI(question.question);
-    }
-  };
-
-  const sendMessageToAPI = (messageText) => {
-    const requestPayload = {
-      message: messageText,
-      product_id: id,
-    };
-
-    // Show the bot typing indicator
-    setIsBotTyping(true);
-
-    // Simulate delay before API call
-    setTimeout(() => {
-      fetch(`${API_BASE_URL}/chatbotView/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestPayload),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          const apiResponse =
-            data?.data?.response || "Sorry, I couldn't understand your query.";
-          setResponseChat(apiResponse); // Store the API response
-
-          // Append the API response to messages
-          const newMessages = [
-            ...messages,
-            { sender: "user", text: messageText },
-            { sender: "chatbot", text: apiResponse },
-          ];
-          setMessages(newMessages);
-
-          setIsBotTyping(false); // Hide the typing indicator
-        })
-        .catch((error) => {
-          console.error("Error sending message to API:", error);
-
-          // Fallback response if there's an error
-          const errorResponse = "Something went wrong. Please try again.";
-          setResponseChat(errorResponse); // Fallback response
-
-          const newMessages = [
-            ...messages,
-            { sender: "user", text: messageText },
-            { sender: "chatbot", text: errorResponse },
-          ];
-          setMessages(newMessages);
-
-          setIsBotTyping(false); // Hide the typing indicator on error
-        });
-    }, 1000); // Simulate a slight delay before the API call
-  };
-
-  const handleSendMessage = () => {
-    if (userMessage.trim() !== "") {
-      const newMessages = [...messages, { sender: "user", text: userMessage }];
-      setMessages(newMessages); // Add user message
-      sendMessageToAPI(userMessage); // Send the user message to API
-      setUserMessage(""); // Clear the input field after sending
-    }
-  };
-
-  // Scroll to bottom of the chat when new messages are added
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
-  const handleBackClick = () => {
-    navigate({
-      pathname: "/",
-      search: `?page=${currentPage}`,
-    });
-  };
-
-  const handleUpdateProduct = (updatedProduct) => {
-    console.log("3333111", updatedProduct);
-    setProductTab(updatedProduct); // Update the product details in parent component
-    fetchProductDetails(id);
-  };
-
-  const handleCloseAIModal = () => {
-    setAIModalOpen(false);
-  };
-
-  useEffect(() => {
-    fetchProductDetails(id);
-  }, []); // Empty dependency array means it runs only once after initial render
-
   const handleUpdateProductTotal = async () => {
     const selectedTitleFinal =
-      (Array.isArray(getTitle) &&
-        getTitle.find((item) => item.checked)?.value) ||
+      (Array.isArray(getTitle) && getTitle.find((item) => item.checked)?.value) ||
       "";
 
-    // ✅ Extract the features with checked: true
     const selectedFeatures = Array.isArray(getFeatures)
       ? getFeatures.find((item) => item.checked)?.value || []
       : [];
-
-    console.log("getTitle:", selectedFeatures);
-
-    console.log("selectedFeatures:", selectedFeatures);
 
     setLoading(true);
 
@@ -994,21 +679,16 @@ const ProductDetail = () => {
           product_obj: {
             product_name: selectedTitleFinal || selectedTitle,
             long_description: updateDesc,
-            features: selectedFeatures, // ✅ Only send the checked set's value
+            features: selectedFeatures,
           },
         }),
       });
 
       const data = await response.json();
-      console.log("Update response:", data);
       if (data?.status) {
-        // ✅ Show success message in green
         setSnackbarMessage("Product updated successfully!");
-        setSnackbarSeverity("success");
         setSnackbarOpen(true);
-
-        setSnackbarOpen(true);
-        fetchProductDetails(id); // Refresh data after save
+        fetchProductDetails(id);
       } else {
         setSnackbarMessage("Update failed. Please try again.");
         setSnackbarOpen(true);
@@ -1023,61 +703,41 @@ const ProductDetail = () => {
   };
 
   useEffect(() => {
-    if (id && id !== "undefined") {
-      fetchProductDetails(id);
-    }
-  }, [id]);
+    const fetchPromptList = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/fetchPromptList/`);
+        const data = await response.json();
 
-  // Function to fetch product details
-  const fetchProductDetails = (id) => {
-    setLoading(true);
-
-    fetch(`${API_BASE_URL}/productDetail/${id}`)
-      .then((response) => response.json())
-      .then((data) => {
-        if (data?.data?.product) {
-          setProduct(data.data.product);
-          setMainImage(data.data.product.logo || "default_image.png");
-          setProductTab({
-            title: data?.data?.product?.ai_generated_title || [],
-            description: data?.data?.product?.ai_generated_description || [],
-            features: data?.data?.product?.ai_generated_features || [],
-          });
-        } else {
-          console.warn("Product data not found for ID:", id);
+        if (data?.status && Array.isArray(data.data)) {
+          setPromptList(data.data);
         }
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching product:", error);
-        setLoading(false);
-      });
-  };
+      } catch (error) {
+        console.error("Error fetching prompt list:", error);
+      }
+    };
+    fetchPromptList();
+  }, []);
 
-  const handleAISuggestionSelect = (suggestion) => {
-    setAIModalOpen(false);
-  };
-
-  const fetchAIOptions = () => {
-    setAISuggestions(["AI Feature 1", "AI Feature 2", "AI Description"]);
-  };
-
-  const handleTabChange = (event, newTabIndex) => {
-    setTabIndex(newTabIndex);
+  const handleSelectChange = (e) => {
+    const value = e.target.value;
+    if (value === "__add_new__") {
+      setIsAddingNewPrompt(true);
+      setSelectedPrompt("");
+    } else {
+      setSelectedPrompt(value);
+      setIsAddingNewPrompt(false);
+    }
   };
 
   if (loading)
     return (
       <div style={{ marginTop: "10%" }}>
         <DotLoading />
-        ...
       </div>
     );
-  // if (error) return <div>{error}</div>;
 
   return (
     <Container sx={{ maxWidth: "100%", margin: "0 auto" }}>
-      {/* Navigation Buttons */}
       <Box
         mb={2}
         sx={{
@@ -1088,7 +748,6 @@ const ProductDetail = () => {
           flexWrap: "wrap",
         }}
       >
-        {/* Left Side - Back to Products */}
         <Box>
           <Button
             startIcon={<ArrowBackIcon />}
@@ -1098,10 +757,7 @@ const ProductDetail = () => {
             Back to Products
           </Button>
         </Box>
-
-        {/* Right Side - Prev and Next Icon Buttons Only */}
         <Box sx={{ display: "flex", gap: 1 }}>
-          {/* Prev Icon Button */}
           <IconButton
             onClick={handlePrevious}
             disabled={currentIndex === 0}
@@ -1118,8 +774,6 @@ const ProductDetail = () => {
           >
             <ArrowBackIcon fontSize="small" />
           </IconButton>
-
-          {/* Next Icon Button */}
           <IconButton
             onClick={handleNext}
             disabled={currentIndex === productIds.length - 1}
@@ -1140,7 +794,6 @@ const ProductDetail = () => {
       </Box>
 
       <Grid container spacing={3} marginTop={3}>
-        {/* Left Section: Image & Thumbnails */}
         <Grid item xs={12} md={6}>
           <Box
             display="flex"
@@ -1148,8 +801,6 @@ const ProductDetail = () => {
             alignItems={{ xs: "center", sm: "flex-start" }}
             gap={2}
           >
-            {/* Thumbnails - responsive orientation */}
-
             <Box
               display="flex"
               flexDirection={isMobile ? "column" : "row"}
@@ -1157,7 +808,6 @@ const ProductDetail = () => {
               justifyContent="center"
               alignItems="flex-start"
             >
-              {/* Thumbnails */}
               <Box
                 sx={{
                   display: "flex",
@@ -1192,7 +842,6 @@ const ProductDetail = () => {
                 })}
               </Box>
 
-              {/* Main Image with Hover Zoom using react-image-magnify */}
               <Box sx={{ width: isMobile ? "100%" : "400px" }}>
                 <img
                   alt="Product Image"
@@ -1210,21 +859,17 @@ const ProductDetail = () => {
           </Box>
         </Grid>
 
-        {/* Right Section: Product Details and Tabs */}
         <Grid item xs={12} md={6}>
-          {" "}
-          {/* Occupies half width */}
           {loading ? (
             <CircularProgress />
           ) : (
             <Box sx={{ width: "100%", px: { xs: 2, sm: 3, md: 4 } }}>
-              {/* Product Title */}
               <Typography
                 variant="h4"
                 gutterBottom
                 sx={{
-                  fontSize: { xs: "18px", sm: "20px", md: "24px", lg: "28px" }, // responsive font sizes
-                  maxWidth: { xs: "100%", sm: "90%", md: "80%", lg: "37ch" }, // responsive max width
+                  fontSize: { xs: "18px", sm: "20px", md: "24px", lg: "28px" },
+                  maxWidth: { xs: "100%", sm: "90%", md: "80%", lg: "37ch" },
                   fontWeight: "bold",
                   wordWrap: "break-word",
                   overflowWrap: "break-word",
@@ -1234,7 +879,6 @@ const ProductDetail = () => {
                 {product?.product_name || "Product Title Not Available"}
               </Typography>
 
-              {/* Price Section */}
               <Box
                 sx={{
                   display: "flex",
@@ -1313,7 +957,6 @@ const ProductDetail = () => {
                 </Box>
               </Box>
 
-              {/* Category, Vendor, Brand */}
               <Box
                 sx={{
                   display: "flex",
@@ -1378,14 +1021,13 @@ const ProductDetail = () => {
                       textTransform: "none",
                       fontSize: { xs: "14px", sm: "16px" },
                     }}
-                    onClick={handleAIOptions}
+                    onClick={() => setAIModalOpen(true)}
                     size="small"
                   >
                     Generate Content With AI
                   </Button>
                 </Box>
 
-                {/* Modal Component */}
                 <Modal
                   open={aiModalOpen}
                   onClose={handleCloseAIModal}
@@ -1419,7 +1061,6 @@ const ProductDetail = () => {
               </Box>
 
               <Box mt={2} display="flex" gap={2} alignItems="center">
-                {/* Prompt selection or custom input */}
                 {!isAddingNewPrompt ? (
                   <Box display="flex" alignItems="center" gap={1}>
                     <select
@@ -1435,7 +1076,6 @@ const ProductDetail = () => {
                       ))}
                     </select>
 
-                    {/* Add button with icon */}
                     <Button
                       variant="outlined"
                       startIcon={<AddIcon />}
@@ -1470,7 +1110,6 @@ const ProductDetail = () => {
                   </Box>
                 )}
 
-                {/* Rewrite button */}
                 <Button
                   variant="contained"
                   color="primary"
@@ -1480,7 +1119,6 @@ const ProductDetail = () => {
                   Rewrite
                 </Button>
 
-                {/* Update button */}
                 <Button
                   onClick={handleUpdateProductTotal}
                   disabled={loading}
@@ -1495,148 +1133,88 @@ const ProductDetail = () => {
                   {loading ? "Updating..." : "Update"}
                 </Button>
               </Box>
-
-              {/* Modal Component */}
-              <Modal
-                open={aiModalOpen}
-                onClose={handleCloseAIModal}
-                aria-labelledby="ai-modal-title"
-                aria-describedby="ai-modal-description"
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: { xs: 280, sm: 300 },
-                    height: { xs: 280, sm: 300 },
-                    bgcolor: "background.paper",
-                    border: "2px solid #000",
-                    boxShadow: 24,
-                    p: 2,
-                    borderRadius: "8px",
-                  }}
-                >
-                  <div id="ai-modal-description">
-                    <FetchApi
-                      onClose={handleCloseAIModal}
-                      onUpdateProduct={handleUpdateProduct}
-                    />
-                  </div>
-                </Box>
-              </Modal>
             </Box>
           )}
         </Grid>
       </Grid>
 
       <Grid container spacing={2}>
-        {/* Left Side - Product Features and Description */}
         <Box
           sx={{
             mt: 6,
             width: "526px",
             maxWidth: {
-              xs: "100%", // full width on small screens
+              xs: "100%",
               sm: "100%",
-              md: "530px", // fixed max width on medium and larger screens
+              md: "530px",
             },
             px: {
-              xs: 2, // horizontal padding on small screens
+              xs: 2,
               sm: 2,
               md: 0,
             },
           }}
         >
           {/* Product Features */}
-          <Box sx={{ maxWidth: "510px", marginTop: "-100px" }}>
-            {/* Product Features */}
-            <Box display="flex" alignItems="center" mt={3} mb={1}>
-              <Typography
-                variant="h6"
-                mr={2}
-                sx={{ fontSize: "18px", fontWeight: 600 }}
-              >
-                Features:
-              </Typography>
-            </Box>
-
-            <List
+          <Box sx={{ maxWidth: "510px", marginTop: "30px" }}>
+            <Typography
+              variant="h6"
               sx={{
-                "& a": {
-                  color: "blue !important", // Use !important to override other styles
-                  textDecoration: "underline", // Optional, if you want the underline
-                },
-                "& a:visited": {
-                  // Style for visited links
-                  color: "blue !important",
-                },
-                "& a:hover": {
-                  // Optional: style for hover state
-                  color: "darkblue !important",
-                },
+                fontSize: "18px",
+                fontWeight: 600,
+                marginBottom: "8px",
               }}
             >
+              Features
+            </Typography>
+            <Grid container spacing={1}>
               {product?.features && product.features.length > 0 ? (
                 product.features.map((feature, index) => (
-                  <ListItem key={index} sx={{ padding: "4px 0" }}>
-                    <Typography sx={{ fontSize: "16px" }}>
-                      {/<a|<img/.test(feature) ? (
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: feature.replace(
-                              /<img /g,
-                              '<img style="width: 500px; display: block; margin: 10px 0;" '
-                            ),
-                          }}
-                        />
-                      ) : (
-                        `• ${feature}`
-                      )}
-                    </Typography>
-                  </ListItem>
+                  <Grid item xs={12} key={index}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        width="20"
+                        height="20"
+                        fill="#4CAF50"
+                      >
+                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+                      </svg>
+                      <Typography sx={{ fontSize: "16px" }}>
+                        {feature}
+                      </Typography>
+                    </Box>
+                  </Grid>
                 ))
               ) : (
-                <Typography sx={{ fontSize: "16px", color: "gray" }}>
-                  No features available
-                </Typography>
+                <Grid item xs={12}>
+                  <Typography sx={{ fontSize: "16px", color: "gray" }}>
+                    No features available.
+                  </Typography>
+                </Grid>
               )}
-            </List>
-
-            {/* Example URL link */}
-            <Box mt={2}>
-              {product?.pdfUrl && (
-                <a
-                  href={product.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    fontSize: "16px",
-                    textDecoration: "underline",
-                    color: "blue", // 👈 This sets the link color to blue
-                  }}
-                >
-                  View the PDF
-                </a>
-              )}
-            </Box>
+            </Grid>
           </Box>
 
           {/* Product Description */}
           <Typography
             variant="h6"
-            mt={3}
-            mb={1}
-            sx={{ fontSize: "18px", fontWeight: 600 }}
+            sx={{
+              fontSize: "18px",
+              fontWeight: 600,
+              marginTop: "24px",
+              marginBottom: "8px",
+            }}
           >
-            Description:
+            Description
           </Typography>
           <Typography
             variant="body2"
             sx={{
               fontSize: "16px",
               color: product?.long_description ? "inherit" : "gray",
+              whiteSpace: "pre-wrap",
             }}
           >
             {product?.long_description || "No description available."}
@@ -1675,24 +1253,17 @@ const ProductDetail = () => {
               <Tab label="Features" {...a11yProps(1)} />
               <Tab label="Description" {...a11yProps(2)} />
             </Tabs>
-            {/* <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
-
-
-
-</Box> */}
 
             <Box
               sx={{
                 mt: 2,
                 width: {
-                  xs: "100%", // Extra small screens (mobile)
-                  sm: "100%", // Small screens (tablets)
-                  md: "600px", // Medium screens and above
+                  xs: "100%",
+                  sm: "100%",
+                  md: "600px",
                 },
               }}
             >
-              {/* Tab feilds */}
-
               <TabPanel value={tabIndex} index={0}>
                 {Array.isArray(productTab?.title) &&
                 productTab.title.length > 0 ? (
@@ -1707,8 +1278,8 @@ const ProductDetail = () => {
                           sm: "90%",
                           md: "80%",
                           lg: "90ch",
-                        }, // responsive width
-                        fontSize: { xs: "13px", md: "14px" }, // font size adjusts
+                        },
+                        fontSize: { xs: "13px", md: "14px" },
                         fontWeight: "bold",
                         wordWrap: "break-word",
                         overflowWrap: "break-word",
@@ -1773,7 +1344,6 @@ const ProductDetail = () => {
                   </Box>
                 ) : (
                   <ListItem>
-                    {/* <Box sx={{ display: 'flex', justifyContent: 'center' }}> */}
                     <Typography
                       variant="body1"
                       sx={{
@@ -1785,7 +1355,6 @@ const ProductDetail = () => {
                     >
                       No title available
                     </Typography>
-                    {/* </Box> */}
                   </ListItem>
                 )}
               </TabPanel>
@@ -1798,9 +1367,6 @@ const ProductDetail = () => {
                     marginBottom={1}
                     sx={{ width: "60%" }}
                   >
-                    {/* <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
-        Features:
-      </Typography> */}
                   </Box>
 
                   {editMode.features ? (
@@ -1813,7 +1379,7 @@ const ProductDetail = () => {
                             : [];
 
                           return (
-                            <Box key={listIndex} sx={{ marginBottom: 2 }}>
+                            <React.Fragment key={listIndex}>
                               <Box display="flex" alignItems="center" gap={1}>
                                 <Typography
                                   variant="subtitle1"
@@ -1822,8 +1388,6 @@ const ProductDetail = () => {
                                   Feature Set {listIndex + 1}
                                 </Typography>
 
-                                {/* 👇 Show edit icon only for selected set */}
-                                {/* {selectedFeatureSetIndex === listIndex && editingSetIndex === null && ( */}
                                 {productTab.features[listIndex]?.checked ===
                                   true && (
                                   <IconButton
@@ -1835,9 +1399,7 @@ const ProductDetail = () => {
                                     <EditIcon fontSize="small" />
                                   </IconButton>
                                 )}
-                                {/* )} */}
 
-                                {/* 👇 Show save only in edit mode */}
                                 {productTab.features[listIndex]?.checked ===
                                   true &&
                                   editingSetIndex === listIndex && (
@@ -1896,7 +1458,7 @@ const ProductDetail = () => {
                                   )}
                                 </Box>
                               ))}
-                            </Box>
+                            </React.Fragment>
                           );
                         })
                       ) : (
@@ -1946,8 +1508,8 @@ const ProductDetail = () => {
                                       >
                                         Feature Set {listIndex + 1}
                                       </Typography>
-                                      {productTab.features[listIndex]
-                                        ?.checked === true && (
+                                      {productTab.features[listIndex]?.checked ===
+                                        true && (
                                         <IconButton
                                           onClick={() => {
                                             setEditingSetIndex(listIndex);
@@ -2005,10 +1567,6 @@ const ProductDetail = () => {
               </TabPanel>
 
               <TabPanel value={tabIndex} index={2}>
-                {/* <Typography variant="h6" mt={1} mb={1} sx={{ fontSize: '1.2rem' }}>
-    Description:
-  </Typography> */}
-
                 {productTab?.description?.length > 0 ? (
                   <RadioGroup
                     value={selectedDescription}
@@ -2024,7 +1582,6 @@ const ProductDetail = () => {
                           sx={{
                             fontWeight: "bold",
                             fontSize: "16px",
-                            // mb: 1,
                             maxWidth: "90ch",
                             overflowWrap: "break-word",
                             display: "flex",
@@ -2040,7 +1597,6 @@ const ProductDetail = () => {
                                 maxWidth: "550px",
                               }}
                             >
-                              {/* Button group aligned top-right */}
                               <Box
                                 sx={{
                                   display: "flex",
@@ -2064,7 +1620,6 @@ const ProductDetail = () => {
                                 </IconButton>
                               </Box>
 
-                              {/* Editable Textarea */}
                               <TextareaAutosize
                                 value={editedDescription}
                                 onChange={(e) =>
@@ -2096,7 +1651,6 @@ const ProductDetail = () => {
                                   </Typography>
                                 }
                               />
-
                               {isSelected && (
                                 <IconButton
                                   onClick={() => {
@@ -2137,7 +1691,6 @@ const ProductDetail = () => {
         </Grid>
       </Grid>
 
-      {/* Chatbot UI */}
       <IconButton
         onClick={toggleChat}
         sx={{
@@ -2157,7 +1710,7 @@ const ProductDetail = () => {
           ref={chatbotRef}
           sx={{
             position: "fixed",
-            width: isMaximized ? defaultWidth : defaultWidth,
+            width: defaultWidth,
             height: isMinimized ? "50px" : isMaximized ? "80%" : defaultHeight,
             transition: "all 0.3s",
             bottom: 90,
@@ -2170,7 +1723,6 @@ const ProductDetail = () => {
             flexDirection: "column",
           }}
         >
-          {/* Header */}
           <Box
             sx={{
               bgcolor: "#1976d2",
@@ -2182,7 +1734,6 @@ const ProductDetail = () => {
             <Typography variant="subtitle1" fontWeight="bold">
               Product Chat Assistant
             </Typography>
-
             <Box
               sx={{
                 position: "absolute",
@@ -2192,7 +1743,6 @@ const ProductDetail = () => {
                 gap: 1,
               }}
             >
-              {/* Minimize Button */}
               <Tooltip title="Minimize" arrow>
                 <span>
                   <IconButton
@@ -2209,7 +1759,6 @@ const ProductDetail = () => {
                 </span>
               </Tooltip>
 
-              {/* Maximize Button */}
               <Tooltip title="Maximize" arrow>
                 <span>
                   <IconButton
@@ -2223,7 +1772,6 @@ const ProductDetail = () => {
                 </span>
               </Tooltip>
 
-              {/* Close Button */}
               <Tooltip title="Close" arrow>
                 <IconButton
                   size="small"
@@ -2236,7 +1784,6 @@ const ProductDetail = () => {
             </Box>
           </Box>
 
-          {/* Chat Body */}
           <Box
             sx={{
               p: 2,
@@ -2244,37 +1791,9 @@ const ProductDetail = () => {
               display: "flex",
               flexDirection: "column",
               gap: 1,
-              overflowY: "auto", // Make the messages box scrollable
+              overflowY: "auto",
             }}
           >
-            {/* Display Chat Messages */}
-            {/* {data && data.length > 0 && (
-            <Box sx={{ marginTop: 2 }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                Frequently Asked Questions:
-              </Typography>
-              {data.map((item) => (
-                <Box
-                  key={item.id}
-                  sx={{
-                    backgroundColor: '#f9f9f9',
-                    padding: '8px',
-                    borderRadius: '5px',
-                    marginTop: '5px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  
-                  <Typography variant="body2">{item.question}</Typography>
-                  <IconButton sx={{ padding: 0 }} onClick={() => handleQuestionClick(item.id)}>
-                    <ArrowForwardIcon />
-                  </IconButton>
-                </Box>
-              ))}
-            </Box>
-          )} */}
-
             {messages.length === 0 && (
               <Typography
                 sx={{
@@ -2289,7 +1808,6 @@ const ProductDetail = () => {
             )}
 
             {loadingQuestion ? (
-              // Loading state: show DotLoading inside a single Box
               <Box
                 sx={{
                   backgroundColor: "#f9f9f9",
@@ -2304,7 +1822,6 @@ const ProductDetail = () => {
                 <DotLoading />
               </Box>
             ) : (
-              // Loaded state: map through questions
               data.map((item) => (
                 <Box
                   key={item.id}
@@ -2345,7 +1862,7 @@ const ProductDetail = () => {
                     padding: "8px 12px",
                     borderRadius: "10px",
                     maxWidth: "80%",
-                    wordBreak: "break-word", // Ensure long words are wrapped
+                    wordBreak: "break-word",
                   }}
                 >
                   {message.text}
@@ -2353,7 +1870,6 @@ const ProductDetail = () => {
               </Box>
             ))}
 
-            {/* Bot Typing Indicator */}
             {isBotTyping && (
               <Box
                 sx={{
@@ -2375,11 +1891,9 @@ const ProductDetail = () => {
               </Box>
             )}
 
-            {/* Scroll to bottom reference */}
             <div ref={messagesEndRef} />
           </Box>
 
-          {/* Input Box */}
           <Box
             sx={{
               display: "flex",
@@ -2396,7 +1910,7 @@ const ProductDetail = () => {
               onChange={(e) => setUserMessage(e.target.value)}
               onKeyUp={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
-                  handleSendMessage(); // Send the message when Enter key is pressed
+                  handleSendMessage();
                 }
               }}
             />
@@ -2404,16 +1918,16 @@ const ProductDetail = () => {
               variant="contained"
               onClick={handleSendMessage}
               sx={{
-                minWidth: "40px", // 👈 Makes the button rounder
+                minWidth: "40px",
                 height: "40px",
-                borderRadius: "50%", // 👈 Circular shape
+                borderRadius: "50%",
                 padding: 0,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <SendIcon sx={{ fontSize: 18 }} /> {/* 👈 Smaller icon */}
+              <SendIcon sx={{ fontSize: 18 }} />
             </Button>
           </Box>
         </Box>
@@ -2430,7 +1944,7 @@ const ProductDetail = () => {
           severity={
             snackbarMessage.includes("successfully") ? "success" : "error"
           }
-          variant="filled" // ✅ Makes the color background solid
+          variant="filled"
           sx={{ width: "100%" }}
         >
           {snackbarMessage}

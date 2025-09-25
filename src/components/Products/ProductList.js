@@ -76,11 +76,7 @@ const ProductList = () => {
     const [priceRange, setPriceRange] = useState([0, 140]);
     const [selectedPriceRanges, setSelectedPriceRanges] = useState([]);
     const [brandOptions, setBrandOptions] = useState([]);
-    const priceRangeOptions = [
-        { id: 1, label: 'Low ($0 - $50)', value: [0, 50], count: 58 },
-        { id: 2, label: 'Mid ($50 - $99)', value: [50, 99], count: 49 },
-        { id: 3, label: 'High ($99 & above)', value: [99, 1000], count: 33 },
-    ];
+
     const [selectedBrands, setSelectedBrands] = useState([]);
     const [favorites, setFavorites] = useState(new Set());
 
@@ -246,31 +242,23 @@ const ProductList = () => {
     };
 
     const handleClearFilters = () => {
+        // Reset all filter states
         setSelectedCategoryId('');
         setSelectedFilters({});
         setSelectedBrands([]);
         setSelectedPriceRanges([]);
         setPriceRange([0, 140]);
         setCategoryFilters([]);
+        setSearchQuery('');
+        setPage(0);
+        setSortConfig({ key: 'sku', direction: 'asc' });
+
+        // Fetch products with no filters to reset the view
+        fetchProducts();
+
         setSnackbarMessage('Reset successfully!');
         setSnackbarSeverity('error');
         setSnackbarOpen(true);
-        const requestBody = {
-            search_query: ''
-        };
-        fetch(`${API_BASE_URL}/productList/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-        })
-            .then(response => response.json())
-            .then(responseData => {
-                const productList = responseData.data?.products || [];
-                setProducts(productList);
-                setFilteredProducts(productList);
-            });
     };
 
     const sortProducts = (key) => {
@@ -372,7 +360,7 @@ const ProductList = () => {
             {/* Enhanced Left Sidebar */}
             <Box
                 sx={{
-                    width: 280,
+                    width: 200,
                     backgroundColor: '#fff',
                     borderRight: '1px solid #e0e0e0',
                     padding: 2,
@@ -478,31 +466,9 @@ const ProductList = () => {
                         Price Range
                     </Typography>
 
-                    {/* Show all link based on your new image */}
-                    <Button
-                        variant="text"
-                        color="primary"
-                        size="small"
-                        sx={{
-                            mb: 2,
-                            textTransform: 'none',
-                            fontSize: '14px',
-                            padding: '0px',
-                            textDecoration: 'none',
-                            fontWeight: 400,
-                            color: '#2563EB',
-                            '&:hover': {
-                                backgroundColor: 'transparent',
-                                textDecoration: 'underline',
-                            },
-                            justifyContent: 'flex-start',
-                        }}
-                    >
-                        Show all
-                    </Button>
 
                     {/* Price range checkboxes */}
-                    {priceRangeOptions.map((priceOption) => (
+                    {/* {priceRangeOptions.map((priceOption) => (
                         <FormControlLabel
                             key={priceOption.id}
                             control={
@@ -540,7 +506,7 @@ const ProductList = () => {
                                 }
                             }}
                         />
-                    ))}
+                    ))} */}
 
                     {/* Price Slider */}
                     <Box sx={{ mt: 3, px: 0 }}>
@@ -826,13 +792,17 @@ const ProductList = () => {
                                                     </TableCell>
                                                     <TableCell sx={{ textAlign: 'center' }}>{product.sku}</TableCell>
                                                     <TableCell sx={{ textAlign: 'left', maxWidth: 300 }}>
-                                                        <Link to={`/details/${product.id}?page=${page}`} style={{ color: '#2563EB', textDecoration: 'none' }}>
-                                                            {product.name}
+                                                        <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                                                            <Typography component="span" sx={{ fontWeight: 'bold', color: '#212121' }}>
+                                                                {product.name}
+                                                            </Typography>
                                                         </Link>
                                                     </TableCell>
                                                     <TableCell sx={{ textAlign: 'center' }}>
-                                                        <Link to={`/details/${product.id}?page=${page}`} style={{ color: '#2563EB', textDecoration: 'none' }}>
-                                                            {product.mpn}
+                                                        <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                                                            <Typography component="span" sx={{ color: '#212121' }}>
+                                                                {product.mpn}
+                                                            </Typography>
                                                         </Link>
                                                     </TableCell>
                                                     <TableCell sx={{ textAlign: 'center' }}>{product.category}</TableCell>
@@ -879,7 +849,7 @@ const ProductList = () => {
                                                     sx={{
                                                         width: '100%',
                                                         maxWidth: '200px',
-                                                        height: '350px',
+                                                        height: '370px',
                                                         display: 'flex',
                                                         flexDirection: 'column',
                                                         position: 'relative',
@@ -971,27 +941,12 @@ const ProductList = () => {
                                                             justifyContent: 'space-between',
                                                             paddingBottom: '12px !important',
                                                         }}>
-                                                            {/* Brand */}
-                                                            <Typography
-                                                                variant="body2"
-                                                                sx={{
-                                                                    color: '#878787',
-                                                                    fontSize: '10px',
-                                                                    fontWeight: 500,
-                                                                    mb: 0.5,
-                                                                    textTransform: 'uppercase',
-                                                                    letterSpacing: '0.5px',
-                                                                }}
-                                                            >
-                                                                {product.brand_name || 'Brand Name'}
-                                                            </Typography>
-
                                                             {/* Product Name */}
                                                             <Typography
                                                                 variant="body1"
                                                                 sx={{
                                                                     fontSize: '12px',
-                                                                    fontWeight: 400,
+                                                                    fontWeight: 600, // Make title bold
                                                                     lineHeight: 1.3,
                                                                     mb: 1,
                                                                     overflow: 'hidden',
@@ -1000,14 +955,30 @@ const ProductList = () => {
                                                                     WebkitBoxOrient: 'vertical',
                                                                     WebkitLineClamp: 2,
                                                                     minHeight: '30px',
-                                                                    color: '#2563EB',
+                                                                    color: '#212121', // Maintain black color
                                                                 }}
                                                             >
                                                                 {product.name}
                                                             </Typography>
 
+                                                            {/* SKU, MPN, Category, and Brand info */}
+                                                            <Box sx={{ mt: 1, fontSize: '12px', color: '#6c757d', textAlign: 'left' }}>
+                                                                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}>
+                                                                    <b>SKU:</b> {product.sku}
+                                                                </Typography>
+                                                                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}>
+                                                                    <b>MPN:</b> {product.mpn || 'N/A'}
+                                                                </Typography>
+                                                                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}>
+                                                                    <b>Category:</b> {product.category}
+                                                                </Typography>
+                                                                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}>
+                                                                    <b>Brand:</b> {product.brand_name || 'N/A'}
+                                                                </Typography>
+                                                            </Box>
+
                                                             {/* Price Section - USD currency */}
-                                                            <Box sx={{ mb: 1 }}>
+                                                            <Box sx={{ mt: 1 }}>
                                                                 <Typography
                                                                     variant="h6"
                                                                     sx={{
