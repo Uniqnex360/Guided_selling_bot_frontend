@@ -1,6 +1,6 @@
-// src/components/Login/Login.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
 import {
   Box,
   TextField,
@@ -18,24 +18,28 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-
-    // Define the correct credentials
-    const correctEmail = "user@example.com";
-    const correctPassword = "password123";
-
-    // Compare the entered values to the correct values
-    if (email === correctEmail && password === correctPassword) {
-      // Login successful!
-      localStorage.setItem("isLoggedIn", "true"); 
-      console.log("Login successful!");
-      navigate("/products");
-    } else {
-      // Login failed
-      alert("Invalid email or password.");
+    setError("");
+    try {
+      const response = await fetch("http://localhost:8000/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (response.ok && data.token) {
+        // Store JWT in cookie (expires in 1 day, or longer if rememberMe)
+        Cookies.set("jwt_token", data.token, { expires: rememberMe ? 7 : 1 });
+        navigate("/products");
+      } else {
+        setError(data.error || "Login failed.");
+      }
+    } catch (err) {
+      setError("Network error.");
     }
   };
 
@@ -192,17 +196,7 @@ const Login = () => {
             Welcome back 👋
           </Typography>
           
-          <Typography 
-            variant="body1" 
-            sx={{ 
-              textAlign: 'center', 
-              color: '#6b7280', 
-              mb: 5,
-              fontSize: '1.1rem'
-            }}
-          >
-            Login to continue your sales journey.
-          </Typography>
+   
 
           <Box component="form" onSubmit={handleLogin}>
             <TextField
@@ -308,20 +302,7 @@ const Login = () => {
                   } 
                 }}
               />
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  color: '#3b82f6', 
-                  cursor: 'pointer', 
-                  fontWeight: 600,
-                  fontSize: '0.95rem',
-                  '&:hover': { 
-                    textDecoration: 'underline' 
-                  } 
-                }}
-              >
-                Forgot password?
-              </Typography>
+
             </Box>
 
             <Button
@@ -346,6 +327,11 @@ const Login = () => {
             >
               Login
             </Button>
+            {error && (
+              <Typography color="error" sx={{ mt: 2, textAlign: "center" }}>
+                {error}
+              </Typography>
+            )}
           </Box>
         </Box>
       </Box>

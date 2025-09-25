@@ -1,22 +1,38 @@
-// src/routes.js
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import Cookies from "js-cookie";
 import Login from "./components/Login/Login"; 
 import ProductList from "./components/Products/ProductList";
 import ProductDetial from "./components/Products/ProductDetial";
+import ProductDetail from "./components/Products/ProductDetial";
+
+// ProtectedRoute component
+const ProtectedRoute = ({ children }) => {
+  const token = Cookies.get("jwt_token");
+  return token ? children : <Navigate to="/" replace />;
+};
 
 const AppRoutes = () => {
   return (
     <Router>
       <Routes>
-        {/* Set the Login page as the default (root) route */}
         <Route path="/" element={<Login />} />
-        
-        {/* The Product List page will now have a new path, e.g., "/products" */}
-        <Route path="/products" element={<ProductList />} />
-        
-        {/* The Product Detail page path remains the same */}
-        <Route path="/details/:id" element={<ProductDetial />} />
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <ProductList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/details/:id"
+          element={
+            <ProtectedRoute>
+              <ProductDetail />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );

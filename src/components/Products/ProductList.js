@@ -25,7 +25,6 @@ import {
     TableCell,
     TableBody,
     Tooltip,
-    TablePagination,
     FormControlLabel,
     FormControl,
     Select,
@@ -42,7 +41,12 @@ import {
     Alert,
     Slider,
     Divider,
+    Pagination,
+    PaginationItem,
+    Stack,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Link } from 'react-router-dom';
 import { ListAlt as ListAltIcon, GridView as GridViewIcon } from '@mui/icons-material';
@@ -73,12 +77,14 @@ const ProductList = () => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [maximized, setMaximized] = useState(true);
     const [dialogSize, setDialogSize] = useState({ width: 400, height: 450 });
+    const [minPrice, setMinPrice] = useState(0); // Dynamic min price
+    const [maxPrice, setMaxPrice] = useState(140); // Dynamic max price
     const [priceRange, setPriceRange] = useState([0, 140]);
     const [selectedPriceRanges, setSelectedPriceRanges] = useState([]);
     const [brandOptions, setBrandOptions] = useState([]);
-
-    const [selectedBrands, setSelectedBrands] = useState([]);
+    const [selectedBrands, setSelectedBrands] = useState(new Set());
     const [favorites, setFavorites] = useState(new Set());
+    const [selectedCategories, setSelectedCategories] = useState(new Set());
 
     // Helper functions
     const toggleDialogSize = () => {
@@ -104,21 +110,38 @@ const ProductList = () => {
         });
     };
 
-    // API functions
-    const fetchCategories = () => {
-        setLoading(true);
-        fetch(`${API_BASE_URL}/fourth_level_categories/`)
-            .then(response => response.json())
-            .then(data => {
-                setCategoryOptions(data.data.categories || []);
-                setLoading(false);
-            })
-            .catch(error => {
-                console.error('Error fetching categories:', error);
-                setLoading(false);
-            });
+    const getAppliedFilterNames = () => {
+        const filters = [];
+        // Add Category filters
+        if (selectedCategories.size > 0) {
+            const categoryNames = Array.from(selectedCategories).map(id => {
+                const category = categoryOptions.find(c => c.id === id);
+                return category ? category.name : '';
+            }).filter(Boolean);
+            filters.push(`Categories: ${categoryNames.join(', ')}`);
+        }
+        // Add Brand filters
+        if (selectedBrands.size > 0) {
+            filters.push(`Brands: ${Array.from(selectedBrands).join(', ')}`);
+        }
+        // Add other attribute filters
+        Object.entries(selectedFilters).forEach(([filterName, values]) => {
+            if (values.length > 0) {
+                filters.push(`${filterName}: ${values.join(', ')}`);
+            }
+        });
+        // Add Price Range filter
+        if (priceRange[0] !== minPrice || priceRange[1] !== maxPrice) {
+            filters.push(`Price Range: $${priceRange[0]} - $${priceRange[1]}`);
+        }
+        // Add Search Query
+        if (searchQuery.trim() !== '') {
+            filters.push(`Search Query: "${searchQuery.trim()}"`);
+        }
+        return filters;
     };
-
+    
+    // API functions
     const fetchFilters = (categoryId) => {
         setLoading(true);
         fetch(`${API_BASE_URL}/category_filters/?category_id=${categoryId}`, {
@@ -149,12 +172,12 @@ const ProductList = () => {
     const fetchProducts = () => {
         setLoading(true);
         const requestBody = {
-            ...(selectedCategoryId && { category_id: selectedCategoryId }),
+            ...(selectedCategories.size > 0 && { category_ids: Array.from(selectedCategories) }),
             search_query: searchQuery?.trim() || '',
-            ...(selectedBrands.length > 0 && { brands: selectedBrands }),
+            ...(selectedBrands.size > 0 && { brands: Array.from(selectedBrands) }),
         };
         if (
-            selectedCategoryId &&
+            selectedCategories.size > 0 &&
             selectedFilters &&
             Object.keys(selectedFilters).length > 0 &&
             Object.values(selectedFilters).some(arr => Array.isArray(arr) && arr.length > 0)
@@ -171,16 +194,36 @@ const ProductList = () => {
             .then(response => response.json())
             .then(responseData => {
                 let productList = responseData.data?.products || [];
+                
+                // Extract unique categories from the fetched products
+                const uniqueCategories = [...new Set(productList.map(product => product.category))].filter(Boolean);
+                const categoriesWithCount = uniqueCategories.map(categoryName => ({
+                    id: categoryName, // Assuming the category name can serve as a unique ID for this purpose
+                    name: categoryName,
+                    count: productList.filter(p => p.category === categoryName).length,
+                }));
+                setCategoryOptions(categoriesWithCount);
 
-                // Client-side filtering for brands if selectedBrands has values
-                if (selectedBrands.length > 0) {
-                    productList = productList.filter(product => selectedBrands.includes(product.brand_name));
+                if (selectedBrands.size > 0) {
+                    productList = productList.filter(product => selectedBrands.has(product.brand_name));
+                }
+                setProducts(productList);
+                
+                // Calculate dynamic min and max price
+                if (productList.length > 0) {
+                    const prices = productList.map(p => p.price);
+                    const newMinPrice = Math.min(...prices);
+                    const newMaxPrice = Math.max(...prices);
+                    setMinPrice(newMinPrice);
+                    setMaxPrice(newMaxPrice);
+                    setPriceRange([newMinPrice, newMaxPrice]);
+                } else {
+                    setMinPrice(0);
+                    setMaxPrice(0);
+                    setPriceRange([0, 0]);
                 }
 
-                setProducts(productList);
                 setFilteredProducts(productList);
-
-                // Extract unique brands from the filtered product list
                 const uniqueBrands = [...new Set(productList.map(product => product.brand_name))].filter(Boolean);
                 const brandsWithCount = uniqueBrands.map(brandName => ({
                     id: brandName,
@@ -188,7 +231,6 @@ const ProductList = () => {
                     count: productList.filter(p => p.brand_name === brandName).length,
                 }));
                 setBrandOptions(brandsWithCount);
-
                 setLoading(false);
             })
             .catch(error => {
@@ -198,15 +240,17 @@ const ProductList = () => {
     };
 
     // Event handlers
-    const handleCategoryChange = (event) => {
-        const categoryId = event.target.value;
-        setSelectedCategoryId(categoryId);
-        if (categoryId) {
-            fetchFilters(categoryId);
-            setSnackbarMessage('Category selected successfully!');
-            setSnackbarSeverity('success');
-            setSnackbarOpen(true);
+    const handleCategoryChange = (categoryId) => {
+        const newCategories = new Set(selectedCategories);
+        if (newCategories.has(categoryId)) {
+            newCategories.delete(categoryId);
+        } else {
+            newCategories.add(categoryId);
         }
+        setSelectedCategories(newCategories);
+        setSnackbarMessage('Category selection updated!');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
     };
 
     const handleFilterChange = (filterName, option) => {
@@ -224,13 +268,13 @@ const ProductList = () => {
     };
 
     const handleBrandChange = (brandName) => {
-        setSelectedBrands(prevSelectedBrands => {
-            if (prevSelectedBrands.includes(brandName)) {
-                return prevSelectedBrands.filter(name => name !== brandName);
-            } else {
-                return [...prevSelectedBrands, brandName];
-            }
-        });
+        const newBrands = new Set(selectedBrands);
+        if (newBrands.has(brandName)) {
+            newBrands.delete(brandName);
+        } else {
+            newBrands.add(brandName);
+        }
+        setSelectedBrands(newBrands);
     };
 
     const handlePriceRangeChange = (rangeId) => {
@@ -242,20 +286,16 @@ const ProductList = () => {
     };
 
     const handleClearFilters = () => {
-        // Reset all filter states
-        setSelectedCategoryId('');
+        setSelectedCategories(new Set());
         setSelectedFilters({});
-        setSelectedBrands([]);
+        setSelectedBrands(new Set());
         setSelectedPriceRanges([]);
-        setPriceRange([0, 140]);
+        setPriceRange([minPrice, maxPrice]); // Reset to dynamic min/max
         setCategoryFilters([]);
         setSearchQuery('');
         setPage(0);
         setSortConfig({ key: 'sku', direction: 'asc' });
-
-        // Fetch products with no filters to reset the view
         fetchProducts();
-
         setSnackbarMessage('Reset successfully!');
         setSnackbarSeverity('error');
         setSnackbarOpen(true);
@@ -280,7 +320,7 @@ const ProductList = () => {
     };
 
     const handleChangePage = (event, newPage) => {
-        setPage(newPage);
+        setPage(newPage - 1); // Pagination is 1-based, state is 0-based
     };
 
     const handleChangeRowsPerPage = (event) => {
@@ -291,24 +331,20 @@ const ProductList = () => {
     const handleSearchChange = (event) => {
         setSearchQuery(event.target.value);
         if (event.target.value) {
-            setSelectedCategoryId('');
+            setSelectedCategories(new Set());
         }
         setPage(0);
     };
 
     const handleClearSearch = () => {
-        setSelectedCategoryId('');
+        setSelectedCategories(new Set());
         setSearchQuery('');
         setPage(0);
         setSortConfig({ key: 'sku', direction: 'asc' });
-        const requestBody = {
-            search_query: ''
-        };
+        const requestBody = { search_query: '' };
         fetch(`${API_BASE_URL}/productList/`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
         })
             .then(response => response.json())
@@ -316,14 +352,29 @@ const ProductList = () => {
                 const productList = responseData.data?.products || [];
                 setProducts(productList);
                 setFilteredProducts(productList);
+                
+                // Recalculate and set dynamic prices on search clear
+                if (productList.length > 0) {
+                    const prices = productList.map(p => p.price);
+                    const newMinPrice = Math.min(...prices);
+                    const newMaxPrice = Math.max(...prices);
+                    setMinPrice(newMinPrice);
+                    setMaxPrice(newMaxPrice);
+                    setPriceRange([newMinPrice, newMaxPrice]);
+                } else {
+                    setMinPrice(0);
+                    setMaxPrice(0);
+                    setPriceRange([0, 0]);
+                }
+                
                 setSnackbarMessage('Reset successfully!');
-                setSnackbarSeverity('error');
+                setSnackbarSeverity('success');
                 setSnackbarOpen(true);
             })
             .catch(error => {
                 console.error('Error fetching products:', error);
                 setSnackbarMessage('Something went wrong!');
-                setSnackbarSeverity('error');
+                setSnackbarSeverity('success');
                 setSnackbarOpen(true);
             });
     };
@@ -332,32 +383,16 @@ const ProductList = () => {
         setViewMode(mode);
     };
 
-    // Effects
     useEffect(() => {
-        // Fetch categories on component mount
-        fetchCategories();
-    }, []);
+        fetchProducts();
+    }, [selectedCategories, selectedFilters, searchQuery, selectedBrands]);
 
-    useEffect(() => {
-        // Set default category and fetch products and filters once category options are available
-        if (categoryOptions.length > 0 && !selectedCategoryId) {
-            // Find the category with the specified name or default to the first one
-            const defaultCategory = categoryOptions.find(cat => cat.name === 'French Door Refrigerators') || categoryOptions[0];
-            setSelectedCategoryId(defaultCategory.id);
-        }
-    }, [categoryOptions, selectedCategoryId]);
-
-    useEffect(() => {
-        if (selectedCategoryId) {
-            fetchFilters(selectedCategoryId);
-            fetchProducts();
-        }
-    }, [selectedCategoryId, selectedFilters, searchQuery, selectedBrands]);
-
+    const appliedFilters = getAppliedFilterNames();
+    const pageCount = Math.ceil(filteredProducts.length / rowsPerPage);
 
     return (
         <Box sx={{ display: 'flex', height: '100vh' }}>
-            {/* Enhanced Left Sidebar */}
+            {/* Left Sidebar */}
             <Box
                 sx={{
                     width: 200,
@@ -366,277 +401,226 @@ const ProductList = () => {
                     padding: 2,
                     overflow: 'auto',
                     flexShrink: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
                 }}
             >
                 {/* Categories Section */}
-                <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, fontSize: '16px', color: '#333' }}>
-                        Categories
-                    </Typography>
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                        <Select
-                            value={selectedCategoryId}
-                            onChange={handleCategoryChange}
-                            size="small"
-                            displayEmpty
-                            sx={{
-                                backgroundColor: '#f8f9fa',
-                                '& .MuiSelect-select': {
-                                    padding: '8px 12px',
-                                    fontSize: '14px'
-                                }
-                            }}
-                        >
-                            <MenuItem value="" sx={{ fontSize: '14px', color: '#6c757d' }}>
-                                All Categories
-                            </MenuItem>
-                            {categoryOptions.map((category) => (
-                                <MenuItem key={category.id} value={category.id} sx={{ fontSize: '14px' }}>
-                                    {category.name}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Box>
-
-                {/* Brands Section */}
-                <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, fontSize: '16px', color: '#333' }}>
-                        Brands
-                    </Typography>
-                    {brandOptions.map((brand) => (
-                        <FormControlLabel
-                            key={brand.id}
-                            control={
-                                <Checkbox
-                                    checked={selectedBrands.includes(brand.id)}
-                                    onChange={() => handleBrandChange(brand.id)}
-                                    size="small"
-                                    sx={{ padding: '4px' }}
-                                />
-                            }
-                            label={
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                    <Typography variant="body2" sx={{ fontSize: '14px', color: '#333' }}>
-                                        {brand.name}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontSize: '12px', color: '#6c757d' }}>
-                                        {brand.count}
-                                    </Typography>
-                                </Box>
-                            }
-                            sx={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                mb: 0.5,
-                                width: '100%',
-                                margin: 0,
-                                padding: '4px 0',
-                                '& .MuiFormControlLabel-label': {
-                                    width: '100%',
-                                    marginLeft: '8px',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                }
-                            }}
-                        />
-                    ))}
-                    <Button
-                        variant="text"
-                        color="primary"
-                        size="small"
+                <Accordion defaultExpanded sx={{ boxShadow: 'none', '&:before': { display: 'none' } }}>
+                    <AccordionSummary
+                        expandIcon={<ExpandMoreIcon />}
                         sx={{
-                            mt: 1,
-                            textTransform: 'none',
-                            fontSize: '12px',
-                            padding: '4px 8px'
+                            p: 0,
+                            minHeight: '48px',
+                            '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' },
                         }}
                     >
-                        View all brands ({brandOptions.length})
-                    </Button>
-                </Box>
-
-                <Divider sx={{ my: 2 }} />
-
-                {/* Price Range Section */}
-                <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, fontSize: '16px', color: '#333' }}>
-                        Price Range
-                    </Typography>
-
-
-                    {/* Price range checkboxes */}
-                    {/* {priceRangeOptions.map((priceOption) => (
-                        <FormControlLabel
-                            key={priceOption.id}
-                            control={
-                                <Checkbox
-                                    checked={selectedPriceRanges.includes(priceOption.id)}
-                                    onChange={() => handlePriceRangeChange(priceOption.id)}
-                                    size="small"
-                                    sx={{ padding: '4px' }}
-                                />
-                            }
-                            label={
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                    <Typography variant="body2" sx={{ fontSize: '14px', color: '#333' }}>
-                                        {priceOption.label}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontSize: '12px', color: '#6c757d' }}>
-                                        {priceOption.count}
-                                    </Typography>
-                                </Box>
-                            }
-                            sx={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                mb: 0.5,
-                                width: '100%',
-                                margin: 0,
-                                padding: '4px 0',
-                                '& .MuiFormControlLabel-label': {
-                                    width: '100%',
-                                    marginLeft: '8px',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>
+                            Categories
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
+                        {categoryOptions.map((category) => (
+                            <FormControlLabel
+                                key={category.id}
+                                control={
+                                    <Checkbox
+                                        checked={selectedCategories.has(category.id)}
+                                        onChange={() => handleCategoryChange(category.id)}
+                                        size="small"
+                                        sx={{
+                                            p: '4px',
+                                            mr: 1.5, // Add right margin for spacing
+                                            alignSelf: 'flex-start', // Align checkbox to top
+                                        }}
+                                    />
                                 }
-                            }}
-                        />
-                    ))} */}
-
-                    {/* Price Slider */}
-                    <Box sx={{ mt: 3, px: 0 }}>
-                        <Slider
-                            value={priceRange}
-                            onChange={(event, newValue) => setPriceRange(newValue)}
-                            valueLabelDisplay="auto"
-                            min={0}
-                            max={140}
-                            sx={{
-                                color: '#2563EB',
-                                '& .MuiSlider-thumb': {
-                                    width: 12,
-                                    height: 12,
-                                    backgroundColor: 'white',
-                                    border: '1px solid #2563EB',
-                                    boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-                                    '&:focus, &:hover, &.Mui-active': {
-                                        boxShadow: '0 1px 8px rgba(0,0,0,0.3), 0 0 0 4px rgba(37,99,235,0.16)',
-                                    },
-                                },
-                                '& .MuiSlider-rail': {
-                                    height: 4,
-                                    backgroundColor: '#e0e0e0',
-                                    borderRadius: '2px',
-                                },
-                                '& .MuiSlider-track': {
-                                    height: 4,
-                                    backgroundColor: '#2563EB',
-                                    borderRadius: '2px',
-                                },
-                                '& .MuiSlider-valueLabel': {
-                                    backgroundColor: '#2563EB',
-                                },
-                            }}
-                        />
-
-                        {/* Price input fields and GO button */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2 }}>
-                            <TextField
-                                size="small"
-                                value={priceRange[0]}
-                                onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
+                                label={
+                                    <Typography variant="body2" sx={{ fontSize: '14px', color: '#333', lineHeight: 1.4 }}>
+                                        {category.name}
+                                    </Typography>
+                                }
                                 sx={{
-                                    width: 80,
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: '4px',
-                                        '& fieldset': {
-                                            borderColor: '#ddd',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#999',
-                                        },
-                                        '&.Mui-focused fieldset': {
-                                            borderColor: '#2563EB',
-                                        },
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    mb: 0.5,
+                                    pl: 0.5,
+                                    '& .MuiFormControlLabel-label': {
+                                        marginLeft: 0,
+                                        flex: 1,
                                     },
-                                    '& .MuiInputBase-input': {
-                                        fontSize: '14px',
-                                        padding: '8px 10px'
-                                    }
+                                    minHeight: 32, // Ensures enough height for alignment
                                 }}
                             />
-                            <Typography sx={{ fontSize: '14px', color: '#6c757d' }}>to</Typography>
-                            <TextField
-                                size="small"
-                                value={priceRange[1]}
-                                onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 140])}
-                                sx={{
-                                    width: 80,
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: '4px',
-                                        '& fieldset': {
-                                            borderColor: '#ddd',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#999',
-                                        },
-                                        '&.Mui-focused fieldset': {
-                                            borderColor: '#2563EB',
-                                        },
+                        ))}
+                    </AccordionDetails>
+                </Accordion>
+
+                {/* Brands Section (Updated to use checkboxes) */}
+                <Accordion defaultExpanded sx={{ boxShadow: 'none', '&:before': { display: 'none' } }}>
+                    <AccordionSummary
+                        expandIcon={<ExpandMoreIcon />}
+                        sx={{
+                            p: 0,
+                            minHeight: '48px',
+                            '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' },
+                        }}
+                    >
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>
+                            Brands
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
+                        {brandOptions.map((brand) => (
+                            <FormControlLabel
+                                key={brand.id}
+                                control={
+                                    <Checkbox
+                                        checked={selectedBrands.has(brand.id)}
+                                        onChange={() => handleBrandChange(brand.id)}
+                                        size="small"
+                                        sx={{ padding: '4px', mr: 1.5, alignSelf: 'flex-start' }}
+                                    />
+                                }
+                                label={
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                        <Typography variant="body2" sx={{ fontSize: '14px', color: '#333', lineHeight: 1.4 }}>
+                                            {brand.name}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontSize: '12px', color: '#6c757d' }}>
+                                            ({brand.count})
+                                        </Typography>
+                                    </Box>
+                                }
+                                sx={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    mb: 0.5,
+                                    pl: 0.5,
+                                    '& .MuiFormControlLabel-label': {
+                                        marginLeft: 0,
+                                        flex: 1,
                                     },
-                                    '& .MuiInputBase-input': {
-                                        fontSize: '14px',
-                                        padding: '8px 10px'
-                                    }
+                                    minHeight: 32,
                                 }}
                             />
-                            <Button
-                                variant="contained"
-                                onClick={() => {}}
-                                sx={{
-                                    minWidth: 'auto',
-                                    padding: '8px 16px',
-                                    fontSize: '14px',
-                                    textTransform: 'uppercase',
-                                    backgroundColor: '#2563EB',
-                                    boxShadow: 'none',
-                                    '&:hover': {
-                                        backgroundColor: '#1e4baf',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                    }
-                                }}
-                            >
-                                GO
-                            </Button>
-                        </Box>
+                        ))}
+                    </AccordionDetails>
+                </Accordion>
 
-                        {/* Current price display */}
-                        <Box sx={{
-                            mt: 2,
-                            px: 1,
-                            py: 1,
-                            backgroundColor: '#e6f0ff',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                        }}>
-                            <Typography sx={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>
-                                Current
-                            </Typography>
-                            <Typography sx={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>
-                                ${priceRange[0]} - ${priceRange[1]}
-                            </Typography>
+                <Divider sx={{ my: 1 }} />
+
+                {/* Price Range Section (Dynamic) */}
+                <Accordion defaultExpanded sx={{ boxShadow: 'none', '&:before': { display: 'none' } }}>
+                    <AccordionSummary
+                        expandIcon={<ExpandMoreIcon />}
+                        sx={{
+                            p: 0,
+                            minHeight: '48px',
+                            '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' },
+                        }}
+                    >
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>
+                            Price Range
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ p: 1 }}>
+                        <Box sx={{ px: 0 }}>
+                            <Slider
+                                value={priceRange}
+                                onChange={(event, newValue) => setPriceRange(newValue)}
+                                valueLabelDisplay="auto"
+                                min={minPrice}
+                                max={maxPrice}
+                                sx={{
+                                    color: '#2563EB',
+                                    '& .MuiSlider-thumb': {
+                                        width: 12,
+                                        height: 12,
+                                        backgroundColor: 'white',
+                                        border: '1px solid #2563EB',
+                                        boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                                        '&:focus, &:hover, &.Mui-active': { boxShadow: '0 1px 8px rgba(0,0,0,0.3), 0 0 0 4px rgba(37,99,235,0.16)' },
+                                    },
+                                    '& .MuiSlider-rail': { height: 4, backgroundColor: '#e0e0e0', borderRadius: '2px' },
+                                    '& .MuiSlider-track': { height: 4, backgroundColor: '#2563EB', borderRadius: '2px' },
+                                    '& .MuiSlider-valueLabel': { backgroundColor: '#2563EB' },
+                                }}
+                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2 }}>
+                                <TextField
+                                    size="small"
+                                    value={priceRange[0]}
+                                    onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
+                                    sx={{
+                                        width: 80,
+                                        '& .MuiOutlinedInput-root': {
+                                            borderRadius: '4px',
+                                            '& fieldset': { borderColor: '#ddd' },
+                                            '&:hover fieldset': { borderColor: '#999' },
+                                            '&.Mui-focused fieldset': { borderColor: '#2563EB' },
+                                        },
+                                        '& .MuiInputBase-input': { fontSize: '14px', padding: '8px 10px' }
+                                    }}
+                                />
+                                <Typography sx={{ fontSize: '14px', color: '#6c757d' }}>to</Typography>
+                                <TextField
+                                    size="small"
+                                    value={priceRange[1]}
+                                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || maxPrice])}
+                                    sx={{
+                                        width: 80,
+                                        '& .MuiOutlinedInput-root': {
+                                            borderRadius: '4px',
+                                            '& fieldset': { borderColor: '#ddd' },
+                                            '&:hover fieldset': { borderColor: '#999' },
+                                            '&.Mui-focused fieldset': { borderColor: '#2563EB' },
+                                        },
+                                        '& .MuiInputBase-input': { fontSize: '14px', padding: '8px 10px' }
+                                    }}
+                                />
+                                <Button
+                                    variant="contained"
+                                    onClick={() => {}}
+                                    sx={{ minWidth: 'auto', padding: '8px 16px', fontSize: '14px', textTransform: 'uppercase', backgroundColor: '#2563EB', boxShadow: 'none', '&:hover': { backgroundColor: '#1e4baf', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' } }}
+                                >
+                                    GO
+                                </Button>
+                            </Box>
+                            <Box sx={{ mt: 2, px: 1, py: 1, backgroundColor: '#e6f0ff', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography sx={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>Current</Typography>
+                                <Typography sx={{ fontSize: '14px', color: '#333', fontWeight: 'bold' }}>
+                                    ${priceRange[0]} - ${priceRange[1]}
+                                </Typography>
+                            </Box>
                         </Box>
-                    </Box>
-                </Box>
+                    </AccordionDetails>
+                </Accordion>
+
+                <Divider sx={{ my: 1 }} />
+
+                {/* Other Filters Section */}
+                {categoryFilters.map((filter, index) => (
+                    <Accordion key={index} defaultExpanded sx={{ boxShadow: 'none', '&:before': { display: 'none' } }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ p: 0, minHeight: '48px', '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' } }}>
+                            <Typography variant="subtitle1" sx={{ fontSize: '14px' }}>{filter.name}</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                            {filter.options.map((option, optionIndex) => (
+                                <FormControlLabel
+                                    key={optionIndex}
+                                    control={<Checkbox checked={selectedFilters[filter.name]?.includes(option.label) || false} onChange={() => handleFilterChange(filter.name, option.label)} />}
+                                    label={option.label}
+                                    sx={{ '& .MuiFormControlLabel-label': { fontSize: '14px' } }}
+                                />
+                            ))}
+                        </AccordionDetails>
+                    </Accordion>
+                ))}
+
                 {/* Clear All Button */}
-                <Box sx={{ mt: 3 }}>
+                <Box sx={{ mt: 'auto', p: 1 }}>
                     <Button
                         variant="outlined"
                         size="small"
@@ -662,14 +646,7 @@ const ProductList = () => {
             {/* Main Content */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {/* Header */}
-                <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    p: 2,
-                    borderBottom: '1px solid #e0e0e0',
-                    backgroundColor: 'white'
-                }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 2, borderBottom: '1px solid #e0e0e0', backgroundColor: 'white' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <TextField
                             placeholder="Search..."
@@ -687,43 +664,52 @@ const ProductList = () => {
                         </IconButton>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 2 }}>
                         <Typography variant="body2">Total Products: {products.length}</Typography>
-
-                        {/* View Mode Buttons */}
                         <Tooltip title="List View">
                             <IconButton
                                 onClick={() => toggleViewMode('list')}
                                 color={viewMode === 'list' ? 'primary' : 'default'}
-                                sx={{
-                                    backgroundColor: viewMode === 'list' ? '#2563EB' : 'transparent',
-                                    color: viewMode === 'list' ? 'white' : 'inherit',
-                                    '&:hover': {
-                                        backgroundColor: viewMode === 'list' ? '#1e4baf' : 'rgba(0, 0, 0, 0.04)',
-                                    },
-                                }}
+                                sx={{ backgroundColor: viewMode === 'list' ? '#2563EB' : 'transparent', color: viewMode === 'list' ? 'white' : 'inherit', '&:hover': { backgroundColor: viewMode === 'list' ? '#1e4baf' : 'rgba(0, 0, 0, 0.04)' } }}
                             >
                                 <ListAltIcon />
                             </IconButton>
                         </Tooltip>
-
                         <Tooltip title="Card View">
                             <IconButton
                                 onClick={() => toggleViewMode('card')}
                                 color={viewMode === 'card' ? 'primary' : 'default'}
-                                sx={{
-                                    backgroundColor: viewMode === 'card' ? '#2563EB' : 'transparent',
-                                    color: viewMode === 'card' ? 'white' : 'inherit',
-                                    '&:hover': {
-                                        backgroundColor: viewMode === 'card' ? '#1e4baf' : 'rgba(0, 0, 0, 0.04)',
-                                    },
-                                }}
+                                sx={{ backgroundColor: viewMode === 'card' ? '#2563EB' : 'transparent', color: viewMode === 'card' ? 'white' : 'inherit', '&:hover': { backgroundColor: viewMode === 'card' ? '#1e4baf' : 'rgba(0, 0, 0, 0.04)' } }}
                             >
                                 <GridViewIcon />
                             </IconButton>
                         </Tooltip>
                     </Box>
                 </Box>
+                
+                {/* Applied Filters Section */}
+                {appliedFilters.length > 0 && (
+                    <Box sx={{ p: 1.5, backgroundColor: '#f8f9fa', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#333' }}>Applied Filters:</Typography>
+                        {appliedFilters.map((filter, index) => (
+                            <Typography
+                                key={index}
+                                variant="body2"
+                                sx={{
+                                    backgroundColor: '#e6f0ff',
+                                    color: '#2563EB',
+                                    fontWeight: 600,
+                                    px: 1,
+                                    py: 0.5,
+                                    borderRadius: '4px',
+                                    fontSize: '12px'
+                                }}
+                            >
+                                {filter}
+                            </Typography>
+                        ))}
+                    </Box>
+                )}
 
                 {/* Content Area */}
                 <Box sx={{ flex: 1, overflow: 'auto', p: 2, backgroundColor: '#f1f3f6' }}>
@@ -743,13 +729,7 @@ const ProductList = () => {
                                         ].map((col, index) => (
                                             <TableCell
                                                 key={index}
-                                                sx={{
-                                                    textAlign: 'center',
-                                                    cursor: col.key ? 'pointer' : 'default',
-                                                    fontWeight: 'bold',
-                                                    backgroundColor: '#f5f5f5',
-                                                    fontSize: '14px',
-                                                }}
+                                                sx={{ textAlign: 'center', cursor: col.key ? 'pointer' : 'default', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '14px' }}
                                                 onClick={col.key ? () => sortProducts(col.key) : undefined}
                                             >
                                                 {col.label} {col.key ? getSortSymbol(col.key) : ''}
@@ -780,12 +760,10 @@ const ProductList = () => {
                                                             <img
                                                                 src={product.image_url}
                                                                 alt={product.name}
-                                                                style={{
-                                                                    width: '40px',
-                                                                    height: '40px',
-                                                                    objectFit: 'contain',
-                                                                    borderRadius: '4px',
-                                                                    border: '1px solid #ddd',
+                                                                style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #ddd' }}
+                                                                onError={(e) => {
+                                                                    e.target.onerror = null;
+                                                                    e.target.src = "https://via.placeholder.com/40";
                                                                 }}
                                                             />
                                                         </Link>
@@ -807,7 +785,7 @@ const ProductList = () => {
                                                     </TableCell>
                                                     <TableCell sx={{ textAlign: 'center' }}>{product.category}</TableCell>
                                                     <TableCell sx={{ textAlign: 'center' }}>{product.brand_name || 'N/A'}</TableCell>
-                                                    <TableCell sx={{ textAlign: 'center', fontWeight: 'bold' }}>${product.price}</TableCell>
+                                                    <TableCell sx={{ textAlign: 'center' }}>${product.price}</TableCell>
                                                 </TableRow>
                                             ))
                                     )}
@@ -815,7 +793,6 @@ const ProductList = () => {
                             </Table>
                         </TableContainer>
                     ) : (
-                        // Card Grid
                         <Box sx={{ width: '100%' }}>
                             {loading ? (
                                 <Box sx={{ textAlign: 'center', mt: 4 }}>
@@ -827,467 +804,256 @@ const ProductList = () => {
                                 </Box>
                             ) : (
                                 <Grid container spacing={2} sx={{ margin: 0, width: '100%' }}>
-                                    {filteredProducts
-                                        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                                        .map((product) => (
-                                            <Grid
-                                                item
-                                                xs={12}
-                                                sm={6}
-                                                md={4}
-                                                lg={2}
-                                                xl={2}
-                                                key={product.id}
+                                    {filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => (
+                                        <Grid item xs={12} sm={6} md={4} lg={2} xl={2} key={product.id} sx={{ display: 'flex', justifyContent: 'center', paddingLeft: '8px !important', paddingTop: '8px !important' }}>
+                                            <Card
                                                 sx={{
+                                                    width: '100%',
+                                                    maxWidth: '200px',
+                                                    height: '370px',
                                                     display: 'flex',
-                                                    justifyContent: 'center',
-                                                    paddingLeft: '8px !important',
-                                                    paddingTop: '8px !important',
+                                                    flexDirection: 'column',
+                                                    position: 'relative',
+                                                    backgroundColor: '#fff',
+                                                    border: '1px solid #f0f0f0',
+                                                    borderRadius: '6px',
+                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                                                    transition: 'all 0.2s ease-in-out',
+                                                    cursor: 'pointer',
+                                                    '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transform: 'translateY(-2px)' }
                                                 }}
                                             >
-                                                <Card
-                                                    sx={{
-                                                        width: '100%',
-                                                        maxWidth: '200px',
-                                                        height: '370px',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        position: 'relative',
-                                                        backgroundColor: '#fff',
-                                                        border: '1px solid #f0f0f0',
-                                                        borderRadius: '6px',
-                                                        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-                                                        transition: 'all 0.2s ease-in-out',
-                                                        cursor: 'pointer',
-                                                        '&:hover': {
-                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                                            transform: 'translateY(-2px)',
-                                                        },
-                                                    }}
+                                                <IconButton
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(product.id); }}
+                                                    sx={{ position: 'absolute', top: 8, right: 8, zIndex: 2, backgroundColor: 'rgba(255,255,255,0.9)', width: 28, height: 28, '&:hover': { backgroundColor: 'rgba(255,255,255,1)', transform: 'scale(1.1)' } }}
+                                                    size="small"
                                                 >
-                                                    {/* Wishlist Icon */}
-                                                    <IconButton
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            toggleFavorite(product.id);
-                                                        }}
-                                                        sx={{
-                                                            position: 'absolute',
-                                                            top: 8,
-                                                            right: 8,
-                                                            zIndex: 2,
-                                                            backgroundColor: 'rgba(255,255,255,0.9)',
-                                                            width: 28,
-                                                            height: 28,
-                                                            '&:hover': {
-                                                                backgroundColor: 'rgba(255,255,255,1)',
-                                                                transform: 'scale(1.1)',
-                                                            },
-                                                        }}
-                                                        size="small"
+                                                    {favorites.has(product.id) ? (
+                                                        <FavoriteIcon sx={{ fontSize: 14, color: '#ff3e6c' }} />
+                                                    ) : (
+                                                        <FavoriteBorderIcon sx={{ fontSize: 14, color: '#878787' }} />
+                                                    )}
+                                                </IconButton>
+                                                <Link to={`/details/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                                    <Box
+                                                        sx={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 1.5, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}
                                                     >
-                                                        {favorites.has(product.id) ? (
-                                                            <FavoriteIcon sx={{ fontSize: 14, color: '#ff3e6c' }} />
-                                                        ) : (
-                                                            <FavoriteBorderIcon sx={{ fontSize: 14, color: '#878787' }} />
-                                                        )}
-                                                    </IconButton>
-
-                                                    <Link
-                                                        to={`/details/${product.id}`}
-                                                        style={{
-                                                            textDecoration: 'none',
-                                                            color: 'inherit',
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            height: '100%',
-                                                        }}
-                                                    >
-                                                        {/* Product Image */}
-                                                        <Box
+                                                        <CardMedia
+                                                            component="img"
+                                                            image={product.image_url}
+                                                            alt={product.name}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = "https://via.placeholder.com/150";
+                                                            }}
+                                                            sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', transition: 'transform 0.2s ease-in-out', '&:hover': { transform: 'scale(1.05)' } }}
+                                                        />
+                                                    </Box>
+                                                    <CardContent sx={{ flex: 1, p: 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingBottom: '12px !important' }}>
+                                                        <Typography
+                                                            variant="body1"
                                                             sx={{
-                                                                height: '150px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                p: 1.5,
-                                                                borderBottom: '1px solid #f0f0f0',
-                                                                backgroundColor: '#fafafa',
+                                                                fontSize: '12px',
+                                                                fontWeight: 600,
+                                                                lineHeight: 1.3,
+                                                                mb: 1,
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                display: '-webkit-box',
+                                                                WebkitBoxOrient: 'vertical',
+                                                                WebkitLineClamp: 2,
+                                                                minHeight: '30px',
+                                                                color: '#212121'
                                                             }}
                                                         >
-                                                            <CardMedia
-                                                                component="img"
-                                                                image={product.image_url}
-                                                                alt={product.name}
-                                                                sx={{
-                                                                    maxWidth: '100%',
-                                                                    maxHeight: '100%',
-                                                                    objectFit: 'contain',
-                                                                    transition: 'transform 0.2s ease-in-out',
-                                                                    '&:hover': {
-                                                                        transform: 'scale(1.05)',
-                                                                    },
-                                                                }}
-                                                            />
+                                                            {product.name}
+                                                        </Typography>
+                                                        <Box sx={{ mt: 1, fontSize: '12px', color: '#6c757d', textAlign: 'left' }}>
+                                                            <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>SKU:</b> {product.sku}</Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>MPN:</b> {product.mpn || 'N/A'}</Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>Category:</b> {product.category}</Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>Brand:</b> {product.brand_name || 'N/A'}</Typography>
                                                         </Box>
-
-                                                        {/* Product Details */}
-                                                        <CardContent sx={{
-                                                            flex: 1,
-                                                            p: 1.5,
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            justifyContent: 'space-between',
-                                                            paddingBottom: '12px !important',
-                                                        }}>
-                                                            {/* Product Name */}
-                                                            <Typography
-                                                                variant="body1"
-                                                                sx={{
-                                                                    fontSize: '12px',
-                                                                    fontWeight: 600, // Make title bold
-                                                                    lineHeight: 1.3,
-                                                                    mb: 1,
-                                                                    overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis',
-                                                                    display: '-webkit-box',
-                                                                    WebkitBoxOrient: 'vertical',
-                                                                    WebkitLineClamp: 2,
-                                                                    minHeight: '30px',
-                                                                    color: '#212121', // Maintain black color
-                                                                }}
-                                                            >
-                                                                {product.name}
-                                                            </Typography>
-
-                                                            {/* SKU, MPN, Category, and Brand info */}
-                                                            <Box sx={{ mt: 1, fontSize: '12px', color: '#6c757d', textAlign: 'left' }}>
-                                                                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}>
-                                                                    <b>SKU:</b> {product.sku}
-                                                                </Typography>
-                                                                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}>
-                                                                    <b>MPN:</b> {product.mpn || 'N/A'}
-                                                                </Typography>
-                                                                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}>
-                                                                    <b>Category:</b> {product.category}
-                                                                </Typography>
-                                                                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}>
-                                                                    <b>Brand:</b> {product.brand_name || 'N/A'}
-                                                                </Typography>
-                                                            </Box>
-
-                                                            {/* Price Section - USD currency */}
-                                                            <Box sx={{ mt: 1 }}>
-                                                                <Typography
-                                                                    variant="h6"
-                                                                    sx={{
-                                                                        fontSize: '14px',
-                                                                        fontWeight: 600,
-                                                                        color: '#212121',
-                                                                        mb: 0.5,
-                                                                    }}
-                                                                >
-                                                                    ${product.price}
-                                                                </Typography>
-
-                                                                {/* Free Delivery */}
-                                                                <Typography
-                                                                    variant="body2"
-                                                                    sx={{
-                                                                        fontSize: '10px',
-                                                                        color: '#388e3c',
-                                                                        fontWeight: 500,
-                                                                    }}
-                                                                >
-                                                                    Free delivery
-                                                                </Typography>
-                                                            </Box>
-
-                                                            {/* Stock Status */}
-                                                            <Typography
-                                                                variant="body2"
-                                                                sx={{
-                                                                    fontSize: '10px',
-                                                                    color: '#388e3c',
-                                                                    fontWeight: 500,
-                                                                    textAlign: 'left',
-                                                                }}
-                                                            >
-                                                                ✓ In Stock
-                                                            </Typography>
-                                                        </CardContent>
-                                                    </Link>
-                                                </Card>
-                                            </Grid>
-                                        ))}
+                                                        <Box sx={{ mt: 1 }}>
+                                                            <Typography variant="h6" sx={{ fontSize: '14px', fontWeight: 600, color: '#212121', mb: 0.5 }}>${product.price}</Typography>
+                                                        </Box>
+                                                    </CardContent>
+                                                </Link>
+                                            </Card>
+                                        </Grid>
+                                    ))}
                                 </Grid>
                             )}
                         </Box>
                     )}
                 </Box>
 
-                {/* Pagination */}
-                <Box sx={{ borderTop: '1px solid #e0e0e0', backgroundColor: 'white' }}>
-                    <TablePagination
-                        rowsPerPageOptions={[10, 25, 50, 100]}
-                        component="div"
-                        count={filteredProducts.length}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        onPageChange={handleChangePage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                        labelRowsPerPage="Rows per page:"
-                    />
+                {/* Pagination and Rows per page */}
+                <Box sx={{ borderTop: '1px solid #e0e0e0', backgroundColor: 'white', p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" sx={{ color: '#6c757d' }}>Rows per page:</Typography>
+                        <FormControl variant="outlined" size="small">
+                            <Select
+                                value={rowsPerPage}
+                                onChange={handleChangeRowsPerPage}
+                                sx={{ fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' } }}
+                            >
+                                <MenuItem value={10}>10</MenuItem>
+                                <MenuItem value={25}>25</MenuItem>
+                                <MenuItem value={50}>50</MenuItem>
+                                <MenuItem value={100}>100</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Box>
+                    <Stack spacing={2} direction="row" alignItems="center">
+                        <Pagination
+                            count={pageCount}
+                            page={page + 1}
+                            onChange={handleChangePage}
+                            renderItem={(item) => (
+                                <PaginationItem
+                                    slots={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
+                                    {...item}
+                                />
+                            )}
+                        />
+                    </Stack>
                 </Box>
-            </Box>
 
-            {/* Rest of the dialogs and snackbars remain the same */}
-            {/* Floating Product Finder Button */}
-            <Button
-                variant="contained"
-                color="primary"
-                style={{
-                    position: 'fixed',
-                    bottom: '15px',
-                    right: '10px',
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '50%',
-                    fontSize: '24px',
-                    zIndex: 9999,
-                    backgroundColor: '#2563EB',
-                }}
-                onClick={() => {
-                    setShowPopup(true);
-                    setSearchQuery('');
-                    setPage(0);
-                }}
-            >
-                ❓
-            </Button>
+                {/* Floating Product Finder Button */}
+                <Button
+                    variant="contained"
+                    color="primary"
+                    style={{ position: 'fixed', bottom: '15px', right: '10px', width: '60px', height: '60px', borderRadius: '50%', fontSize: '24px', zIndex: 9999, backgroundColor: '#2563EB' }}
+                    onClick={() => { setShowPopup(true); setSearchQuery(''); setPage(0); }}
+                >
+                    ❓
+                </Button>
 
-            {/* Product Finder Dialog */}
-            <Dialog
-                open={showPopup}
-                onClose={() => setShowPopup(false)}
-                maxWidth={false}
-                fullWidth={false}
-                hideBackdrop={false}
-                PaperProps={{
-                    style: {
-                        position: 'fixed',
-                        bottom: '80px',
-                        right: '20px',
-                        margin: 0,
-                        zIndex: 1300,
-                        borderRadius: '12px',
-                        width: isMobile ? '95%' : maximized ? dialogSize.width : 250,
-                        height: isMobile ? '85%' : maximized ? dialogSize.height : 60,
-                        transition: 'all 0.3s ease',
-                        overflow: 'hidden',
-                    },
-                }}
-            >
-                <DialogTitle
-                    style={{
-                        backgroundColor: '#2563EB',
-                        textAlign: 'center',
-                        fontWeight: 'bold',
-                        color: 'white',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        paddingRight: '40px',
+                {/* Product Finder Dialog */}
+                <Dialog
+                    open={showPopup}
+                    onClose={() => setShowPopup(false)}
+                    maxWidth={false}
+                    fullWidth={false}
+                    hideBackdrop={false}
+                    PaperProps={{
+                        style: {
+                            position: 'fixed',
+                            bottom: '80px',
+                            right: '20px',
+                            margin: 0,
+                            zIndex: 1300,
+                            borderRadius: '12px',
+                            width: isMobile ? '95%' : maximized ? dialogSize.width : 250,
+                            height: isMobile ? '85%' : maximized ? dialogSize.height : 60,
+                            transition: 'all 0.3s ease',
+                            overflow: 'hidden'
+                        }
                     }}
                 >
-                    <Typography
-                        sx={{
-                            marginTop: '5px',
-                            fontSize: maximized ? '18px' : '14px',
-                            fontWeight: 600,
-                            color: 'white'
-                        }}
-                    >
-                        Product Finder
-                    </Typography>
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            right: 10,
-                            top: 10,
-                            display: 'flex',
-                            gap: '4px',
-                            alignItems: 'center',
-                        }}
-                    >
-                        <Tooltip title="Minimize">
-                            <span>
-                                <Button
-                                    size="small"
-                                    onClick={() => maximized && toggleDialogSize()}
-                                    disabled={!maximized}
-                                    sx={{
-                                        minWidth: '32px',
-                                        color: 'white',
-                                        height: '32px',
-                                        padding: '4px',
-                                        lineHeight: 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                    }}
-                                >
-                                    <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-6px' }} />
+                    <DialogTitle style={{ backgroundColor: '#2563EB', textAlign: 'center', fontWeight: 'bold', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '40px' }}>
+                        <Typography sx={{ marginTop: '5px', fontSize: maximized ? '18px' : '14px', fontWeight: 600, color: 'white' }}>Product Finder</Typography>
+                        <Box sx={{ position: 'absolute', right: 10, top: 10, display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <Tooltip title="Minimize">
+                                <span>
+                                    <Button size="small" onClick={() => maximized && toggleDialogSize()} disabled={!maximized} sx={{ minWidth: '32px', color: 'white', height: '32px', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <MinimizeOutlinedIcon fontSize="small" sx={{ mt: '-6px' }} />
+                                    </Button>
+                                </span>
+                            </Tooltip>
+                            <Tooltip title="Maximize">
+                                <span>
+                                    <Button size="small" onClick={() => !maximized && toggleDialogSize()} disabled={maximized} sx={{ minWidth: '32px', height: '32px', marginTop: '5px', color: 'white', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <CropSquareIcon fontSize="small" />
+                                    </Button>
+                                </span>
+                            </Tooltip>
+                            <Tooltip title="Close">
+                                <Button onClick={() => setShowPopup(false)} size="small" sx={{ marginTop: '5px', color: 'white', minWidth: '32px', height: '32px', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <CloseIcon fontSize="small" />
                                 </Button>
-                            </span>
-                        </Tooltip>
-                        <Tooltip title="Maximize">
-                            <span>
-                                <Button
-                                    size="small"
-                                    onClick={() => !maximized && toggleDialogSize()}
-                                    disabled={maximized}
-                                    sx={{
-                                        minWidth: '32px',
-                                        height: '32px',
-                                        marginTop: '5px',
-                                        color: 'white',
-                                        padding: '4px',
-                                        lineHeight: 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                    }}
-                                >
-                                    <CropSquareIcon fontSize="small" />
-                                </Button>
-                            </span>
-                        </Tooltip>
-                        <Tooltip title="Close">
-                            <Button
-                                onClick={() => setShowPopup(false)}
-                                size="small"
-                                sx={{
-                                    marginTop: '5px',
-                                    color: 'white',
-                                    minWidth: '32px',
-                                    height: '32px',
-                                    padding: '4px',
-                                    lineHeight: 1,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <CloseIcon fontSize="small" />
-                            </Button>
-                        </Tooltip>
-                    </Box>
-                </DialogTitle>
-                {maximized && (
-                    <>
-                        <DialogContent dividers>
-                            <FormControl fullWidth margin="normal">
-                                <Select
-                                    value={selectedCategoryId}
-                                    onChange={handleCategoryChange}
-                                    size="small"
-                                    displayEmpty
-                                    sx={{
-                                        fontSize: '14px',
-                                        backgroundColor: '#f8f9fa',
-                                        '& .MuiSelect-select': {
-                                            padding: '8px 12px',
-                                            fontSize: '14px',
-                                        },
-                                        '& .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: '#ddd'
-                                        },
-                                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: '#2563EB'
-                                        },
-                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: '#2563EB'
-                                        }
-                                    }}
-                                >
-                                    <MenuItem value="" sx={{ fontSize: '14px', color: '#6c757d' }}>
-                                        Select Category
-                                    </MenuItem>
-                                    {categoryOptions.map((category) => (
-                                        <MenuItem key={category.id} value={category.id} sx={{ fontSize: '14px' }}>
-                                            {category.name}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                            {categoryFilters.map((filter, index) => (
-                                <Accordion key={index}>
-                                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#cfd3df' }}>
-                                        <Typography variant="subtitle1" sx={{ fontSize: '14px' }}>{filter.name}</Typography>
+                            </Tooltip>
+                        </Box>
+                    </DialogTitle>
+                    {maximized && (
+                        <>
+                            <DialogContent dividers>
+                                <Accordion defaultExpanded>
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ p: 0, minHeight: '48px', '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' } }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>Categories</Typography>
                                     </AccordionSummary>
-                                    <AccordionDetails>
-                                        {filter.options.map((option, optionIndex) => (
+                                    <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
+                                        {categoryOptions.map((category) => (
                                             <FormControlLabel
-                                                key={optionIndex}
-                                                control={
-                                                    <Checkbox
-                                                        checked={selectedFilters[filter.name]?.includes(option.label) || false}
-                                                        onChange={() => handleFilterChange(filter.name, option.label)}
-                                                    />
-                                                }
-                                                label={option.label}
-                                                sx={{
-                                                    '& .MuiFormControlLabel-label': {
-                                                        fontSize: '14px',
-                                                    },
-                                                }}
+                                                key={category.id}
+                                                control={<Checkbox checked={selectedCategories.has(category.id)} onChange={() => handleCategoryChange(category.id)} size="small" sx={{ padding: '4px' }} />}
+                                                label={<Typography variant="body2" sx={{ fontSize: '14px', color: '#333' }}>{category.name}</Typography>}
+                                                sx={{ display: 'flex', mb: 0.5, '& .MuiFormControlLabel-label': { ml: 1 } }}
                                             />
                                         ))}
                                     </AccordionDetails>
                                 </Accordion>
-                            ))}
-                        </DialogContent>
-                        <DialogActions>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                <Tooltip title="Reset All Filters" arrow>
-                                    <Button
-                                        variant="text"
-                                        color="error"
-                                        onClick={handleClearFilters}
-                                        sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                    >
-                                        <RestartAltIcon fontSize="small" />
-                                        Reset All
-                                    </Button>
-                                </Tooltip>
-                                <Button onClick={() => setShowPopup(false)} color="primary">
-                                    Close
-                                </Button>
-                            </Box>
-                        </DialogActions>
-                    </>
-                )}
-            </Dialog>
+                                <Accordion defaultExpanded>
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ p: 0, minHeight: '48px', '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' } }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>Brands</Typography>
+                                    </AccordionSummary>
+                                    <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
+                                        {brandOptions.map((brand) => (
+                                            <FormControlLabel
+                                                key={brand.id}
+                                                control={<Checkbox checked={selectedBrands.has(brand.id)} onChange={() => handleBrandChange(brand.id)} size="small" sx={{ padding: '4px' }} />}
+                                                label={
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                        <Typography variant="body2" sx={{ fontSize: '14px', color: '#333' }}>{brand.name}</Typography>
+                                                        <Typography variant="body2" sx={{ fontSize: '12px', color: '#6c757d' }}>({brand.count})</Typography>
+                                                    </Box>
+                                                }
+                                                sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, width: '100%', margin: 0, padding: '4px 0', '& .MuiFormControlLabel-label': { width: '100%', marginLeft: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } }}
+                                            />
+                                        ))}
+                                    </AccordionDetails>
+                                </Accordion>
+                                {categoryFilters.map((filter, index) => (
+                                    <Accordion key={index}>
+                                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#cfd3df' }}>
+                                            <Typography variant="subtitle1" sx={{ fontSize: '14px' }}>{filter.name}</Typography>
+                                        </AccordionSummary>
+                                        <AccordionDetails>
+                                            {filter.options.map((option, optionIndex) => (
+                                                <FormControlLabel
+                                                    key={optionIndex}
+                                                    control={<Checkbox checked={selectedFilters[filter.name]?.includes(option.label) || false} onChange={() => handleFilterChange(filter.name, option.label)} />}
+                                                    label={option.label}
+                                                    sx={{ '& .MuiFormControlLabel-label': { fontSize: '14px' } }}
+                                                />
+                                            ))}
+                                        </AccordionDetails>
+                                    </Accordion>
+                                ))}
+                            </DialogContent>
+                            <DialogActions>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                                    <Tooltip title="Reset All Filters" arrow>
+                                        <Button variant="text" color="error" onClick={handleClearFilters} sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <RestartAltIcon fontSize="small" />
+                                            Reset All
+                                        </Button>
+                                    </Tooltip>
+                                    <Button onClick={() => setShowPopup(false)} color="primary">Close</Button>
+                                </Box>
+                            </DialogActions>
+                        </>
+                    )}
+                </Dialog>
 
-            {/* Snackbar Notifications */}
-            <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={3000}
-                onClose={() => setSnackbarOpen(false)}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-            >
-                <Alert
-                    onClose={() => setSnackbarOpen(false)}
-                    severity={snackbarSeverity}
-                    sx={{ width: '100%' }}
-                    elevation={6}
-                    variant="filled"
-                >
-                    {snackbarMessage}
-                </Alert>
-            </Snackbar>
+                {/* Snackbar Notifications */}
+                <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
+                    <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }} elevation={6} variant="filled">
+                        {snackbarMessage}
+                    </Alert>
+                </Snackbar>
+            </Box>
         </Box>
     );
 };
