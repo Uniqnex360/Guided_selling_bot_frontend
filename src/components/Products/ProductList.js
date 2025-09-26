@@ -84,6 +84,7 @@ const ProductList = () => {
     const [priceRange, setPriceRange] = useState([0, 140]);
     const [selectedPriceRanges, setSelectedPriceRanges] = useState([]);
     const [brandOptions, setBrandOptions] = useState([]);
+    
     const [allBrandOptions, setAllBrandOptions] = useState([]);
     const [brandSearch, setBrandSearch] = useState('');
     const [selectedBrands, setSelectedBrands] = useState(new Set());
@@ -100,6 +101,12 @@ const handleClearBrandFilter = () => {
     setSelectedBrands(new Set());
     setBrandSearch('');
 };
+const handleCategorySearchChange = (e) => {
+    setCategorySearch(e.target.value);
+};
+const handleBrandSearchChange = (e) => {
+    setBrandSearch(e.target.value);
+}
 
     // Helper functions
     const toggleDialogSize = () => setMaximized(prev => !prev);
@@ -469,14 +476,14 @@ useEffect(() => {
     <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
         <Box mb={2}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <TextField
-                    placeholder="Search categories..."
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    value={categorySearch}
-                    onChange={e => setCategorySearch(e.target.value)}
-                />
+<TextField
+    placeholder="Search categories..."
+    variant="outlined"
+    size="small"
+    fullWidth
+    value={categorySearch}
+    onChange={handleCategorySearchChange}
+/>
                 <IconButton
                     size="small"
                     onClick={handleClearCategoryFilter}
@@ -570,14 +577,14 @@ useEffect(() => {
                    <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
         <Box mb={2}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <TextField
-                    placeholder="Search brands..."
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    value={brandSearch || ''}
-                    onChange={e => setBrandSearch(e.target.value)}
-                />
+<TextField
+    placeholder="Search brands..."
+    variant="outlined"
+    size="small"
+    fullWidth
+    value={brandSearch}
+    onChange={handleBrandSearchChange}
+/>
                 <IconButton
                     size="small"
                     onClick={handleClearBrandFilter}
