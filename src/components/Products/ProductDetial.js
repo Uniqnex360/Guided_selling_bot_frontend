@@ -81,8 +81,8 @@ function a11yProps(index) {
 
 const ProductDetail = () => {
     // Reduce height, increase width
-    const defaultHeight = "350px";
-    const defaultWidth = "600px";
+ const defaultHeight = "450px";
+  const defaultWidth = "320px";
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -838,8 +838,8 @@ const ProductDetail = () => {
                                 alt="Product Image"
                                 src={mainImage || soonImg}
                                 style={{
-                                    width: isMobile ? "100%" : "300px",
-                                    height: isMobile ? undefined : "225px",
+                                    width: isMobile ? "100%" : "400px",
+                                    height: isMobile ? undefined : "380px",
                                     objectFit: "contain",
                                     borderRadius: "4px",
                                     cursor: "zoom-in",
@@ -1137,371 +1137,388 @@ const ProductDetail = () => {
             </Grid>
 
             {/* Product Content Tabs (Features, Description, Specifications) */}
-            <Grid container spacing={2} sx={{ mt: 6 }}>
-                <Grid item xs={12} md={8} lg={7}>
-                    <Box
-                        sx={{
-                            background: "#fff",
-                            borderRadius: "8px",
-                            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-                            p: 3,
-                            minHeight: 300,
-                            border: "1px solid #eee",
-                        }}
-                    >
-                        <Tabs
-                            value={tabIndex}
-                            onChange={handleTabChange}
-                            aria-label="product details tabs"
-                            sx={{
-                                borderBottom: "1px solid #e0e0e0",
-                                minHeight: "40px",
-                                "& .MuiTab-root": {
-                                    minHeight: "40px",
-                                    fontSize: "16px",
-                                    textTransform: "capitalize",
-                                    color: "black",
-                                    fontWeight: 600,
-                                },
-                                "& .Mui-selected": {
-                                    color: "#2563EB !important",
-                                },
-                                "& .MuiTabs-indicator": {
-                                    backgroundColor: "#2563EB",
-                                    height: "3px",
-                                },
-                            }}
-                        >
-                            <Tab label="Features" {...a11yProps(0)} />
-                            <Tab label="Description" {...a11yProps(1)} />
-                            <Tab label="Specifications" {...a11yProps(2)} />
-                        </Tabs>
+<Grid container spacing={2} sx={{ mt: 6 }}>
+  <Grid item xs={12} md={8} lg={7}>
+<Box
+  sx={{
+    background: "#fff",
+    borderRadius: "8px",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+    p: 3,
+    minHeight: 300,
+    border: "1px solid #eee",
+    height: { xs: 400, sm: 500 }, // Fixed height for all tabs
+    width: { xs: "100%", sm: 1100 }, // <-- Add this line for fixed width
+    display: "flex",
+    flexDirection: "column",
+  }}
+>
+      <Tabs
+        value={tabIndex}
+        onChange={handleTabChange}
+        aria-label="product details tabs"
+        sx={{
+          borderBottom: "1px solid #e0e0e0",
+          minHeight: "40px",
+          "& .MuiTab-root": {
+            minHeight: "40px",
+            fontSize: "16px",
+            textTransform: "capitalize",
+            color: "black",
+            fontWeight: 600,
+          },
+          "& .Mui-selected": {
+            color: "#2563EB !important",
+          },
+          "& .MuiTabs-indicator": {
+            backgroundColor: "#2563EB",
+            height: "3px",
+          },
+        }}
+      >
+        <Tab label="Features" {...a11yProps(0)} />
+        <Tab label="Description" {...a11yProps(1)} />
+        <Tab label="Specifications" {...a11yProps(2)} />
+      </Tabs>
 
-                        {/* Features Tab */}
-                        <TabPanel value={tabIndex} index={0}>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    fontWeight: 700,
-                                    fontSize: "20px",
-                                    mb: 2,
-                                    color: "#222",
-                                }}
-                            >
-                                Features
-                            </Typography>
-                            <Box>
-                                {product?.features && product.features.length > 0 ? (
-                                    <List sx={{ p: 0, listStyleType: 'disc', pl: 3 }}>
-                                        {product.features.map((feature, idx) => (
-                                            <ListItem key={idx} sx={{ display: 'list-item', p: 0, mb: 1 }}>
-                                                <Typography component="span" sx={{ fontSize: "16px", color: "#222" }}>
-                                                    {feature}
-                                                </Typography>
-                                            </ListItem>
-                                        ))}
-                                    </List>
-                                ) : (
-                                    <Typography sx={{ fontSize: "16px", color: "gray" }}>
-                                        No features available.
-                                    </Typography>
-                                )}
-                            </Box>
-                        </TabPanel>
-
-                        {/* Description Tab */}
-                        <TabPanel value={tabIndex} index={1}>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    fontWeight: 700,
-                                    fontSize: "20px",
-                                    mb: 2,
-                                    color: "#222",
-                                }}
-                            >
-                                Description
-                            </Typography>
-                            <Typography
-                                variant="body2"
-                                sx={{
-                                    fontSize: "16px",
-                                    color: product?.long_description ? "#222" : "gray",
-                                    whiteSpace: "pre-wrap",
-                                }}
-                            >
-                                {product?.long_description || "No description available."}
-                            </Typography>
-                        </TabPanel>
-
-                        {/* Specifications Tab */}
-                        <TabPanel value={tabIndex} index={2}>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    fontWeight: 700,
-                                    fontSize: "20px",
-                                    mb: 2,
-                                    color: "#222",
-                                }}
-                            >
-                                Specifications
-                            </Typography>
-                            <Typography
-                                variant="body2"
-                                sx={{
-                                    fontSize: "16px",
-                                    color: "gray",
-                                }}
-                            >
-                                No specifications available.
-                            </Typography>
-                        </TabPanel>
-                    </Box>
-                </Grid>
-            </Grid>
-
-            <IconButton
-                onClick={toggleChat}
-                sx={{
-                    position: "fixed",
-                    bottom: 20,
-                    right: 20,
-                    background: "#007bff",
-                    color: "white",
-                    "&:hover": { background: "#0056b3" },
-                }}
-            >
-                <ChatIcon />
-            </IconButton>
-
-            {chatOpen && (
-                <Box
-                    ref={chatbotRef}
-                    sx={{
-                        position: "fixed",
-                        width: defaultWidth,
-                        height: isMinimized ? "50px" : isMaximized ? "80%" : defaultHeight,
-                        transition: "all 0.3s",
-                        bottom: 90,
-                        right: 20,
-                        bgcolor: "#fff",
-                        borderRadius: 2,
-                        boxShadow: 6,
-                        overflow: "hidden",
-                        display: "flex",
-                        flexDirection: "column",
-                    }}
-                >
-                    <Box
-                        sx={{
-                            bgcolor: "#1976d2",
-                            color: "#fff",
-                            p: 1.5,
-                            position: "relative",
-                        }}
-                    >
-                        <Typography variant="subtitle1" fontWeight="bold">
-                            Product Chat Assistant
-                        </Typography>
-                        <Box
-                            sx={{
-                                position: "absolute",
-                                right: 8,
-                                top: 8,
-                                display: "flex",
-                                gap: 1,
-                            }}
-                        >
-                            <Tooltip title="Minimize" arrow>
-                                <span>
-                                    <IconButton
-                                        size="small"
-                                        sx={{ color: "black" }}
-                                        onClick={handleMinimize}
-                                        disabled={isMinimized}
-                                    >
-                                        <MinimizeOutlinedIcon
-                                            fontSize="small"
-                                            sx={{ mt: "-10px" }}
-                                        />
-                                    </IconButton>
-                                </span>
-                            </Tooltip>
-
-                            <Tooltip title="Maximize" arrow>
-                                <span>
-                                    <IconButton
-                                        size="small"
-                                        sx={{ color: "black" }}
-                                        onClick={handleMaximize}
-                                        disabled={isMaximized}
-                                    >
-                                        <CropSquareIcon fontSize="small" />
-                                    </IconButton>
-                                </span>
-                            </Tooltip>
-
-                            <Tooltip title="Close" arrow>
-                                <IconButton
-                                    size="small"
-                                    sx={{ color: "black" }}
-                                    onClick={toggleChat}
-                                >
-                                    <CloseIcon fontSize="small" />
-                                </IconButton>
-                            </Tooltip>
-                        </Box>
-                    </Box>
-
-                    <Box
-                        sx={{
-                            p: 2,
-                            flex: 1,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 1,
-                            overflowY: "auto",
-                        }}
-                    >
-                        {messages.length === 0 && (
-                            <Typography
-                                sx={{
-                                    textAlign: "center",
-                                    fontStyle: "italic",
-                                    color: "#aaa",
-                                    padding: "10px",
-                                }}
-                            >
-                                Hello! Ask me about this product.
-                            </Typography>
-                        )}
-
-                        {loadingQuestion ? (
-                            <Box
-                                sx={{
-                                    backgroundColor: "#f9f9f9",
-                                    padding: "8px",
-                                    borderRadius: "5px",
-                                    marginTop: "5px",
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                }}
-                            >
-                                <DotLoading />
-                            </Box>
-                        ) : (
-                            data.map((item) => (
-                                <Box
-                                    key={item.id}
-                                    sx={{
-                                        backgroundColor: "#f9f9f9",
-                                        padding: "8px",
-                                        borderRadius: "5px",
-                                        marginTop: "5px",
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        cursor: "pointer",
-                                    }}
-                                    onClick={() => handleQuestionClick(item.id)}
-                                >
-                                    <Typography variant="body2">{item.question}</Typography>
-                                    <IconButton sx={{ padding: 0 }}>
-                                        <ArrowForwardIcon />
-                                    </IconButton>
-                                </Box>
-                            ))
-                        )}
-
-                        {messages.map((message, index) => (
-                            <Box
-                                key={index}
-                                sx={{
-                                    display: "flex",
-                                    justifyContent:
-                                        message.sender === "user" ? "flex-end" : "flex-start",
-                                    marginBottom: "8px",
-                                }}
-                            >
-                                <Typography
-                                    sx={{
-                                        backgroundColor:
-                                            message.sender === "user" ? "#d1e7ff" : "#f1f1f1",
-                                        padding: "8px 12px",
-                                        borderRadius: "10px",
-                                        maxWidth: "80%",
-                                        wordBreak: "break-word",
-                                    }}
-                                >
-                                    {message.text}
-                                </Typography>
-                            </Box>
-                        ))}
-
-                        {isBotTyping && (
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    justifyContent: "flex-start",
-                                    marginBottom: "8px",
-                                }}
-                            >
-                                <Paper
-                                    sx={{
-                                        p: 1,
-                                        bgcolor: "#f1f1f1",
-                                        borderRadius: 2,
-                                        maxWidth: "80%",
-                                    }}
-                                >
-                                    <Typography variant="body2">...typing</Typography>
-                                </Paper>
-                            </Box>
-                        )}
-
-                        <div ref={messagesEndRef} />
-                    </Box>
-
-                    <Box
-                        sx={{
-                            display: "flex",
-                            gap: 1,
-                            p: 1.5,
-                            borderTop: "1px solid #ddd",
-                        }}
-                    >
-                        <TextField
-                            size="small"
-                            fullWidth
-                            placeholder="Type your message..."
-                            value={userMessage}
-                            onChange={(e) => setUserMessage(e.target.value)}
-                            onKeyUp={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    handleSendMessage();
-                                }
-                            }}
-                        />
-                        <Button
-                            variant="contained"
-                            onClick={handleSendMessage}
-                            sx={{
-                                minWidth: "40px",
-                                height: "40px",
-                                borderRadius: "50%",
-                                padding: 0,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <SendIcon sx={{ fontSize: 18 }} />
-                        </Button>
-                    </Box>
-                </Box>
+      {/* Tab Content Area */}
+      <Box sx={{ flex: 1, overflowY: "auto" }}>
+        {/* Features Tab */}
+        <TabPanel value={tabIndex} index={0}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              fontSize: "20px",
+              mb: 2,
+              color: "#222",
+            }}
+          >
+            Features
+          </Typography>
+          <Box>
+            {product?.features && product.features.length > 0 ? (
+              <List sx={{ p: 0, listStyleType: 'disc', pl: 3 }}>
+                {product.features.map((feature, idx) => (
+                  <ListItem key={idx} sx={{ display: 'list-item', p: 0, mb: 1 }}>
+                    <Typography component="span" sx={{ fontSize: "16px", color: "#222" }}>
+                      {feature}
+                    </Typography>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography sx={{ fontSize: "16px", color: "gray" }}>
+                No features available.
+              </Typography>
             )}
+          </Box>
+        </TabPanel>
+
+        {/* Description Tab */}
+        <TabPanel value={tabIndex} index={1}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              fontSize: "20px",
+              mb: 2,
+              color: "#222",
+            }}
+          >
+            Description
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: "16px",
+              color: product?.long_description ? "#222" : "gray",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {product?.long_description || "No description available."}
+          </Typography>
+        </TabPanel>
+
+        {/* Specifications Tab */}
+        <TabPanel value={tabIndex} index={2}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              fontSize: "20px",
+              mb: 2,
+              color: "#222",
+            }}
+          >
+            Specifications
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: "16px",
+              color: "gray",
+            }}
+          >
+            No specifications available.
+          </Typography>
+        </TabPanel>
+      </Box>
+    </Box>
+  </Grid>
+</Grid>
+
+
+
+{/* Chatbot UI */}
+<IconButton
+  onClick={toggleChat}
+  sx={{
+    position: "fixed",
+    bottom: 20,
+    right: 20,
+    background: "#007bff",
+    color: "white",
+    "&:hover": { background: "#0056b3" },
+    zIndex: 1301,
+  }}
+>
+  <ChatIcon />
+</IconButton>
+
+{chatOpen && (
+  <Box
+    ref={chatbotRef}
+    sx={{
+      position: "fixed",
+      width: isMaximized ? defaultWidth : defaultWidth,
+      height: isMinimized ? "50px" : isMaximized ? "80%" : defaultHeight,
+      transition: "all 0.3s",
+      bottom: 90,
+      right: 20,
+      bgcolor: "#fff",
+      borderRadius: 2,
+      boxShadow: 6,
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      zIndex: 1302,
+    }}
+  >
+    {/* Header */}
+    <Box
+      sx={{
+        bgcolor: "#1976d2",
+        color: "#fff",
+        p: 1.5,
+        position: "relative",
+      }}
+    >
+      <Typography variant="subtitle1" fontWeight="bold">
+        Product Chat Assistant
+      </Typography>
+      <Box
+        sx={{
+          position: "absolute",
+          right: 8,
+          top: 8,
+          display: "flex",
+          gap: 1,
+        }}
+      >
+        {/* Minimize Button */}
+        <Tooltip title="Minimize" arrow>
+          <span>
+            <IconButton
+              size="small"
+              sx={{ color: "black" }}
+              onClick={handleMinimize}
+              disabled={isMinimized}
+            >
+              <MinimizeOutlinedIcon fontSize="small" sx={{ mt: "-10px" }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+        {/* Maximize Button */}
+        <Tooltip title="Maximize" arrow>
+          <span>
+            <IconButton
+              size="small"
+              sx={{ color: "black" }}
+              onClick={handleMaximize}
+              disabled={isMaximized}
+            >
+              <CropSquareIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+        {/* Close Button */}
+        <Tooltip title="Close" arrow>
+          <IconButton
+            size="small"
+            sx={{ color: "black" }}
+            onClick={toggleChat}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </Box>
+
+    {/* Chat Body */}
+    <Box
+      sx={{
+        p: 2,
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        gap: 1,
+        overflowY: "auto",
+      }}
+    >
+      {messages.length === 0 && (
+        <Typography
+          sx={{
+            textAlign: "center",
+            fontStyle: "italic",
+            color: "#aaa",
+            padding: "10px",
+          }}
+        >
+          Hello! Ask me about this product.
+        </Typography>
+      )}
+
+      {loadingQuestion ? (
+        <Box
+          sx={{
+            backgroundColor: "#f9f9f9",
+            padding: "8px",
+            borderRadius: "5px",
+            marginTop: "5px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <DotLoading />
+        </Box>
+      ) : (
+        data.map((item) => (
+          <Box
+            key={item.id}
+            sx={{
+              backgroundColor: "#f9f9f9",
+              padding: "8px",
+              borderRadius: "5px",
+              marginTop: "5px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+            }}
+            onClick={() => handleQuestionClick(item.id)}
+          >
+            <Typography variant="body2">{item.question}</Typography>
+            <IconButton sx={{ padding: 0 }}>
+              <ArrowForwardIcon />
+            </IconButton>
+          </Box>
+        ))
+      )}
+
+      {messages.map((message, index) => (
+        <Box
+          key={index}
+          sx={{
+            display: "flex",
+            justifyContent:
+              message.sender === "user" ? "flex-end" : "flex-start",
+            marginBottom: "8px",
+          }}
+        >
+          <Typography
+            sx={{
+              backgroundColor:
+                message.sender === "user" ? "#d1e7ff" : "#f1f1f1",
+              padding: "8px 12px",
+              borderRadius: "10px",
+              maxWidth: "80%",
+              wordBreak: "break-word",
+            }}
+          >
+            {message.text}
+          </Typography>
+        </Box>
+      ))}
+
+      {/* Bot Typing Indicator */}
+      {isBotTyping && (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "flex-start",
+            marginBottom: "8px",
+          }}
+        >
+          <Paper
+            sx={{
+              p: 1,
+              bgcolor: "#f1f1f1",
+              borderRadius: 2,
+              maxWidth: "80%",
+            }}
+          >
+            <Typography variant="body2">...typing</Typography>
+          </Paper>
+        </Box>
+      )}
+
+      {/* Scroll to bottom reference */}
+      <div ref={messagesEndRef} />
+    </Box>
+
+    {/* Input Box */}
+    <Box
+      sx={{
+        display: "flex",
+        gap: 1,
+        p: 1.5,
+        borderTop: "1px solid #ddd",
+      }}
+    >
+      <TextField
+        size="small"
+        fullWidth
+        placeholder="Type your message..."
+        value={userMessage}
+        onChange={(e) => setUserMessage(e.target.value)}
+        onKeyUp={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            handleSendMessage();
+          }
+        }}
+      />
+      <Button
+        variant="contained"
+        onClick={handleSendMessage}
+        sx={{
+          minWidth: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          padding: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <SendIcon sx={{ fontSize: 18 }} />
+      </Button>
+    </Box>
+  </Box>
+)}
+
+
 
             <Snackbar
                 open={snackbarOpen}
