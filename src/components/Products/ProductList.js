@@ -789,7 +789,7 @@ const ProductList = () => {
 
                 <Divider sx={{ my: 1 }} />
 {/* Brands Section - Myntra style, always open, search overlaps title */}
-<Box sx={{ mb: 0.6}}>
+<Box sx={{ mb: 2}}>
     <Box sx={{ display: 'flex', alignItems: 'center', position: 'relative', height: 36 }}>
         {/* Title */}
         {!showBrandSearch && (
@@ -1050,7 +1050,7 @@ const ProductList = () => {
 
                 <Divider sx={{ my: -1 }} />
                 {/* Price Range Section */}
-                <Box sx={{ mb: 0.8, mt: 1 }}>
+                <Box sx={{ mb:1, mt: 3 }}>
     <Box sx={{ fontWeight: 'bold', fontSize: 13, mb: 0.5, color: '#333', fontFamily: 'Roboto, Arial, sans-serif' }}>Price</Box>
     <Slider
         value={priceRange}
