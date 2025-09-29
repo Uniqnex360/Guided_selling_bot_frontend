@@ -402,7 +402,7 @@ const ProductList = () => {
         fetchProducts();
 
         setSnackbarMessage('Filters reset successfully!');
-        setSnackbarSeverity('error');
+        setSnackbarSeverity('success');
         setSnackbarOpen(true);
     };
 
