@@ -10,6 +10,8 @@ import {
   IconButton,
   Checkbox,
   FormControlLabel,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { Email, Lock, Visibility, VisibilityOff } from "@mui/icons-material";
 import { API_BASE_URL } from "../../utils/config";
@@ -20,24 +22,36 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Please enter your email.");
+      return;
+    }
     try {
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: trimmedEmail, password }),
       });
       const data = await response.json();
       if (response.ok && data.token) {
-        // Store JWT in cookie (expires in 1 day, or longer if rememberMe)
         Cookies.set("jwt_token", data.token, { expires: rememberMe ? 7 : 1 });
-        navigate("/products");
+        setSnackbarOpen(true); // Show success toast
+        setTimeout(() => {
+          navigate("/products");
+        }, 1200); // Wait for toast before navigating
       } else {
-        setError(data.error || "Login failed.");
+        if (data.error && data.error.toLowerCase().includes("invalid credentials")) {
+          setError("User not found. Try registering or signing up.");
+        } else {
+          setError(data.error || "Login failed.");
+        }
       }
     } catch (err) {
       setError("Network error.");
@@ -334,6 +348,17 @@ const Login = () => {
           </Box>
         </Box>
       </Box>
+      {/* Snackbar for login success */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={12200}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert severity="success" sx={{ width: "100%" }}>
+          Login successful!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

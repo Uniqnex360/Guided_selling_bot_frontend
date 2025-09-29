@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useMediaQuery, useTheme } from '@mui/material';
 import MinimizeOutlinedIcon from '@mui/icons-material/MinimizeOutlined';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
@@ -25,12 +25,12 @@ import {
     TableBody,
     Tooltip,
     FormControlLabel,
-    FormControl,
     Select,
     MenuItem,
     Checkbox,
     Dialog,
     DialogActions,
+    InputAdornment,
     DialogContent,
     DialogTitle,
     Accordion,
@@ -40,19 +40,19 @@ import {
     Alert,
     Slider,
     Divider,
-    Pagination,
-    PaginationItem,
-    Stack,
     Chip,
     FormGroup,
+    FormControl,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import TablePagination from '@mui/material/TablePagination';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Link } from 'react-router-dom';
 import { ListAlt as ListAltIcon, GridView as GridViewIcon } from '@mui/icons-material';
 import DotLoading from '../Loading/DotLoading';
 import { API_BASE_URL } from '../../utils/config';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import SearchIcon from '@mui/icons-material/Search';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 const ProductList = () => {
     // State variables
@@ -63,7 +63,6 @@ const ProductList = () => {
     const [viewMode, setViewMode] = useState('list');
     const [sortConfig, setSortConfig] = useState({ key: 'sku', direction: 'asc' });
     const [loading, setLoading] = useState(true);
-    const [selectedCategoryId, setSelectedCategoryId] = useState('');
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState('success');
     const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -77,36 +76,65 @@ const ProductList = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [maximized, setMaximized] = useState(true);
-    const [showAllBrands, setShowAllBrands] = useState(false);
-    const [dialogSize, setDialogSize] = useState({ width: 400, height: 450 });
     const [minPrice, setMinPrice] = useState(0);
     const [maxPrice, setMaxPrice] = useState(140);
     const [priceRange, setPriceRange] = useState([0, 140]);
-    const [selectedPriceRanges, setSelectedPriceRanges] = useState([]);
-    const [brandOptions, setBrandOptions] = useState([]);
-    
     const [allBrandOptions, setAllBrandOptions] = useState([]);
     const [brandSearch, setBrandSearch] = useState('');
     const [selectedBrands, setSelectedBrands] = useState(new Set());
     const [favorites, setFavorites] = useState(new Set());
     const [selectedCategories, setSelectedCategories] = useState(new Set());
     const [categorySearch, setCategorySearch] = useState('');
-const [showAllCategories, setShowAllCategories] = useState(false);
+    const [showAllCategories, setShowAllCategories] = useState(false);
+    const [showAllBrands, setShowAllBrands] = useState(false);
+    const [showBrandSearch, setShowBrandSearch] = useState(false);
+    const [showCategorySearch, setShowCategorySearch] = useState(false);
+    const [brandSortBy, setBrandSortBy] = useState('name'); // 'name' or 'count'
+    const [brandProductCountFilter, setBrandProductCountFilter] = useState('all'); // 'all', 'high', 'medium', 'low'
+    const [showBrandFilters, setShowBrandFilters] = useState(false);
 
-const handleClearCategoryFilter = () => {
-    setSelectedCategories(new Set());
-    setCategorySearch('');
-};
-const handleClearBrandFilter = () => {
-    setSelectedBrands(new Set());
-    setBrandSearch('');
-};
-const handleCategorySearchChange = (e) => {
-    setCategorySearch(e.target.value);
-};
-const handleBrandSearchChange = (e) => {
-    setBrandSearch(e.target.value);
-}
+    // Helper: filter and sort brands
+    const getFilteredSortedBrands = () => {
+        let brands = allBrandOptions
+            .filter(b => !brandSearch || b.name.toLowerCase().includes(brandSearch.toLowerCase()));
+
+        // Filter by product count
+        brands = brands.filter(brand => {
+            if (brandProductCountFilter === 'high') return (brand.count || 0) > 50;
+            if (brandProductCountFilter === 'medium') return (brand.count || 0) > 10 && (brand.count || 0) <= 50;
+            if (brandProductCountFilter === 'low') return (brand.count || 0) <= 10;
+            return true;
+        });
+
+        // Sort
+        brands = [...brands].sort((a, b) => {
+            if (brandSortBy === 'name') return a.name.localeCompare(b.name);
+            if (brandSortBy === 'count') return (b.count || 0) - (a.count || 0);
+            return 0;
+        });
+
+        return brands;
+    };
+
+    const groupBrandsByLetter = (brands) => {
+        const grouped = {};
+        brands.forEach((brand) => {
+            const letter = brand.name?.charAt(0)?.toUpperCase() || '';
+            if (!grouped[letter]) grouped[letter] = [];
+            grouped[letter].push(brand);
+        });
+        return grouped;
+    };
+
+    const groupedBrands = groupBrandsByLetter(getFilteredSortedBrands());
+    const sortedLetters = Object.keys(groupedBrands).sort();
+
+    const handleCategorySearchChange = (e) => {
+        setCategorySearch(e.target.value);
+    };
+    const handleBrandSearchChange = (e) => {
+        setBrandSearch(e.target.value);
+    };
 
     // Helper functions
     const toggleDialogSize = () => setMaximized(prev => !prev);
@@ -130,78 +158,129 @@ const handleBrandSearchChange = (e) => {
         });
     };
 
-    const getAppliedFilterNames = () => {
-        const filters = [];
-        if (selectedCategories.size > 0) {
-            const categoryNames = Array.from(selectedCategories).map(id => {
-                const category = categoryOptions.find(c => c.id === id);
-                return category ? category.name : '';
-            }).filter(Boolean);
-            filters.push(`Categories: ${categoryNames.join(', ')}`);
-        }
-        if (selectedBrands.size > 0) {
-            filters.push(`Brands: ${Array.from(selectedBrands).join(', ')}`);
-        }
-        Object.entries(selectedFilters).forEach(([filterName, values]) => {
-            if (values.length > 0) {
-                filters.push(`${filterName}: ${values.join(', ')}`);
+    // Helper function to derive filter chips from state
+    const getAppliedFilterChips = useCallback(() => {
+        const chips = [];
+
+        // 1. Categories
+        Array.from(selectedCategories).forEach(id => {
+            const category = categoryOptions.find(c => c.id === id);
+            if (category) {
+                chips.push({
+                    key: `category-${id}`,
+                    label: `Category: ${category.name}`,
+                    type: 'Category',
+                    value: id,
+                });
             }
         });
+
+        // 2. Brands
+        Array.from(selectedBrands).forEach(name => {
+            chips.push({
+                key: `brand-${name}`,
+                label: `Brand: ${name}`,
+                type: 'Brand',
+                value: name,
+            });
+        });
+
+        // 3. Price Range
         if (priceRange[0] !== minPrice || priceRange[1] !== maxPrice) {
-            filters.push(`Price Range: $${priceRange[0]} - $${priceRange[1]}`);
+            chips.push({
+                key: 'price',
+                label: `Price: $${priceRange[0]} - $${priceRange[1]}`,
+                type: 'Price Range',
+                value: null,
+            });
         }
+
+        // 4. Other Attributes
+        Object.entries(selectedFilters).forEach(([filterName, values]) => {
+            if (values.length > 0) {
+                values.forEach(value => {
+                    chips.push({
+                        key: `attr-${filterName}-${value}`,
+                        label: `${filterName}: ${value}`,
+                        type: 'Attribute',
+                        filterName: filterName,
+                        value: value,
+                    });
+                });
+            }
+        });
+
+        // 5. Search Query
         if (searchQuery.trim() !== '') {
-            filters.push(`Search Query: "${searchQuery.trim()}"`);
+            chips.push({
+                key: 'search',
+                label: `Search: "${searchQuery.trim()}"`,
+                type: 'Search Query',
+                value: null,
+            });
         }
-        return filters;
+
+        return chips;
+    }, [selectedCategories, categoryOptions, selectedBrands, priceRange, minPrice, maxPrice, selectedFilters, searchQuery]);
+
+    // Handle removing a single filter chip
+    const handleRemoveFilter = (filterType, value, filterName = null) => {
+        if (filterType === 'Category') {
+            setSelectedCategories(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(value);
+                return newSet;
+            });
+        } else if (filterType === 'Brand') {
+            setSelectedBrands(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(value);
+                return newSet;
+            });
+        } else if (filterType === 'Attribute' && filterName) {
+            setSelectedFilters(prev => {
+                const newFilters = { ...prev };
+                newFilters[filterName] = newFilters[filterName].filter(v => v !== value);
+                if (newFilters[filterName].length === 0) {
+                    delete newFilters[filterName];
+                }
+                return newFilters;
+            });
+        } else if (filterType === 'Price Range') {
+            setPriceRange([minPrice, maxPrice]);
+        } else if (filterType === 'Search Query') {
+            setSearchQuery('');
+        }
     };
 
-    // API functions
-    const fetchFilters = (categoryId) => {
-        setLoading(true);
-        fetch(`${API_BASE_URL}/category_filters/?category_id=${categoryId}`, {
+    const fetchCategories = () => {
+        fetch(`${API_BASE_URL}/fourth_level_categories/`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
         })
             .then(response => response.json())
             .then(data => {
-                const filters = data.data.filters;
-                const filtersWithCheckbox = filters.map((filter) => ({
-                    ...filter,
-                    options: filter.config.options.map((option) => ({
-                        label: option.toString().trim(),
-                        checked: false,
-                    })),
-                }));
-                setCategoryFilters(filtersWithCheckbox);
-                setLoading(false);
+                setCategoryOptions(data.data.categories || []);
             })
             .catch(error => {
-                console.error('Error fetching filters:', error);
-                setLoading(false);
+                console.error('Error fetching categories:', error);
             });
     };
-const fetchCategories = () => {
-    fetch(`${API_BASE_URL}/fourth_level_categories/`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-    })
-        .then(response => response.json())
-        .then(data => {
-            // Assuming API returns an array of categories with id and name
-            setCategoryOptions(data.data.categories || []);
-        })
-        .catch(error => {
-            console.error('Error fetching categories:', error);
-        });
-};
-    const fetchProducts = () => {
+
+    // API function to fetch/filter products, wrapped in useCallback
+    const fetchProducts = useCallback(() => {
         setLoading(true);
         const requestBody = {
             ...(selectedCategories.size > 0 && { category_ids: Array.from(selectedCategories) }),
             search_query: searchQuery?.trim() || '',
             ...(selectedBrands.size > 0 && { brands: Array.from(selectedBrands) }),
         };
+
+        if (priceRange[0] !== minPrice || priceRange[1] !== maxPrice) {
+            requestBody.price_min = priceRange[0];
+            requestBody.price_max = priceRange[1];
+        }
+
         if (
             selectedCategories.size > 0 &&
             selectedFilters &&
@@ -210,6 +289,7 @@ const fetchCategories = () => {
         ) {
             requestBody.attributes = selectedFilters;
         }
+
         fetch(`${API_BASE_URL}/productList/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -219,7 +299,7 @@ const fetchCategories = () => {
             .then(responseData => {
                 let productList = responseData.data?.products || [];
 
-                // Extract unique categories from the fetched products
+                // Update category options
                 const uniqueCategories = [...new Set(productList.map(product => product.category))].filter(Boolean);
                 const categoriesWithCount = uniqueCategories.map(categoryName => ({
                     id: categoryName,
@@ -228,33 +308,35 @@ const fetchCategories = () => {
                 }));
                 setCategoryOptions(categoriesWithCount);
 
-                // Always extract all unique brands from the full product list (not filtered)
-                const allProducts = responseData.data?.products || [];
-            const allBrands = [...new Set(productList.map(product => product.brand_name))].filter(Boolean);
-            const allBrandsWithCount = allBrands.map(brandName => ({
-                id: brandName,
-                name: brandName,
-                count: productList.filter(p => p.brand_name === brandName).length,
-            }));
-                  setAllBrandOptions(allBrandsWithCount);
+                // Update all brand options
+                const allBrands = [...new Set(productList.map(product => product.brand_name))].filter(Boolean);
+                const allBrandsWithCount = allBrands.map(brandName => ({
+                    id: brandName,
+                    name: brandName,
+                    count: productList.filter(p => p.brand_name === brandName).length,
+                }));
+                setAllBrandOptions(allBrandsWithCount);
 
-            fetchCategories(); // <-- refresh categories
-            
+                fetchCategories();
 
-                // Now filter products by selected brands if any
+                // Apply client-side filtering check for brands (if necessary)
                 if (selectedBrands.size > 0) {
                     productList = productList.filter(product => selectedBrands.has(product.brand_name));
                 }
                 setProducts(productList);
 
-                // Calculate dynamic min and max price
+                // Recalculate dynamic min and max price
                 if (productList.length > 0) {
                     const prices = productList.map(p => p.price);
                     const newMinPrice = Math.min(...prices);
                     const newMaxPrice = Math.max(...prices);
+
                     setMinPrice(newMinPrice);
                     setMaxPrice(newMaxPrice);
-                    setPriceRange([newMinPrice, newMaxPrice]);
+
+                    if (priceRange[0] < newMinPrice || priceRange[1] > newMaxPrice || priceRange[0] === 0 && priceRange[1] === 140) {
+                        setPriceRange([newMinPrice, newMaxPrice]);
+                    }
                 } else {
                     setMinPrice(0);
                     setMaxPrice(0);
@@ -262,23 +344,13 @@ const fetchCategories = () => {
                 }
 
                 setFilteredProducts(productList);
-
-                // For filtered brandOptions, you can use:
-                const uniqueBrands = [...new Set(productList.map(product => product.brand_name))].filter(Boolean);
-                const brandsWithCount = uniqueBrands.map(brandName => ({
-                    id: brandName,
-                    name: brandName,
-                    count: productList.filter(p => p.brand_name === brandName).length,
-                }));
-                setBrandOptions(brandsWithCount);
-
                 setLoading(false);
             })
             .catch(error => {
                 console.error('Error fetching product data:', error);
                 setLoading(false);
             });
-    };
+    }, [selectedCategories, searchQuery, selectedBrands, priceRange, minPrice, maxPrice, selectedFilters]);
 
     // Event handlers
     const handleCategoryChange = (categoryId) => {
@@ -318,26 +390,18 @@ const fetchCategories = () => {
         setSelectedBrands(newBrands);
     };
 
-    const handlePriceRangeChange = (rangeId) => {
-        if (selectedPriceRanges.includes(rangeId)) {
-            setSelectedPriceRanges(selectedPriceRanges.filter(id => id !== rangeId));
-        } else {
-            setSelectedPriceRanges([...selectedPriceRanges, rangeId]);
-        }
-    };
-
     const handleClearFilters = () => {
         setSelectedCategories(new Set());
         setSelectedFilters({});
         setSelectedBrands(new Set());
-        setSelectedPriceRanges([]);
         setPriceRange([minPrice, maxPrice]);
         setCategoryFilters([]);
         setSearchQuery('');
         setPage(0);
         setSortConfig({ key: 'sku', direction: 'asc' });
         fetchProducts();
-        setSnackbarMessage('Reset successfully!');
+
+        setSnackbarMessage('Filters reset successfully!');
         setSnackbarSeverity('error');
         setSnackbarOpen(true);
     };
@@ -361,7 +425,7 @@ const fetchCategories = () => {
     };
 
     const handleChangePage = (event, newPage) => {
-        setPage(newPage - 1);
+        setPage(newPage);
     };
 
     const handleChangeRowsPerPage = (event) => {
@@ -382,73 +446,29 @@ const fetchCategories = () => {
         setSearchQuery('');
         setPage(0);
         setSortConfig({ key: 'sku', direction: 'asc' });
-        const requestBody = { search_query: '' };
-        fetch(`${API_BASE_URL}/productList/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-        })
-            .then(response => response.json())
-            .then(responseData => {
-                const productList = responseData.data?.products || [];
-                setProducts(productList);
-                setFilteredProducts(productList);
-
-                if (productList.length > 0) {
-                    const prices = productList.map(p => p.price);
-                    const newMinPrice = Math.min(...prices);
-                    const newMaxPrice = Math.max(...prices);
-                    setMinPrice(newMinPrice);
-                    setMaxPrice(newMaxPrice);
-                    setPriceRange([newMinPrice, newMaxPrice]);
-                } else {
-                    setMinPrice(0);
-                    setMaxPrice(0);
-                    setPriceRange([0, 0]);
-                }
-
-                // Also update allBrandOptions on clear
-                const allBrands = [...new Set(productList.map(product => product.brand_name))].filter(Boolean);
-                const allBrandsWithCount = allBrands.map(brandName => ({
-                    id: brandName,
-                    name: brandName,
-                    count: productList.filter(p => p.brand_name === brandName).length,
-                }));
-                setAllBrandOptions(allBrandsWithCount);
-
-                setSnackbarMessage('Reset successfully!');
-                setSnackbarSeverity('success');
-                setSnackbarOpen(true);
-            })
-            .catch(error => {
-                console.error('Error fetching products:', error);
-                setSnackbarMessage('Something went wrong!');
-                setSnackbarSeverity('success');
-                setSnackbarOpen(true);
-            });
     };
 
     const toggleViewMode = (mode) => setViewMode(mode);
 
+    // Initial data fetch and refetch on filter change
     useEffect(() => {
         fetchProducts();
-        // eslint-disable-next-line
-    }, [selectedCategories, selectedFilters, searchQuery, selectedBrands]);
+    }, [selectedCategories, selectedFilters, searchQuery, selectedBrands, priceRange, fetchProducts]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
-// Call fetchCategories on mount and when needed
-useEffect(() => {
-    fetchCategories();
-}, []);
-    const appliedFilters = getAppliedFilterNames();
+    const appliedChips = getAppliedFilterChips();
     const pageCount = Math.ceil(filteredProducts.length / rowsPerPage);
 
-    return (
+    return(
+
         <Box sx={{ display: 'flex', height: '100vh' }}>
             {/* Left Sidebar */}
             <Box
                 sx={{
-                    width: 200,
+                    width: 220,
                     backgroundColor: '#fff',
                     borderRight: '1px solid #e0e0e0',
                     padding: 2,
@@ -456,342 +476,713 @@ useEffect(() => {
                     flexShrink: 0,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 2,
+                    gap: 1.2,
+                    fontFamily: 'Roboto, Arial, sans-serif'
                 }}
             >
+                {/* Header: FILTERS and CLEAR ALL */}
+              <Box sx={{
+                        mb: 1.2,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingBottom: '8px',
+                        borderBottom: '1px solid #f0f0f0'
+                    }}>
+                        <Typography
+                            variant="h6"
+                            sx={{
+                                fontWeight: 'bold',
+                                fontSize: '14px',
+                                color: '#333',
+                                fontFamily: 'Roboto, Arial, sans-serif'
+                            }}
+                        >
+                            FILTERS
+                        </Typography>
+                        <Button
+                            variant="text"
+                            size="small"
+                            onClick={handleClearFilters}
+                            sx={{
+                                textTransform: 'none',
+                                fontSize: '13px',
+                                padding: '4px 8px',
+                                color: '#2563EB',
+                                fontWeight: 'bold',
+                                fontFamily: 'Roboto, Arial, sans-serif',
+                                minWidth: 'auto',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                                    color: '#1e4baf'
+                                }
+                            }}
+                        >
+                            CLEAR ALL
+                        </Button>
+                    </Box>
+                    
                 {/* Categories Section */}
-<Accordion defaultExpanded sx={{ boxShadow: 'none', '&:before': { display: 'none' } }}>
-    <AccordionSummary
-        expandIcon={<ExpandMoreIcon />}
-        sx={{
-            p: 0,
-            minHeight: '48px',
-            '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' },
-        }}
-    >
-        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>
-            Categories
-        </Typography>
-    </AccordionSummary>
-    <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
-        <Box mb={2}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-<TextField
-    placeholder="Search categories..."
-    variant="outlined"
-    size="small"
-    fullWidth
-    value={categorySearch}
-    onChange={handleCategorySearchChange}
-/>
-                <IconButton
-                    size="small"
-                    onClick={handleClearCategoryFilter}
-                    sx={{ ml: 1 }}
-                    aria-label="Clear categories"
-                >
-                    <RestartAltIcon fontSize="small" />
-                </IconButton>
-            </Box>
-            <FormGroup>
-                {(showAllCategories
-                    ? categoryOptions.filter(c => !categorySearch || c.name.toLowerCase().includes(categorySearch.toLowerCase()))
-                    : categoryOptions
-                        .filter(c => !categorySearch || c.name.toLowerCase().includes(categorySearch.toLowerCase()))
-                        .slice(0, 5)
-                ).map((category) => (
-                    <FormControlLabel
-                        key={category.id}
-                        control={
-                            <Checkbox
-                                checked={selectedCategories.has(category.id)}
-                                onChange={() => handleCategoryChange(category.id)}
-                                size="small"
-                                sx={{
-                                    p: '4px',
-                                    mr: 1.5,
-                                    alignSelf: 'flex-start',
-                                }}
-                            />
-                        }
-                        label={
-                            <Box display="flex" alignItems="center">
-                                <Typography variant="body2">{category.name}</Typography>
-                                <Chip
-                                    label={category.count || 0}
-                                    size="small"
-                                    sx={{ ml: 1, height: 18 }}
-                                />
-                            </Box>
-                        }
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            mb: 0.5,
-                            pl: 0.5,
-                            '& .MuiFormControlLabel-label': {
-                                marginLeft: 0,
-                                flex: 1,
-                            },
-                            minHeight: 32,
-                        }}
-                    />
-                ))}
-            </FormGroup>
-            {categoryOptions.length > 5 && (
-                <Button
-                    variant="text"
-                    size="small"
-                    endIcon={<ExpandMoreIcon />}
-                    onClick={() => setShowAllCategories((prev) => !prev)}
+          {/* Categories Section - Myntra style, always open, search overlaps title */}
+<Box sx={{ mb: 2}}>
+    <Box sx={{ display: 'flex', alignItems: 'center', position: 'relative', height: 36 }}>
+        {/* Title */}
+        {!showCategorySearch && (
+            <>
+                <Typography
+                    variant="h6"
                     sx={{
-                        textTransform: 'none',
-                        color: '#1976d2',
-                        mt: 1,
-                        fontSize: '14px'
+                        fontWeight: 'bold',
+                        fontSize: '13px',
+                        color: '#333',
+                        fontFamily: 'Roboto, Arial, sans-serif',
+                        flex: 1,
+                        zIndex: 1,
                     }}
                 >
-                    {showAllCategories
-                        ? 'Show less'
-                        : `View all categories (${categoryOptions.length})`}
-                </Button>
-            )}
-        </Box>
-    </AccordionDetails>
-</Accordion>
-
-                {/* Brands Section */}
-                <Accordion defaultExpanded sx={{ boxShadow: 'none', '&:before': { display: 'none' } }}>
-                    <AccordionSummary
-                        expandIcon={<ExpandMoreIcon />}
-                        sx={{
-                            p: 0,
-                            minHeight: '48px',
-                            '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' },
-                        }}
-                    >
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>
-                            Brands
-                        </Typography>
-                    </AccordionSummary>
-                   <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
-        <Box mb={2}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-<TextField
-    placeholder="Search brands..."
-    variant="outlined"
-    size="small"
-    fullWidth
-    value={brandSearch}
-    onChange={handleBrandSearchChange}
-/>
+                    Categories
+                </Typography>
                 <IconButton
                     size="small"
-                    onClick={handleClearBrandFilter}
-                    sx={{ ml: 1 }}
-                    aria-label="Clear brands"
+                    onClick={() => setShowCategorySearch(true)}
+                    sx={{
+                        ml: 1,
+                        p: 0.5,
+                        background: '#f6f6f6',
+                        '&:hover': { background: '#ececec' }
+                    }}
                 >
-                    <RestartAltIcon fontSize="small" />
+                    <SearchIcon fontSize="small" />
                 </IconButton>
-            </Box>
-                            <FormGroup>
-                                {(showAllBrands
-                                    ? allBrandOptions.filter(b => !brandSearch || b.name.toLowerCase().includes(brandSearch.toLowerCase()))
-                                    : allBrandOptions
-                                        .filter(b => !brandSearch || b.name.toLowerCase().includes(brandSearch.toLowerCase()))
-                                        .slice(0, 5)
-                                ).map((brand) => (
+            </>
+        )}
+        {/* Search Field overlays title */}
+        {showCategorySearch && (
+            <TextField
+                autoFocus
+                placeholder="Search for Category"
+                variant="outlined"
+                size="small"
+                value={categorySearch}
+                onChange={handleCategorySearchChange}
+                sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: '100%',
+                    height: 32,
+                    background: '#f6f6f6',
+                    borderRadius: '18px',
+                    fontFamily: 'Roboto, Arial, sans-serif',
+                    mr: 1,
+                    mb: 2,
+                    zIndex: 2,
+                    '& .MuiOutlinedInput-root': {
+                        borderRadius: '18px',
+                        fontSize: 12,
+                        paddingRight: 0,
+                        background: '#f6f6f6',
+                        border: 'none',
+                        height: 32,
+                    },
+                    '& fieldset': { border: 'none' }
+                }}
+                InputProps={{
+                    endAdornment: (
+                        <IconButton
+                            size="small"
+                            onClick={() => {
+                                setCategorySearch('');
+                                setShowCategorySearch(false);
+                            }}
+                            sx={{
+                                mr: 0.5,
+                                color: '#bdbdbd'
+                            }}
+                        >
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    ),
+                }}
+            />
+        )}
+    </Box>
+    {/* Categories List */}
+    <Box sx={{ mt: 1 ,}}>
+        <FormGroup>
+            {(showAllCategories
+                ? categoryOptions.filter(c => !categorySearch || c.name.toLowerCase().includes(categorySearch.toLowerCase()))
+                : categoryOptions
+                    .filter(c => !categorySearch || c.name.toLowerCase().includes(categorySearch.toLowerCase()))
+                    .slice(0, 5)
+            ).map((category) => (
+                <FormControlLabel
+                    key={category.id}
+                    control={
+                        <Checkbox
+                            checked={selectedCategories.has(category.id)}
+                            onChange={() => handleCategoryChange(category.id)}
+                            size="small"
+                            sx={{
+                                color: '#2563EB',
+                                '&.Mui-checked': { color: '#2563EB' },
+                                p: '0px',
+                                fontSize: 16,
+                                '& .MuiSvgIcon-root': { fontSize: 16 }
+                            }}
+                        />
+                    }
+                    label={
+                        <Typography sx={{ fontSize: 12, color: '#222', fontWeight: 500, fontFamily: 'Roboto, Arial, sans-serif', ml: 2 }}>
+                            {category.name}
+                        </Typography>
+                    }
+                    sx={{
+                        m: 0,
+                        py: 0.1,
+                        pl: 0.5,
+                        minHeight: 20,
+                        ml: 1,
+                    }}
+                />
+            ))}
+        </FormGroup>
+        {categoryOptions.length > 5 && !showAllCategories && (
+            <Button
+                variant="text"
+                size="small"
+                onClick={() => setShowAllCategories(true)}
+                sx={{
+                    color: '#2563EB',
+                    fontSize: 12,
+                    mt: 0.3,
+                    textTransform: 'none',
+                    pl: 0,
+                    fontWeight: 600,
+                    fontFamily: 'Roboto, Arial, sans-serif'
+                }}
+            >
+                {`+ ${categoryOptions.length - 5} View all categories`}
+            </Button>
+        )}
+    </Box>
+</Box>
+
+{/* Dialog for all categories */}
+<Dialog
+    open={showAllCategories}
+    onClose={() => setShowAllCategories(false)}
+    fullWidth
+    maxWidth="md"
+    PaperProps={{ sx: { borderRadius: 2 } }}
+>
+    <DialogTitle sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 600, fontSize: 15 }}>
+                Select Categories
+            </Typography>
+            <IconButton onClick={() => setShowAllCategories(false)}>
+                <CloseIcon />
+            </IconButton>
+        </Box>
+    </DialogTitle>
+
+    <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
+        <TextField
+            fullWidth
+            size="small"
+            placeholder="Search categories..."
+            variant="outlined"
+            value={categorySearch}
+            onChange={handleCategorySearchChange}
+            InputProps={{
+                startAdornment: (
+                    <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                    </InputAdornment>
+                ),
+            }}
+        />
+    </Box>
+
+    <DialogContent dividers sx={{ p: 0, maxHeight: '60vh' }}>
+        {(() => {
+            // Group categories by first letter
+            const grouped = {};
+            categoryOptions
+                .filter(c => !categorySearch || c.name.toLowerCase().includes(categorySearch.toLowerCase()))
+                .forEach(category => {
+                    const letter = category.name?.charAt(0)?.toUpperCase() || '';
+                    if (!grouped[letter]) grouped[letter] = [];
+                    grouped[letter].push(category);
+                });
+            const letters = Object.keys(grouped).sort();
+
+            return letters.length > 0 ? (
+                letters.map(letter => (
+                    <Box key={letter}>
+                        <Box sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                {letter}
+                            </Typography>
+                        </Box>
+                        <Divider />
+
+
+                        <Grid container spacing={0}>
+                            {grouped[letter].map(category => (
+                                <Grid item xs={12} sm={6} md={4} key={category.id}>
                                     <FormControlLabel
-                                        key={brand.id}
                                         control={
                                             <Checkbox
-                                                checked={selectedBrands.has(brand.id)}
-                                                onChange={() => handleBrandChange(brand.id)}
-                                                size="small"
+                                                checked={selectedCategories.has(category.id)}
+                                                onChange={() => handleCategoryChange(category.id)}
                                                 color="primary"
                                             />
                                         }
                                         label={
                                             <Box display="flex" alignItems="center">
-                                                <Typography variant="body2">{brand.name}</Typography>
-                                                <Chip
-                                                    label={brand.count || 0}
-                                                    size="small"
-                                                    sx={{ ml: 1, height: 18 }}
-                                                />
+                                                <Typography variant="body2" sx={{ fontSize: 13 }}>{category.name}</Typography>
+                                                {category.count !== undefined && (
+                                                    <Chip label={`${category.count} products`} size="small" sx={{ ml: 1, height: 18, fontSize: 11 }} />
+                                                )}
                                             </Box>
                                         }
                                         sx={{
-                                            '& .MuiTypography-root': { fontSize: '14px' },
-                                            mb: 0.5
+                                            px: 2,
+                                            py: 1.5,
+                                            width: '100%',
+                                            m: 0,
+                                            '&:hover': { backgroundColor: '#f5f5f5' }
                                         }}
                                     />
-                                ))}
-                            </FormGroup>
-                            {allBrandOptions.length > 5 && (
-                                <Button
-                                    variant="text"
-                                    size="small"
-                                    endIcon={<ExpandMoreIcon />}
-                                    onClick={() => setShowAllBrands((prev) => !prev)}
-                                    sx={{
-                                        textTransform: 'none',
-                                        color: '#1976d2',
-                                        mt: 1,
-                                        fontSize: '14px'
-                                    }}
-                                >
-                                    {showAllBrands
-                                        ? 'Show less'
-                                        : `View all brands (${allBrandOptions.length})`}
-                                </Button>
-                            )}
-                        </Box>
-                    </AccordionDetails>
-                </Accordion>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </Box>
+                ))
+            ) : (
+                <Box p={3} textAlign="center">
+                    <Typography>No categories match your search criteria</Typography>
+                </Box>
+            );
+        })()}
+    </DialogContent>
+<DialogActions>
+        <Button
+            onClick={() => {
+                setSelectedCategories(new Set());
+                setCategorySearch('');
+            }}
+            color="error"
+            variant="outlined"
+            sx={{ fontSize: 12 }}
+        >
+            Reset
+        </Button>
+        <Button onClick={() => setShowAllCategories(false)} color="primary" variant="contained" sx={{ fontSize: 12 }}>
+            Close
+        </Button>
+    </DialogActions>
+
+</Dialog>
+
                 <Divider sx={{ my: 1 }} />
-                {/* Price Range Section */}
-                <Accordion defaultExpanded sx={{ boxShadow: 'none', '&:before': { display: 'none' } }}>
-                    <AccordionSummary
-                        expandIcon={<ExpandMoreIcon />}
-                        sx={{
-                            p: 0,
-                            minHeight: '48px',
-                            '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' },
-                        }}
-                    >
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>
-                            Price Range
+{/* Brands Section - Myntra style, always open, search overlaps title */}
+<Box sx={{ mb: 0.6}}>
+    <Box sx={{ display: 'flex', alignItems: 'center', position: 'relative', height: 36 }}>
+        {/* Title */}
+        {!showBrandSearch && (
+            <>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        fontWeight: 'bold',
+                        fontSize: '13px',
+                        color: '#333',
+                        fontFamily: 'Roboto, Arial, sans-serif',
+                        flex: 1,
+                        zIndex: 1,
+                    }}
+                >
+                    Brands
+                </Typography>
+                <IconButton
+                    size="small"
+                    onClick={() => setShowBrandSearch(true)}
+                    sx={{
+                        ml: 1,
+                        p: 0.5,
+                        background: '#f6f6f6',
+                        '&:hover': { background: '#ececec' }
+                    }}
+                >
+                    <SearchIcon fontSize="small" />
+                </IconButton>
+            </>
+        )}
+        {/* Search Field overlays title */}
+        {showBrandSearch && (
+            <TextField
+                autoFocus
+                placeholder="Search for Brand"
+                variant="outlined"
+                size="small"
+                value={brandSearch}
+                onChange={handleBrandSearchChange}
+                sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: '100%',
+                    height: 32,
+                    background: '#f6f6f6',
+                    borderRadius: '18px',
+                    fontFamily: 'Roboto, Arial, sans-serif',
+                    mr: 1,
+                    mb: 2,
+                    zIndex: 2,
+                    '& .MuiOutlinedInput-root': {
+                        borderRadius: '18px',
+                        fontSize: 12,
+                        paddingRight: 0,
+                        background: '#f6f6f6',
+                        border: 'none',
+                        height: 32,
+                    },
+                    '& fieldset': { border: 'none' }
+                }}
+                InputProps={{
+                    endAdornment: (
+                        <IconButton
+                            size="small"
+                            onClick={() => {
+                                setBrandSearch('');
+                                setShowBrandSearch(false);
+                            }}
+                            sx={{
+                                mr: 0.5,
+                                color: '#bdbdbd'
+                            }}
+                        >
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    ),
+                }}
+            />
+        )}
+    </Box>
+    {/* Brands List */}
+    <Box sx={{ mt: 1 }}>
+        <FormGroup>
+            {(showAllBrands
+                ? allBrandOptions.filter(b => !brandSearch || b.name.toLowerCase().includes(brandSearch.toLowerCase()))
+                : allBrandOptions
+                    .filter(b => !brandSearch || b.name.toLowerCase().includes(brandSearch.toLowerCase()))
+                    .slice(0, 5)
+            ).map((brand) => (
+                <FormControlLabel
+                    key={brand.id}
+                    control={
+                        <Checkbox
+                            checked={selectedBrands.has(brand.id)}
+                            onChange={() => handleBrandChange(brand.id)}
+                            size="small"
+                            sx={{
+                                color: '#2563EB',
+                                '&.Mui-checked': { color: '#2563EB' },
+                                p: '0px',
+                                fontSize: 16,
+                                '& .MuiSvgIcon-root': { fontSize: 16 }
+                            }}
+                        />
+                    }
+                    label={
+                        <Typography sx={{ fontSize: 12, color: '#222', fontWeight: 500, fontFamily: 'Roboto, Arial, sans-serif', ml: 2 }}>
+                            {brand.name}
                         </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ p: 1 }}>
-                        <Box sx={{ px: 0 }}>
-                            <Slider
-                                value={priceRange}
-                                onChange={(event, newValue) => setPriceRange(newValue)}
-                                valueLabelDisplay="auto"
-                                min={minPrice}
-                                max={maxPrice}
-                                sx={{
-                                    color: '#2563EB',
-                                    '& .MuiSlider-thumb': {
-                                        width: 12,
-                                        height: 12,
-                                        backgroundColor: 'white',
-                                        border: '1px solid #2563EB',
-                                        boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-                                        '&:focus, &:hover, &.Mui-active': { boxShadow: '0 1px 8px rgba(0,0,0,0.3), 0 0 0 4px rgba(37,99,235,0.16)' },
-                                    },
-                                    '& .MuiSlider-rail': { height: 4, backgroundColor: '#e0e0e0', borderRadius: '2px' },
-                                    '& .MuiSlider-track': { height: 4, backgroundColor: '#2563EB', borderRadius: '2px' },
-                                    '& .MuiSlider-valueLabel': { backgroundColor: '#2563EB' },
-                                }}
-                            />
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2 }}>
-                                <TextField
-                                    size="small"
-                                    value={priceRange[0]}
-                                    onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
-                                    sx={{
-                                        width: 80,
-                                        '& .MuiOutlinedInput-root': {
-                                            borderRadius: '4px',
-                                            '& fieldset': { borderColor: '#ddd' },
-                                            '&:hover fieldset': { borderColor: '#999' },
-                                            '&.Mui-focused fieldset': { borderColor: '#2563EB' },
-                                        },
-                                        '& .MuiInputBase-input': { fontSize: '14px', padding: '8px 10px' }
-                                    }}
-                                />
-                                <Typography sx={{ fontSize: '1px', color: '#6c757d' }}>to</Typography>
-                                <TextField
-                                    size="small"
-                                    value={priceRange[1]}
-                                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || maxPrice])}
-                                    sx={{
-                                        width: 120,
-                                        '& .MuiOutlinedInput-root': {
-                                            borderRadius: '4px',
-                                            '& fieldset': { borderColor: '#ddd' },
-                                            '&:hover fieldset': { borderColor: '#999' },
-                                            '&.Mui-focused fieldset': { borderColor: '#2563EB' },
-                                        },
-                                        '& .MuiInputBase-input': { fontSize: '14px', padding: '8px 10px' }
-                                    }}
-                                />
-                                <Button
-                                    variant="contained"
-                                    onClick={() => {}}
-                                    sx={{ minWidth: 'auto', padding: '8px 16px', fontSize: '8px', textTransform: 'uppercase', backgroundColor: '#2563EB', boxShadow: 'none', '&:hover': { backgroundColor: '#1e4baf', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' } }}
-                                >
-                                    GO
-                                </Button>
-                            </Box>
+                    }
+                    sx={{
+                        m: 0,
+                        py: 0.1,
+                        pl: 0.5,
+                        minHeight: 20,
+                        ml: 1,
+                    }}
+                />
+            ))}
+        </FormGroup>
+        {allBrandOptions.length > 5 && !showAllBrands && (
+            <Button
+                variant="text"
+                size="small"
+                onClick={() => setShowAllBrands(true)}
+                sx={{
+                    color: '#2563EB',
+                    fontSize: 12,
+                    mt: 0.3,
+                    textTransform: 'none',
+                    pl: 0,
+                    fontWeight: 600,
+                    fontFamily: 'Roboto, Arial, sans-serif'
+                }}
+            >
+                {`+ ${allBrandOptions.length - 5} View all brands`}
+            </Button>
+        )}
+    </Box>
+</Box>
+
+{/* Dialog for all brands */}
+<Dialog
+    open={showAllBrands}
+    onClose={() => setShowAllBrands(false)}
+    fullWidth
+    maxWidth="md"
+    PaperProps={{ sx: { borderRadius: 2 } }}
+>
+    <DialogTitle sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 600, fontSize: 15 }}>
+                Select Brands
+            </Typography>
+            <IconButton onClick={() => setShowAllBrands(false)}>
+                <CloseIcon />
+            </IconButton>
+        </Box>
+    </DialogTitle>
+
+    <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
+        <TextField
+            fullWidth
+            size="small"
+            placeholder="Search brands..."
+            variant="outlined"
+            value={brandSearch}
+            onChange={handleBrandSearchChange}
+            InputProps={{
+                startAdornment: (
+                    <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                    </InputAdornment>
+                ),
+            }}
+        />
+    </Box>
+
+    <DialogContent dividers sx={{ p: 0, maxHeight: '60vh' }}>
+        {(() => {
+            // Group brands by first letter
+            const grouped = {};
+            allBrandOptions
+                .filter(b => !brandSearch || b.name.toLowerCase().includes(brandSearch.toLowerCase()))
+                .forEach(brand => {
+                    const letter = brand.name?.charAt(0)?.toUpperCase() || '';
+                    if (!grouped[letter]) grouped[letter] = [];
+                    grouped[letter].push(brand);
+                });
+            const letters = Object.keys(grouped).sort();
+
+            return letters.length > 0 ? (
+                letters.map(letter => (
+                    <Box key={letter}>
+                        <Box sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                {letter}
+                            </Typography>
                         </Box>
-                    </AccordionDetails>
-                </Accordion>
-                <Divider sx={{ my: 1 }} />
+                        <Divider />
+                        <Grid container spacing={0}>
+                            {grouped[letter].map(brand => (
+                                <Grid item xs={12} sm={6} md={4} key={brand.id}>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={selectedBrands.has(brand.id)}
+                                                onChange={() => handleBrandChange(brand.id)}
+                                                color="primary"
+                                            />
+                                        }
+                                        label={
+                                            <Box display="flex" alignItems="center">
+                                                <Typography variant="body2" sx={{ fontSize: 13 }}>{brand.name}</Typography>
+                                                <Chip label={`${brand.count || 0} products`} size="small" sx={{ ml: 1, height: 18, fontSize: 11 }} />
+                                            </Box>
+                                        }
+                                        sx={{
+                                            px: 2,
+                                            py: 1.5,
+                                            width: '100%',
+                                            m: 0,
+                                            '&:hover': { backgroundColor: '#f5f5f5' }
+                                        }}
+                                    />
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </Box>
+                ))
+            ) : (
+                <Box p={3} textAlign="center">
+                    <Typography>No brands match your search criteria</Typography>
+                </Box>
+            );
+        })()}
+    </DialogContent>
+    <DialogActions>
+        <Button
+            onClick={() => {
+                setSelectedBrands(new Set());
+                setBrandSearch('');
+            }}
+            color="error"
+            variant="outlined"
+            sx={{ fontSize: 12 }}
+        >
+            Reset
+        </Button>
+        <Button onClick={() => setShowAllBrands(false)} color="primary" variant="contained" sx={{ fontSize: 12 }}>
+            Close
+        </Button>
+    </DialogActions>
+</Dialog>
+
+
+                <Divider sx={{ my: -1 }} />
+                {/* Price Range Section */}
+                <Box sx={{ mb: 0.8, mt: 1 }}>
+    <Box sx={{ fontWeight: 'bold', fontSize: 13, mb: 0.5, color: '#333', fontFamily: 'Roboto, Arial, sans-serif' }}>Price</Box>
+    <Slider
+        value={priceRange}
+        onChange={(event, newValue) => setPriceRange(newValue)}
+        valueLabelDisplay="off"
+        min={minPrice}
+        max={maxPrice}
+        sx={{
+            color: '#2563EB',
+            height: 4,
+            mt: 0.5,
+            '& .MuiSlider-thumb': {
+                width: 18,
+                height: 18,
+                backgroundColor: '#fff',
+                border: '2px solid #2563EB',
+                boxShadow: '0 2px 6px 0 rgba(0,0,0,0.15)',
+            },
+            '& .MuiSlider-rail': { backgroundColor: '#f6f6f6' },
+            '& .MuiSlider-track': { backgroundColor: '#2563EB' },
+        }}
+    />
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.1 }}>
+        <Typography sx={{ fontSize: 12, color: '#222', fontWeight: 400 }}>
+            ${priceRange[0]}
+        </Typography>
+        <Typography sx={{ fontSize: 12, color: '#222', fontWeight: 400 }}>
+            ${priceRange[1]}
+        </Typography>
+    </Box>
+</Box>
+
                 {/* Other Filters Section */}
                 {categoryFilters.map((filter, index) => (
                     <Accordion key={index} defaultExpanded sx={{ boxShadow: 'none', '&:before': { display: 'none' } }}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ p: 0, minHeight: '48px', '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' } }}>
-                            <Typography variant="subtitle1" sx={{ fontSize: '14px' }}>{filter.name}</Typography>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ p: 0, minHeight: '35px', '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' } }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontSize: '13px', color: '#333', fontFamily: 'Roboto, Arial, sans-serif' }}>{filter.name}</Typography>
                         </AccordionSummary>
-                        <AccordionDetails>
+                        <AccordionDetails sx={{ p: '0 0 4px 0' }}>
                             {filter.options.map((option, optionIndex) => (
                                 <FormControlLabel
                                     key={optionIndex}
-                                    control={<Checkbox checked={selectedFilters[filter.name]?.includes(option.label) || false} onChange={() => handleFilterChange(filter.name, option.label)} />}
-                                    label={option.label}
-                                    sx={{ '& .MuiFormControlLabel-label': { fontSize: '14px' } }}
+                                    control={<Checkbox
+                                        checked={selectedFilters[filter.name]?.includes(option.label) || false}
+                                        onChange={() => handleFilterChange(filter.name, option.label)}
+                                        size="small"
+                                        sx={{
+                                            color: '#2563EB',
+                                            '&.Mui-checked': { color: '#2563EB' },
+                                            p: '0px',
+                                            fontSize: 16,
+                                            '& .MuiSvgIcon-root': { fontSize: 16 }
+                                        }}
+                                    />}
+                                    label={<Typography sx={{ fontSize: 12, color: '#222', fontWeight: 500, fontFamily: 'Roboto, Arial, sans-serif', ml: 1.5 }}>{option.label}</Typography>}
+                                    sx={{
+                                        m: 0,
+                                        py: 0.1,
+                                        pl: 0.5,
+                                        minHeight: 20,
+                                        ml: 1,
+                                        '& .MuiFormControlLabel-label': {
+                                            lineHeight: '1.2'
+                                        }
+                                    }}
                                 />
                             ))}
                         </AccordionDetails>
                     </Accordion>
                 ))}
-                {/* Clear All Button */}
-                <Box sx={{ mt: 'auto', p: 1 }}>
-                    <Button
-                        variant="outlined"
-                        size="small"
-                        fullWidth
-                        onClick={handleClearFilters}
-                        sx={{
-                            textTransform: 'none',
-                            fontSize: '14px',
-                            padding: '8px 16px',
-                            borderColor: '#2563EB',
-                            color: '#2563EB',
-                            '&:hover': {
-                                borderColor: '#1e4baf',
-                                backgroundColor: 'rgba(37, 99, 235, 0.04)'
-                            }
-                        }}
-                    >
-                        Clear All
-                    </Button>
-                </Box>
             </Box>
             {/* Main Content */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {/* Header */}
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 2, borderBottom: '1px solid #e0e0e0', backgroundColor: 'white' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <TextField
-                            placeholder="Search..."
-                            variant="outlined"
-                            size="small"
-                            value={searchQuery}
-                            onChange={handleSearchChange}
-                            sx={{ width: 300 }}
-                        />
-                        <IconButton onClick={handleClearSearch}>
-                            <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
-                                <path d="M0 0h24v24H0z" fill="none" />
-                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.37-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
-                            </svg>
-                        </IconButton>
-                    </Box>
+
+<Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 2, borderBottom: '1px solid #e0e0e0', backgroundColor: 'white' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <TextField
+            placeholder="Search..."
+            variant="outlined"
+            size="small"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            sx={{
+                width: 300,
+                background: '#f6f6f6',
+                borderRadius: '18px',
+                fontFamily: 'Roboto, Arial, sans-serif',
+                transition: 'background 0.2s, border-color 0.2s',
+                '& .MuiOutlinedInput-root': {
+                    borderRadius: '18px',
+                    fontSize: 12,
+                    paddingRight: 0,
+                    background: '#f6f6f6',
+                    border: '1px solid #e0e0e0',
+                    height: 32,
+                    transition: 'background 0.2s, border-color 0.2s',
+                    '&:hover': {
+                        background: '#fff',
+                        borderColor: '#bdbdbd',
+                    },
+                    '&.Mui-focused': {
+                        background: '#fff',
+                        borderColor: '#2563EB',
+                    },
+                },
+                '& fieldset': { border: 'none' }
+            }}
+            InputProps={{
+                startAdornment: (
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        style={{ marginRight: 8 }}
+                    >
+                        <circle cx="11" cy="11" r="7" stroke="#888" strokeWidth="2" />
+                        <path d="M20 20L16.65 16.65" stroke="#888" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                ),
+            }}
+        />
+        <IconButton onClick={handleClearSearch}>
+            <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
+                <path d="M0 0h24v24H0z" fill="none" />
+                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.37-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+            </svg>
+        </IconButton>
+    </Box>
+
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 2 }}>
                         <Typography variant="body2">Total Products: {products.length}</Typography>
                         <Tooltip title="List View">
@@ -814,104 +1205,125 @@ useEffect(() => {
                         </Tooltip>
                     </Box>
                 </Box>
-                {/* Applied Filters Section */}
-                {appliedFilters.length > 0 && (
-                    <Box sx={{ p: 1.5, backgroundColor: '#f8f9fa', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#333' }}>Applied Filters:</Typography>
-                        {appliedFilters.map((filter, index) => (
-                            <Typography
-                                key={index}
-                                variant="body2"
-                                sx={{
-                                    backgroundColor: '#e6f0ff',
-                                    color: '#2563EB',
-                                    fontWeight: 600,
-                                    px: 1,
-                                    py: 0.5,
-                                    borderRadius: '4px',
-                                    fontSize: '12px'
-                                }}
-                            >
-                                {filter}
-                            </Typography>
-                        ))}
-                    </Box>
-                )}
+                {/* Applied Filters Section (USING CHIPS) */}
+       {appliedChips.length > 0 && (
+    <Box
+        sx={{
+            p: 1.5,
+            backgroundColor: '#fff',
+            borderBottom: '1px solid #e0e0e0',
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1,
+        }}
+    >
+        <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#222' }}>
+            Applied Filters:
+        </Typography>
+        {appliedChips.map((filter) => (
+            <Chip
+                key={filter.key}
+                label={filter.label}
+                onDelete={() => handleRemoveFilter(filter.type, filter.value, filter.filterName)}
+                size="small"
+                sx={{
+                     backgroundColor: '#fff',
+                    color: '#444', // dark gray/black text
+                    fontWeight: 400,
+                    fontSize: '12px',
+                    border: '1px solid #bdbdbd',
+                    '& .MuiChip-deleteIcon': {
+                        color: '#555',
+                        '&:hover': {
+                            color: '#000',
+                        },
+                    },
+                }}
+            />
+        ))}
+    </Box>
+)}
+
                 {/* Content Area */}
                 <Box sx={{ flex: 1, overflow: 'auto', p: 2, backgroundColor: '#f1f3f6' }}>
                     {viewMode === 'list' ? (
                         <TableContainer component={Paper} sx={{ maxHeight: '100%' }}>
-                            <Table stickyHeader size="small">
+                            <Table stickyHeader>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell sx={{ textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '13px', padding: '6px 8px', minWidth: 50, maxWidth: 60, width: 60 }}>Image</TableCell>
-                                        <TableCell sx={{ textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '13px', padding: '6px 8px', minWidth: 60, maxWidth: 80, width: 80 }} onClick={() => sortProducts('sku')}>SKU {getSortSymbol('sku')}</TableCell>
-                                        <TableCell sx={{ textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '13px', padding: '6px 8px', minWidth: 120, maxWidth: 180, width: 180 }} onClick={() => sortProducts('name')}>Title {getSortSymbol('name')}</TableCell>
-                                        <TableCell sx={{ textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '13px', padding: '6px 8px', minWidth: 60, maxWidth: 80, width: 80 }} onClick={() => sortProducts('mpn')}>MPN {getSortSymbol('mpn')}</TableCell>
-                                        <TableCell sx={{ textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '13px', padding: '6px 8px', minWidth: 80, maxWidth: 100, width: 100 }} onClick={() => sortProducts('category')}>Category {getSortSymbol('category')}</TableCell>
-                                        <TableCell sx={{ textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '13px', padding: '6px 8px', minWidth: 80, maxWidth: 100, width: 100 }} onClick={() => sortProducts('brand_name')}>Brand {getSortSymbol('brand_name')}</TableCell>
-                                        <TableCell sx={{ textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '13px', padding: '6px 8px', minWidth: 60, maxWidth: 80, width: 80 }} onClick={() => sortProducts('price')}>Price {getSortSymbol('price')}</TableCell>
+                                        {[
+                                            { label: 'Image' },
+                                            { label: 'SKU', key: 'sku' },
+                                            { label: 'Title', key: 'name' },
+                                            { label: 'MPN', key: 'mpn' },
+                                            { label: 'Category', key: 'category' },
+                                            { label: 'Brand', key: 'brand_name' },
+                                            { label: 'Price', key: 'price' },
+                                        ].map((col, index) => (
+                                            <TableCell
+                                                key={index}
+                                                sx={{ textAlign: 'center', cursor: col.key ? 'pointer' : 'default', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '14px' }}
+                                                onClick={col.key ? () => sortProducts(col.key) : undefined}
+                                            >
+                                                {col.label} {col.key ? getSortSymbol(col.key) : ''}
+                                            </TableCell>
+                                        ))}
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {loading ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} align="center" sx={{ fontSize: '13px', padding: '12px 0' }}>
+                                            <TableCell colSpan={7} align="center">
                                                 <DotLoading />
                                             </TableCell>
                                         </TableRow>
                                     ) : filteredProducts.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} align="center" sx={{ fontSize: '13px', padding: '12px 0' }}>
+                                            <TableCell colSpan={7} align="center">
                                                 No Data Found
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredProducts
-                                            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                       filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                             .map((product) => (
                                                 <TableRow key={product.id} hover>
-                                                    <TableCell sx={{ textAlign: 'center', padding: '4px 6px', minWidth: 50, maxWidth: 60, width: 60 }}>
+                                                    <TableCell sx={{ textAlign: 'center' }}>
                                                         <Link to={`/details/${product.id}?page=${page}`} style={{ textDecoration: 'none' }}>
+                                                            {/* FIXED: Robust Image/Thumbnail Handling for List View */}
                                                             <img
                                                                 src={
                                                                     product.image_url && (product.image_url.startsWith('http://') || product.image_url.startsWith('https://'))
                                                                         ? product.image_url
-                                                                        : 'https://placehold.co/40x40?text=No+Img'
+                                                                        : 'https://placehold.co/40x40?text=No+Img' // Placeholder URL for missing image
                                                                 }
                                                                 alt={product.name}
-                                                                style={{
-                                                                    width: '32px',
-                                                                    height: '32px',
-                                                                    objectFit: 'contain',
-                                                                    borderRadius: '4px',
-                                                                    border: '1px solid #ddd'
-                                                                }}
+                                                                style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #ddd' }}
                                                                 onError={(e) => {
                                                                     e.target.onerror = null;
-                                                                    e.target.src = "https://placehold.co/40x40?text=No+Img";
+                                                                    e.target.src = "https://placehold.co/40x40?text=No+Img"; // Fallback on load error
                                                                 }}
                                                             />
                                                         </Link>
                                                     </TableCell>
-                                                    <TableCell sx={{ textAlign: 'center', fontSize: '13px', padding: '4px 6px', minWidth: 60, maxWidth: 80, width: 80 }}>{product.sku}</TableCell>
-                                                    <TableCell sx={{ textAlign: 'left', fontSize: '13px', padding: '4px 6px', minWidth: 120, maxWidth: 180, width: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    <TableCell sx={{ textAlign: 'center' ,fontSize: 13 }}>{product.sku}</TableCell>
+                                                    <TableCell sx={{ textAlign: 'left', maxWidth: 300 }}>
                                                         <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                                                            <Typography component="span" sx={{ fontWeight: 'bold', color: '#212121', fontSize: '13px' }}>
+                                                            <Typography component="span" sx={{ textAlign: 'center' ,fontSize: 13 }}>
                                                                 {product.name}
                                                             </Typography>
                                                         </Link>
                                                     </TableCell>
-                                                    <TableCell sx={{ textAlign: 'center', fontSize: '13px', padding: '4px 6px', minWidth: 60, maxWidth: 80, width: 80 }}>
+                                                    <TableCell sx={{ textAlign: 'center' }}>
                                                         <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                                                            <Typography component="span" sx={{ color: '#212121', fontSize: '13px' }}>
+                                                            <Typography component="span" sx={{ color: '#212121',fontSize: 13  }}>
                                                                 {product.mpn}
                                                             </Typography>
                                                         </Link>
                                                     </TableCell>
-                                                    <TableCell sx={{ textAlign: 'center', fontSize: '13px', padding: '4px 6px', minWidth: 80, maxWidth: 100, width: 100 }}>{product.category}</TableCell>
-                                                    <TableCell sx={{ textAlign: 'center', fontSize: '13px', padding: '4px 6px', minWidth: 80, maxWidth: 100, width: 100 }}>{product.brand_name || 'N/A'}</TableCell>
-                                                    <TableCell sx={{ textAlign: 'center', fontSize: '13px', padding: '4px 6px', minWidth: 60, maxWidth: 80, width: 80 }}>${product.price}</TableCell>
+                                                    <TableCell sx={{ textAlign: 'center' ,fontSize: 13 }}>{product.category}</TableCell>
+                                                    <TableCell sx={{ textAlign: 'center',fontSize: 13  }}>{product.brand_name || 'N/A'}</TableCell>
+                                                    <TableCell sx={{ textAlign: 'center',fontSize: 13  }}>${product.price}</TableCell>
                                                 </TableRow>
                                             ))
                                     )}
@@ -932,23 +1344,23 @@ useEffect(() => {
                                 <Grid container spacing={2} sx={{ margin: 0, width: '100%' }}>
                                     {filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => (
                                         <Grid item xs={12} sm={6} md={4} lg={2} xl={2} key={product.id} sx={{ display: 'flex', justifyContent: 'center', paddingLeft: '8px !important', paddingTop: '8px !important' }}>
-                                           <Card
-    sx={{
-        width: '120%',
-        maxWidth: '180px',
-        height: '380px',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        backgroundColor: '#fff',
-        border: '1px solid #f0f0f0',
-        borderRadius: '6px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-        transition: 'all 0.2s ease-in-out',
-        cursor: 'pointer',
-        '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transform: 'translateY(-2px)' }
-    }}
->
+                                            <Card
+                                                sx={{
+                                                    width: '100%',
+                                                    maxWidth: '200px',
+                                                    height: '370px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    position: 'relative',
+                                                    backgroundColor: '#fff',
+                                                    border: '1px solid #f0f0f0',
+                                                    borderRadius: '6px',
+                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                                                    transition: 'all 0.2s ease-in-out',
+                                                    cursor: 'pointer',
+                                                    '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transform: 'translateY(-2px)' }
+                                                }}
+                                            >
                                                 <IconButton
                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(product.id); }}
                                                     sx={{ position: 'absolute', top: 8, right: 8, zIndex: 2, backgroundColor: 'rgba(255,255,255,0.9)', width: 28, height: 28, '&:hover': { backgroundColor: 'rgba(255,255,255,1)', transform: 'scale(1.1)' } }}
@@ -960,70 +1372,55 @@ useEffect(() => {
                                                         <FavoriteBorderIcon sx={{ fontSize: 14, color: '#878787' }} />
                                                     )}
                                                 </IconButton>
-                                                <Link to={`/details/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', flex: 1, height: '100%' }}>
-        <Box
-            sx={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 1.5, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}
-        >
-            <CardMedia
-                component="img"
-                image={product.image_url}
-                alt={product.name}
-                onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "https://via.placeholder.com/150";
-                }}
-                sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', transition: 'transform 0.2s ease-in-out', '&:hover': { transform: 'scale(1.05)' } }}
-            />
-        </Box>
-                                                   <CardContent
-            sx={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                p: 1.5,
-                paddingBottom: '12px !important',
-                height: '100%',
-            }}
-        >
-            <Typography
-                variant="body1"
-                sx={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    lineHeight: 1.3,
-                    mb: 1,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: '-webkit-box',
-                    WebkitBoxOrient: 'vertical',
-                    WebkitLineClamp: 2,
-                    minHeight: '32px',
-                    color: '#212121'
-                }}
-            >
+                                                <Link to={`/details/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                                    <Box
+                                                        sx={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 1.5, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}
+                                                    >
+                                                        {/* FIXED: Robust Image/Thumbnail Handling for Card View */}
+                                                        <CardMedia
+                                                            component="img"
+                                                            image={
+                                                                product.image_url && (product.image_url.startsWith('http://') || product.image_url.startsWith('https://'))
+                                                                    ? product.image_url
+                                                                    : 'https://placehold.co/150x150?text=No+Img' // Placeholder URL for missing image
+                                                            }
+                                                            alt={product.name}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = "https://placehold.co/150x150?text=No+Img"; // Fallback on load error
+                                                            }}
+                                                            sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', transition: 'transform 0.2s ease-in-out', '&:hover': { transform: 'scale(1.05)' } }}
+                                                        />
+                                                    </Box>
+                                                    <CardContent sx={{ flex: 1, p: 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingBottom: '12px !important' }}>
+                                                        <Typography
+                                                            variant="body1"
+                                                            sx={{
+                                                                fontSize: '12px',
+                                                               
+                                                                lineHeight: 1.3,
+                                                                mb: 1,
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                display: '-webkit-box',
+                                                                WebkitBoxOrient: 'vertical',
+                                                                WebkitLineClamp: 2,
+                                                                minHeight: '30px',
+                                                                color: '#212121'
+                                                            }}
+                                                        >
                                                             {product.name}
-                                                         </Typography>
-            <Box
-                sx={{
-                    fontSize: '12px',
-                    color: '#6c757d',
-                    textAlign: 'left',
-                    minHeight: '70px',
-                    mb: 1,
-                }}
-            >
-                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>SKU:</b> {product.sku}</Typography>
-                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>MPN:</b> {product.mpn || 'N/A'}</Typography>
-                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>Category:</b> {product.category}</Typography>
-                <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>Brand:</b> {product.brand_name || 'N/A'}</Typography>
-            </Box>
-            <Box sx={{ mt: 'auto' }}>
-                <Typography variant="h6" sx={{ fontSize: '14px', fontWeight: 600, color: '#212121', mb: 0.5 }}>
-                    ${product.price}
-                </Typography>
-            </Box>
-        </CardContent>
+                                                        </Typography>
+                                                        <Box sx={{ mt: 1, fontSize: '12px', color: '#6c757d', textAlign: 'left' }}>
+                                                            <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>SKU:</b> {product.sku}</Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>MPN:</b> {product.mpn || 'N/A'}</Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>Category:</b> {product.category}</Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '12px', mb: 0.5 }}><b>Brand:</b> {product.brand_name || 'N/A'}</Typography>
+                                                        </Box>
+                                                        <Box sx={{ mt: 1 }}>
+                                                            <Typography variant="h6" sx={{ fontSize: '14px', fontWeight: 600, color: '#212121', mb: 0.5 }}>${product.price}</Typography>
+                                                        </Box>
+                                                    </CardContent>
                                                 </Link>
                                             </Card>
                                         </Grid>
@@ -1033,48 +1430,45 @@ useEffect(() => {
                         </Box>
                     )}
                 </Box>
-                {/* Pagination and Rows per page */}
-                <Box sx={{ borderTop: '1px solid #e0e0e0', backgroundColor: 'white', p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" sx={{ color: '#6c757d' }}>Rows per page:</Typography>
-                        <FormControl variant="outlined" size="small">
-                            <Select
-                                value={rowsPerPage}
-                                onChange={handleChangeRowsPerPage}
-                                sx={{ fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' } }}
-                            >
-                                <MenuItem value={10}>10</MenuItem>
-                                <MenuItem value={25}>25</MenuItem>
-                                <MenuItem value={50}>50</MenuItem>
-                                <MenuItem value={100}>100</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Box>
-                    <Stack spacing={2} direction="row" alignItems="center">
-                        <Pagination
-                            count={pageCount}
-                            page={page + 1}
-                            onChange={handleChangePage}
-                            renderItem={(item) => (
-                                <PaginationItem
-                                    slots={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
-                                    {...item}
-                                />
-                            )}
-                        />
-                    </Stack>
-                </Box>
-                {/* Floating Product Finder Button */}
-                <Button
-                    variant="contained"
-                    color="primary"
-                    style={{ position: 'fixed', bottom: '15px', right: '10px', width: '60px', height: '60px', borderRadius: '50%', fontSize: '24px', zIndex: 9999, backgroundColor: '#2563EB' }}
-                    onClick={() => { setShowPopup(true); setSearchQuery(''); setPage(0); }}
-                >
-                    ❓
-                </Button>
-                {/* Product Finder Dialog */}
 
+                {/* Pagination and Rows per page */}
+
+<Box sx={{ paddingRight: '35px', backgroundColor: 'white', borderTop: '1px solid #e0e0e0' }}>
+   <TablePagination
+    rowsPerPageOptions={[10, 25, 50, 100]}
+    component="div"
+    count={filteredProducts.length}
+    rowsPerPage={rowsPerPage}
+    page={page}
+    onPageChange={(event, newPage) => setPage(newPage)}
+    onRowsPerPageChange={handleChangeRowsPerPage}
+    labelRowsPerPage="Rows per page:"
+    sx={{
+        '& .MuiTablePagination-actions': {
+            marginRight: '28px', // reduce this value as needed (e.g., '8px')
+        },
+    }}
+/>
+</Box>
+                {/* Floating Product Finder Button */}
+<Button
+    variant="contained"
+    color="primary"
+    style={{
+        position: 'fixed',
+        bottom: '15px',
+        right: '10px',
+        width: '60px',
+        height: '60px',
+        borderRadius: '50%',
+        fontSize: '24px',
+        zIndex: 9999,
+        backgroundColor: '#2563EB'
+    }}
+    onClick={() => { setShowPopup(true); setSearchQuery(''); setPage(0); }}
+>
+    ❓
+</Button>
 
                 {/* Product Finder Dialog */}
                 <Dialog
@@ -1091,8 +1485,8 @@ useEffect(() => {
                             margin: 0,
                             zIndex: 1300,
                             borderRadius: '12px',
-                            width: isMobile ? '95%' : maximized ? dialogSize.width : 250,
-                            height: isMobile ? '85%' : maximized ? dialogSize.height : 60,
+                            width: isMobile ? '95%' : maximized ? 400 : 250,
+                            height: isMobile ? '85%' : maximized ? 450 : 60,
                             transition: 'all 0.3s ease',
                             overflow: 'hidden'
                         }
@@ -1125,48 +1519,41 @@ useEffect(() => {
                     {maximized && (
                         <>
                             <DialogContent dividers>
-                                {/* Category Dropdown */}
-                                <FormControl fullWidth margin="normal">
-                                    <Select
-                                        value={selectedCategoryId}
-                                        displayEmpty
-                                        onChange={e => {
-                                            setSelectedCategoryId(e.target.value);
-                                            if (e.target.value) {
-                                                // Fetch filters for selected category
-                                                fetch(`${API_BASE_URL}/category_filters/?category_id=${e.target.value}`, {
-                                                    method: 'GET',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                })
-                                                    .then(response => response.json())
-                                                    .then(data => {
-                                                        const filters = data.data.filters;
-                                                        const filtersWithCheckbox = filters.map((filter) => ({
-                                                            ...filter,
-                                                            options: filter.config.options.map((option) => ({
-                                                                label: option.toString().trim(),
-                                                                checked: false,
-                                                            })),
-                                                        }));
-                                                        setCategoryFilters(filtersWithCheckbox);
-                                                    });
-                                            } else {
-                                                setCategoryFilters([]);
-                                            }
-                                        }}
-                                        sx={{ fontSize: '14px' }}
-                                    >
-                                        <MenuItem value="">
-                                            <em>Select Category</em>
-                                        </MenuItem>
+                                <Accordion defaultExpanded>
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ p: 0, minHeight: '48px', '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' } }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>Categories</Typography>
+                                    </AccordionSummary>
+                                    <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
                                         {categoryOptions.map((category) => (
-                                            <MenuItem key={category.id} value={category.id}>
-                                                {category.name}
-                                            </MenuItem>
+                                            <FormControlLabel
+                                                key={category.id}
+                                                control={<Checkbox checked={selectedCategories.has(category.id)} onChange={() => handleCategoryChange(category.id)} size="small" sx={{ padding: '4px' }} />}
+                                                label={<Typography variant="body2" sx={{ fontSize: '14px', color: '#333' }}>{category.name}</Typography>}
+                                                sx={{ display: 'flex', mb: 0.5, '& .MuiFormControlLabel-label': { ml: 1 } }}
+                                            />
                                         ))}
-                                    </Select>
-                                </FormControl>
-                                {/* Attribute Filters */}
+                                    </AccordionDetails>
+                                </Accordion>
+                                <Accordion defaultExpanded>
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ p: 0, minHeight: '48px', '& .MuiAccordionSummary-content': { m: 0, justifyContent: 'space-between', alignItems: 'center' } }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>Brands</Typography>
+                                    </AccordionSummary>
+                                    <AccordionDetails sx={{ maxHeight: '200px', overflowY: 'auto', p: 0 }}>
+                                        {allBrandOptions.map((brand) => (
+                                            <FormControlLabel
+                                                key={brand.id}
+                                                control={<Checkbox checked={selectedBrands.has(brand.id)} onChange={() => handleBrandChange(brand.id)} size="small" sx={{ padding: '4px' }} />}
+                                                label={
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                        <Typography variant="body2" sx={{ fontSize: '14px', color: '#333' }}>{brand.name}</Typography>
+                                                        <Typography variant="body2" sx={{ fontSize: '12px', color: '#6c757d' }}>({brand.count})</Typography>
+                                                    </Box>
+                                                }
+                                                sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, width: '100%', margin: 0, padding: '4px 0', '& .MuiFormControlLabel-label': { width: '100%', marginLeft: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } }}
+                                            />
+                                        ))}
+                                    </AccordionDetails>
+                                </Accordion>
                                 {categoryFilters.map((filter, index) => (
                                     <Accordion key={index}>
                                         <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#cfd3df' }}>
@@ -1176,24 +1563,7 @@ useEffect(() => {
                                             {filter.options.map((option, optionIndex) => (
                                                 <FormControlLabel
                                                     key={optionIndex}
-                                                    control={
-                                                        <Checkbox
-                                                            checked={selectedFilters[filter.name]?.includes(option.label) || false}
-                                                            onChange={() => {
-                                                                const newFilters = { ...selectedFilters };
-                                                                if (newFilters[filter.name]) {
-                                                                    if (newFilters[filter.name].includes(option.label)) {
-                                                                        newFilters[filter.name] = newFilters[filter.name].filter(f => f !== option.label);
-                                                                    } else {
-                                                                        newFilters[filter.name].push(option.label);
-                                                                    }
-                                                                } else {
-                                                                    newFilters[filter.name] = [option.label];
-                                                                }
-                                                                setSelectedFilters(newFilters);
-                                                            }}
-                                                        />
-                                                    }
+                                                    control={<Checkbox checked={selectedFilters[filter.name]?.includes(option.label) || false} onChange={() => handleFilterChange(filter.name, option.label)} />}
                                                     label={option.label}
                                                     sx={{ '& .MuiFormControlLabel-label': { fontSize: '14px' } }}
                                                 />
@@ -1205,11 +1575,7 @@ useEffect(() => {
                             <DialogActions>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                                     <Tooltip title="Reset All Filters" arrow>
-                                        <Button variant="text" color="error" onClick={() => {
-                                            setSelectedCategoryId('');
-                                            setSelectedFilters({});
-                                            setCategoryFilters([]);
-                                        }} sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Button variant="text" color="error" onClick={handleClearFilters} sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <RestartAltIcon fontSize="small" />
                                             Reset All
                                         </Button>

@@ -113,7 +113,14 @@ const ProductDetail = () => {
     const [isBotTyping, setIsBotTyping] = useState(false);
     const currentPrice = product?.list_price;
     const originalPrice = product?.was_price;
-    const discountPercentage = product?.discount;
+    const discountPercentage =
+    product?.discount &&
+    typeof product.discount === "string" &&
+    product.discount !== "NaN%"
+        ? product.discount
+        : typeof product?.discount === "number" && !isNaN(product.discount)
+        ? `${product.discount}%`
+        : "";
     const [selectedFeatureSetIndex, setSelectedFeatureSetIndex] = useState(0);
     const [editingSetIndex, setEditingSetIndex] = useState(null);
     const [editingFeatures, setEditingFeatures] = useState([]);
@@ -655,6 +662,8 @@ const ProductDetail = () => {
         setSnackbarOpen(true);
     };
 
+
+
     const handleUpdateProductTotal = async () => {
         const selectedTitleFinal =
             (Array.isArray(getTitle) && getTitle.find((item) => item.checked)?.value) ||
@@ -878,18 +887,21 @@ const ProductDetail = () => {
                                     gap: 1,
                                 }}
                             >
-                                {currentPrice !== undefined && currentPrice !== null && (
-                                    <Typography
-                                        sx={{
-                                            fontWeight: "bold",
-                                            color: "#1a73e8",
-                                            fontSize: { xs: "16px", sm: "20px" },
-                                        }}
-                                    >
-                                        {currency}
-                                        {currentPrice}
-                                    </Typography>
-                                )}
+   {currentPrice !== undefined && currentPrice !== null && (
+    <Typography
+        sx={{
+            fontWeight: "bold",
+            color: "#1a73e8",
+            fontSize: { xs: "16px", sm: "20px" },
+            display: "flex",
+            alignItems: "center",
+            gap: "10px", // Add spacing between currency and price
+        }}
+    >
+        <span>{currency}</span>
+        <span>{currentPrice}</span>
+    </Typography>
+)}
                                 {originalPrice !== undefined &&
                                     originalPrice !== null &&
                                     originalPrice > currentPrice && (
@@ -905,18 +917,18 @@ const ProductDetail = () => {
                                             {originalPrice}
                                         </Typography>
                                     )}
-                                {discountPercentage && (
-                                    <Typography
-                                        variant="body2"
-                                        sx={{
-                                            color: "green",
-                                            fontWeight: "bold",
-                                            fontSize: { xs: "14px", sm: "16px" },
-                                        }}
-                                    >
-                                        {discountPercentage} OFF
-                                    </Typography>
-                                )}
+{discountPercentage && discountPercentage !== "NaN%" && (
+    <Typography
+        variant="body2"
+        sx={{
+            color: "green",
+            fontWeight: "bold",
+            fontSize: { xs: "14px", sm: "16px" },
+        }}
+    >
+        {discountPercentage} OFF
+    </Typography>
+)}
                             </Box>
                             <Box
                                 sx={{ display: "flex", flexDirection: "row", mb: 2, gap: 4 }}
