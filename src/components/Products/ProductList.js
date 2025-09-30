@@ -987,9 +987,9 @@ useEffect(() => {
 <FormControlLabel
     key={category.id}
     control={
-        <Checkbox
-            checked={sidebarSelected.has(category.name)}
-            onChange={() => handleSidebarCategorySelect(category.name)}
+  <Checkbox
+    checked={sidebarSelected.has(category.name)}
+    onChange={() => handleSidebarCategorySelect(category.name)}
             size="small"
             sx={{
                 color: '#2563EB',
@@ -1099,11 +1099,11 @@ useEffect(() => {
                                 <Grid item xs={12} sm={6} md={4} key={category.id}>
                                     <FormControlLabel
                                         control={
-                                            <Checkbox
-                                                checked={sidebarSelected.has(category.id)}
-                                                onChange={() => handleSidebarCategorySelect(category.id)}
-                                                color="primary"
-                                            />
+                                          <Checkbox
+    checked={sidebarSelected.has(category.name)}
+    onChange={() => handleSidebarCategorySelect(category.name)}
+    color="primary"
+/>
                                         }
                                         label={
                                             <Box display="flex" alignItems="center">
