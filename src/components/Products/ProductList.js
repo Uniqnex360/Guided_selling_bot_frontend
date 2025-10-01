@@ -128,16 +128,20 @@ const [sidebarSortConfig, setSidebarSortConfig] = useState({ key: 'name', direct
 let sidebarFilteredProducts = products;
 
 // Filter by sidebar brands
-if (sidebarBrandSelected.size > 0) {
+// Filter by BOTH sidebar brands AND categories
+if (sidebarBrandSelected.size > 0 || sidebarSelected.size > 0) {
+    sidebarFilteredProducts = sidebarFilteredProducts.filter(
+        p =>
+            sidebarBrandSelected.has(p.brand_name) ||
+            (sidebarSelected.has(p.category_id) || sidebarSelected.has(p.category))
+    );
+} else if (sidebarBrandSelected.size > 0) {
     sidebarFilteredProducts = sidebarFilteredProducts.filter(
         p => sidebarBrandSelected.has(p.brand_name)
     );
-}
-if (sidebarSelected.size > 0) {
+} else if (sidebarSelected.size > 0) {
     sidebarFilteredProducts = sidebarFilteredProducts.filter(
-        p =>
-            sidebarSelected.has(p.category_id) ||
-            sidebarSelected.has(p.category) // fallback if only category name is present
+        p => sidebarSelected.has(p.category_id) || sidebarSelected.has(p.category)
     );
 }
     
@@ -220,10 +224,9 @@ const fetchSidebarBrands = (search = '') => {
         });
 };
 
-const fetchSidebarPriceRange = (categoryId = '', brandName = '') => {
+const fetchSidebarPriceRange = (categoryId = '') => {
     let url = `${API_BASE_URL}/fetch_price_range/?`;
     if (categoryId) url += `category_id=${encodeURIComponent(categoryId)}&`;
-    if (brandName) url += `brand=${encodeURIComponent(brandName)}&`;
 
     fetch(url)
         .then(res => res.json())
@@ -278,14 +281,13 @@ const toggleWishlist = (productId) => {
 const handleSidebarCategorySearchChange = (e) => {
     setSidebarCategorySearch(e.target.value);
 };
-
-const handleSidebarBrandSelect = (brandId) => {
+const handleSidebarBrandSelect = (brandName) => {
     setSidebarBrandSelected(prev => {
         const newSet = new Set(prev);
-        if (newSet.has(brandId)) {
-            newSet.delete(brandId);
+        if (newSet.has(brandName)) {
+            newSet.delete(brandName);
         } else {
-            newSet.add(brandId);
+            newSet.add(brandName);
         }
         // Sync with main filter state for product filtering
         setSelectedBrands(new Set(newSet));
@@ -375,19 +377,19 @@ const handleSidebarCategorySelect = (categoryName) => {
 
 
         // Sidebar Brands
-    Array.from(new Set([...selectedBrands, ...sidebarBrandSelected])).forEach(id => {
-        const brand =
-            sidebarBrands.find(b => b.id === id) ||
-            allBrandOptions.find(b => b.id === id);
-        if (brand) {
-            addChip({
-                key: `brand-${id}`,
-                label: brand.name,
-                type: sidebarBrandSelected.has(id) ? 'SidebarBrand' : 'Brand',
-                value: id,
-            });
-        }
-    });
+Array.from(new Set([...selectedBrands, ...sidebarBrandSelected])).forEach(name => {
+    const brand =
+        sidebarBrands.find(b => b.name === name) ||
+        allBrandOptions.find(b => b.name === name);
+    if (brand) {
+        addChip({
+            key: `brand-${name}`,
+            label: brand.name,
+            type: sidebarBrandSelected.has(name) ? 'SidebarBrand' : 'Brand',
+            value: name,
+        });
+    }
+});
 
 
 
@@ -740,6 +742,16 @@ const fetchProducts = useCallback(() => {
         setSortConfig({ key: 'sku', direction: 'asc' });
         fetchProducts();
 
+            // --- Add these lines to clear sidebar filters ---
+    setSidebarSelected(new Set());
+    setSidebarBrandSelected(new Set());
+    setSidebarPriceRange([sidebarMinPrice, sidebarMaxPrice]);
+    setSidebarCategorySearch('');
+    setSidebarBrandSearch('');
+    // ------------------------------------------------
+
+    fetchProducts();
+
         setSnackbarMessage('Filters reset successfully!');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
@@ -815,11 +827,10 @@ const fetchProducts = useCallback(() => {
 
 
 useEffect(() => {
-    // Example: Use first selected sidebar category/brand if any
+    // Only use category for price range, not brand
     const categoryId = Array.from(sidebarSelected)[0] || '';
-    const brandName = Array.from(sidebarBrandSelected)[0] || '';
-    fetchSidebarPriceRange(categoryId, brandName);
-}, [sidebarSelected, sidebarBrandSelected]);
+    fetchSidebarPriceRange(categoryId);
+}, [sidebarSelected]);
     
 
     // Fetch sidebar categories on mount and when categorySearch changes
@@ -833,6 +844,40 @@ useEffect(() => {
 
     const appliedChips = getAppliedFilterChips();
     const pageCount = Math.ceil(filteredProducts.length / rowsPerPage);
+
+if (appliedChips.length > 0) {
+    // Always prioritize brand LIFO sorting if any brand is selected
+    if (sidebarBrandSelected.size > 0) {
+        const selectedArray = Array.from(sidebarBrandSelected);
+        sidebarFilteredProducts = [...sidebarFilteredProducts].sort((a, b) => {
+            const aIdx = selectedArray.indexOf(a.brand_name);
+            const bIdx = selectedArray.indexOf(b.brand_name);
+            if (aIdx === -1 && bIdx === -1) return 0;
+            if (aIdx === -1) return 1;
+            if (bIdx === -1) return -1;
+            return bIdx - aIdx; // LIFO: most recent first
+        });
+    } else if (sidebarSelected.size > 0) {
+        // If no brand selected, sort by category
+        sidebarFilteredProducts = [...sidebarFilteredProducts].sort((a, b) =>
+            String(b.category).localeCompare(String(a.category))
+        );
+    } else {
+        // Fallback to other filters (price, search, attribute)
+        const latestChip = appliedChips[appliedChips.length - 1];
+        if (latestChip.type === 'Price Range' || latestChip.type === 'SidebarPriceRange') {
+            sidebarFilteredProducts = [...sidebarFilteredProducts].sort((a, b) => b.price - a.price);
+        } else if (latestChip.type === 'Search Query') {
+            sidebarFilteredProducts = [...sidebarFilteredProducts].sort((a, b) =>
+                String(b.name).localeCompare(String(a.name))
+            );
+        } else if (latestChip.type === 'Attribute' && latestChip.filterName) {
+            sidebarFilteredProducts = [...sidebarFilteredProducts].sort((a, b) =>
+                String(b[latestChip.filterName]).localeCompare(String(a[latestChip.filterName]))
+            );
+        }
+    }
+}
 
     return(
 
@@ -1155,7 +1200,7 @@ useEffect(() => {
             Reset
         </Button>
         <Button onClick={() => setShowAllCategories(false)} color="primary" variant="contained" sx={{ fontSize: 12 }}>
-            Close
+            Apply
         </Button>
     </DialogActions>
 </Dialog>
@@ -1254,8 +1299,8 @@ useEffect(() => {
                     key={brand.id}
                     control={
                         <Checkbox
-                            checked={sidebarBrandSelected.has(brand.id)}
-                            onChange={() => handleSidebarBrandSelect(brand.id)}
+                            checked={sidebarBrandSelected.has(brand.name)}
+onChange={() => handleSidebarBrandSelect(brand.name)}
                             size="small"
                             sx={{
                                 color: '#2563EB',
@@ -1367,11 +1412,12 @@ useEffect(() => {
                                 <Grid item xs={12} sm={6} md={4} key={brand.id}>
                                     <FormControlLabel
                                         control={
-                                            <Checkbox
-                                                checked={sidebarBrandSelected.has(brand.id)}
-                                                onChange={() => handleSidebarBrandSelect(brand.id)}
-                                                color="primary"
-                                            />
+                                      <Checkbox
+    checked={sidebarBrandSelected.has(brand.name)}
+    onChange={() => handleSidebarBrandSelect(brand.name)}
+    size="small"
+    color="primary"
+/>
                                         }
                                         label={
                                             <Box display="flex" alignItems="center">
@@ -1423,7 +1469,7 @@ useEffect(() => {
             Reset
         </Button>
         <Button onClick={() => setShowAllBrands(false)} color="primary" variant="contained" sx={{ fontSize: 12 }}>
-            Close
+            Apply
         </Button>
     </DialogActions>
 </Dialog>
