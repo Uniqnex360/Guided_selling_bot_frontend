@@ -336,44 +336,47 @@ const handleSidebarCategorySelect = (categoryName) => {
     };
 
     // Helper function to derive filter chips from state
-    const getAppliedFilterChips = useCallback(() => {
-        const chips = [];
+const getAppliedFilterChips = useCallback(() => {
+    const chips = [];
 
-           // Helper to avoid duplicate chips by key
+    // Helper to avoid duplicate chips by key or label
     const addChip = (chip) => {
-        if (!chips.some(c => c.key === chip.key)) {
+        if (!chips.some(c => c.label === chip.label)) {
             chips.push(chip);
         }
     };
 
-        // 1. Categories
-        Array.from(selectedCategories).forEach(id => {
-            const category = categoryOptions.find(c => c.id === id);
-            if (category) {
-                chips.push({
-                    key: `category-${id}`,
-                    label: `${category.name}`,
-                    type: 'Category',
-                    value: id,
-                });
-            }
-        });
+
+    // 1. Categories (ID-based)
+    Array.from(selectedCategories).forEach(id => {
+        const category = categoryOptions.find(c => c.id === id);
+        if (category) {
+            addChip({
+                key: `category-${id}`,
+                label: `${category.name}`,
+                type: 'Category',
+                value: id,
+            });
+        }
+    });
 
         
-    // Sidebar Categories
- Array.from(new Set([...selectedCategories, ...sidebarSelected])).forEach(name => {
-    const category =
-        sidebarCategories.find(c => c.name === name) ||
-        categoryOptions.find(c => c.name === name);
-    if (category) {
-        addChip({
-            key: `category-${name}`,
-            label: category.name,
-            type: sidebarSelected.has(name) ? 'SidebarCategory' : 'Category',
-            value: name,
-        });
-    }
-});
+    // Sidebar Categories (name-based, only if not already present by label or key)
+    Array.from(sidebarSelected).forEach(name => {
+        const category =
+            sidebarCategories.find(c => c.name === name) ||
+            categoryOptions.find(c => c.name === name);
+        // Only add if not already present by label or key
+        if (category && !chips.some(c => c.label === category.name || c.key === `category-${category.id}`)) {
+            addChip({
+                key: `category-${name}`,
+                label: category.name,
+                type: 'SidebarCategory',
+                value: name,
+            });
+        }
+    });
+
 
 
         // Sidebar Brands
@@ -394,32 +397,34 @@ Array.from(new Set([...selectedBrands, ...sidebarBrandSelected])).forEach(name =
 
 
         // Sidebar Price Range
-    if (
-        sidebarPriceRange[0] !== sidebarMinPrice ||
-        sidebarPriceRange[1] !== sidebarMaxPrice
-    ) {
-        chips.push({
-            key: 'sidebar-price',
-            label: `$${sidebarPriceRange[0]} - $${sidebarPriceRange[1]}`,
-            type: 'SidebarPriceRange',
-            value: null,
-        });
-    }
+// Sidebar Price Range chip
+if (
+    sidebarPriceRange[0] !== sidebarMinPrice ||
+    sidebarPriceRange[1] !== sidebarMaxPrice
+) {
+    chips.push({
+        key: 'sidebar-price',
+        label: `$${sidebarPriceRange[0]} - $${sidebarPriceRange[1]}`,
+        type: 'SidebarPriceRange',
+        value: null,
+    });
+}
+
 
         // 2. Brands
         Array.from(selectedBrands).forEach(name => {
            
         });
 
-        // 3. Price Range
-    if (priceRange[0] !== minPrice || priceRange[1] !== maxPrice) {
-        addChip({
-            key: 'price',
-            label: `$${priceRange[0]} - $${priceRange[1]}`,
-            type: 'Price Range',
-            value: null,
-        });
-    }
+// 3. Price Range
+if (priceRange[0] !== minPrice || priceRange[1] !== maxPrice) {
+    addChip({
+        key: 'price',
+        label: `$${priceRange[0]} - $${priceRange[1]}`,
+        type: 'Price Range',
+        value: null,
+    });
+}
 
         // 4. Other Attributes
     Object.entries(selectedFilters).forEach(([filterName, values]) => {
@@ -438,17 +443,9 @@ Array.from(new Set([...selectedBrands, ...sidebarBrandSelected])).forEach(name =
 
 
         // 5. Search Query
-    if (searchQuery.trim() !== '') {
-        addChip({
-            key: 'search',
-            label: `Search: "${searchQuery.trim()}"`,
-            type: 'Search Query',
-            value: null,
-        });
-    }
+  
 
-           return chips;
-   
+    return chips;
 }, [
     sidebarSelected,
     sidebarCategories,
@@ -468,7 +465,7 @@ Array.from(new Set([...selectedBrands, ...sidebarBrandSelected])).forEach(name =
     searchQuery,
 ]);
 
-    // Handle removing a single filter chip
+  // Handle removing a single filter chip
 const handleRemoveFilter = (filterType, value, filterName = null) => {
     if (filterType === 'SidebarCategory') {
         setSidebarSelected(prev => {
@@ -476,6 +473,30 @@ const handleRemoveFilter = (filterType, value, filterName = null) => {
             newSet.delete(value);
             return newSet;
         });
+
+        const category = categoryOptions.find(c => c.name === value);
+        if (category) {
+            setSelectedCategories(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(category.id);
+                return newSet;
+            });
+        }
+    } else if (filterType === 'Category') {
+        setSelectedCategories(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(value);
+            return newSet;
+        });
+        // Also remove from sidebarSelected if possible
+        const category = categoryOptions.find(c => c.id === value);
+        if (category) {
+            setSidebarSelected(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(category.name);
+                return newSet;
+            });
+        }
     } else if (filterType === 'SidebarBrand') {
         setSidebarBrandSelected(prev => {
             const newSet = new Set(prev);
@@ -484,12 +505,6 @@ const handleRemoveFilter = (filterType, value, filterName = null) => {
         });
     } else if (filterType === 'SidebarPriceRange') {
         setSidebarPriceRange([sidebarMinPrice, sidebarMaxPrice]);
-    } else if (filterType === 'Category') {
-        setSelectedCategories(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(value);
-            return newSet;
-        });
     } else if (filterType === 'Brand') {
         setSelectedBrands(prev => {
             const newSet = new Set(prev);
@@ -563,20 +578,27 @@ const handleRemoveFilter = (filterType, value, filterName = null) => {
     };
 
     // This handles the Select input in the reverted dialog
-    const handleDialogCategoryChange = (event) => {
-        const categoryId = event.target.value;
-        setSelectedCategoryId(categoryId); // Use old state for dialog
-        setSelectedCategories(new Set([categoryId])); // Sync to new state for main filtering
+const handleDialogCategoryChange = (event) => {
+    const categoryId = event.target.value;
+    setSelectedCategoryId(categoryId); // Use old state for dialog
+    setSelectedCategories(new Set([categoryId])); // Sync to new state for main filtering
 
-        const selectedCategory = categoryOptions.find(cat => cat.id === categoryId);
+    // Sync sidebarSelected with category name for table/card filtering
+    const category = categoryOptions.find(c => c.id === categoryId);
+    if (category) {
+        setSidebarSelected(new Set([category.name]));
+    } else {
+        setSidebarSelected(new Set());
+    }
 
-        if (categoryId) {
-            fetchFilters(categoryId);
-            setSnackbarMessage('Category selected successfully!');
-            setSnackbarSeverity('success'); 
-            setSnackbarOpen(true);
-        }
-    };
+    if (categoryId) {
+        fetchFilters(categoryId);
+        setSnackbarMessage('Category selected successfully!');
+        setSnackbarSeverity('success'); 
+        setSnackbarOpen(true);
+        fetchProducts(); // <-- Add this line to update products immediately
+    }
+};
 
     const handleDialogFilterChange = (filterName, option) => {
         const newFilters = { ...selectedFilters };
@@ -608,7 +630,7 @@ const handleRemoveFilter = (filterType, value, filterName = null) => {
         fetchProducts();
 
         setSnackbarMessage('Reset successfully!');
-        setSnackbarSeverity('error'); // Use 'error' per original code (red color)
+        setSnackbarSeverity('Success'); // Use 'error' per original code (red color)
         setSnackbarOpen(true);
     };
 
@@ -666,12 +688,9 @@ const fetchProducts = useCallback(() => {
                 const newMinPrice = Math.min(...prices);
                 const newMaxPrice = Math.max(...prices);
 
-                setMinPrice(newMinPrice);
-                setMaxPrice(newMaxPrice);
+            
 
-                if (priceRange[0] < newMinPrice || priceRange[1] > newMaxPrice || (priceRange[0] === 0 && priceRange[1] === 140)) {
-                    setPriceRange([newMinPrice, newMaxPrice]);
-                }
+             
             } else {
                 setMinPrice(0);
                 setMaxPrice(0);
@@ -1576,7 +1595,7 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 2 }}>
-                        <Typography variant="body2">Total Products: {products.length}</Typography>
+                        <Typography variant="body2">Total Products: {sidebarFilteredProducts.length}</Typography>
                         <Tooltip title="List View">
                             <IconButton
                                 onClick={() => toggleViewMode('list')}
@@ -1894,21 +1913,21 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
                 {/* Pagination and Rows per page */}
 
                 <Box sx={{ paddingRight: '35px', backgroundColor: 'white', borderTop: '1px solid #e0e0e0' }}>
-                    <TablePagination
-                        rowsPerPageOptions={[10, 25, 50, 100]}
-                        component="div"
-                        count={filteredProducts.length}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        onPageChange={(event, newPage) => setPage(newPage)}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                        labelRowsPerPage="Rows per page:"
-                        sx={{
-                            '& .MuiTablePagination-actions': {
-                                marginRight: '28px', 
-                            },
-                        }}
-                    />
+           <TablePagination
+    rowsPerPageOptions={[10, 25, 50, 100]}
+    component="div"
+    count={sidebarFilteredProducts.length} // <-- Use sidebarFilteredProducts here!
+    rowsPerPage={rowsPerPage}
+    page={page}
+    onPageChange={(event, newPage) => setPage(newPage)}
+    onRowsPerPageChange={handleChangeRowsPerPage}
+    labelRowsPerPage="Rows per page:"
+    sx={{
+        '& .MuiTablePagination-actions': {
+            marginRight: '28px', 
+        },
+    }}
+/>
                 </Box>
                 
                 {/* --- START REVERTED PRODUCT FINDER DIALOG (Original Code) --- */}
@@ -2061,21 +2080,22 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
                     {maximized && (
                         <>
                             <DialogContent dividers>
-                                <FormControl fullWidth margin="normal">
-                                    <InputLabel sx={{ fontSize: '14px' }}>Category</InputLabel>
-                                    <Select
-                                        value={selectedCategoryId}
-                                        label="Category"
-                                        onChange={handleDialogCategoryChange}
-                                        sx={{ fontSize: '14px' }}
-                                    >
-                                        {categoryOptions.map((category) => (
-                                            <MenuItem sx={{ fontSize: '14px' }} key={category.id} value={category.id}>
-                                                {category.name}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
+                              <FormControl fullWidth margin="normal">
+    <InputLabel sx={{ fontSize: '14px' }}>Category</InputLabel>
+    <Select
+        value={selectedCategoryId}
+        label="Category"
+        onChange={handleDialogCategoryChange}
+        sx={{ fontSize: '14px' }}
+    >
+        {categoryOptions.map((category) => (
+            <MenuItem sx={{ fontSize: '14px' }} key={category.id} value={category.id}>
+                {category.name}
+            </MenuItem>
+        ))}
+    </Select>
+   
+</FormControl>
 
                                 {categoryFilters.map((filter, index) => (
                                     <Accordion key={index}>
