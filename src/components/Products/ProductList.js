@@ -8,6 +8,8 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; 
 import ImportProducts from "./ImportProducts";
+import deleteProductById from "./DeleteProducts";
+
 import {
     Typography,
     Box,
@@ -56,6 +58,7 @@ import { API_BASE_URL } from '../../utils/config';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SearchIcon from '@mui/icons-material/Search';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+
 
 
 const ProductList = () => {
@@ -127,6 +130,10 @@ const [sidebarPriceRange, setSidebarPriceRange] = useState([0, 1000]);
 
 const [sidebarSelectedBrands, setSidebarSelectedBrands] = useState(new Set());
 const [sidebarSortConfig, setSidebarSortConfig] = useState({ key: 'name', direction: 'asc' });
+
+
+
+
 
 let sidebarFilteredProducts = products;
 
@@ -268,6 +275,45 @@ const handleSidebarBrandSearchChange = (e) => {
     setSidebarBrandSearch(e.target.value);
 };
 
+// --- FIX: The handleDeleteProduct in ProductList.js ---
+
+const handleDeleteProduct = async (productId) => {
+    // Note: We are using the imported function from DeleteProducts.js here.
+    // The alert messages are now handled by the imported function's logic.
+    
+    // We modify the implementation here to check for success via the imported component's structure:
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+    try {
+        // --- Custom logic mirroring the imported component's API call ---
+        const res = await fetch(`${API_BASE_URL}/delete_product/${productId}/`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        
+        const data = await res.json();
+
+        if (res.ok) {
+            // Success feedback
+            setSnackbarMessage(data.message || "Product deleted successfully!");
+            setSnackbarSeverity("success");
+            setSnackbarOpen(true);
+            
+            // Re-fetch data to update UI
+            fetchProducts();
+        } else {
+            // Error feedback
+            setSnackbarMessage(data.error || "Failed to delete product.");
+            setSnackbarSeverity("error");
+            setSnackbarOpen(true);
+        }
+    } catch (err) {
+        setSnackbarMessage("Network error during deletion.");
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
+    }
+};
+
     // Function to toggle wishlist status
 const toggleWishlist = (productId) => {
     setWishlist((prevWishlist) => {
@@ -297,6 +343,7 @@ const handleSidebarBrandSelect = (brandName) => {
         return newSet;
     });
 };
+
 
 
 const handleSidebarCategorySelect = (categoryName) => {
@@ -395,7 +442,7 @@ Array.from(new Set([...selectedBrands, ...sidebarBrandSelected])).forEach(name =
         addChip({
             key: `brand-${name}`,
             label: brand.name,
-            type: sidebarBrandSelected.has(name) ? 'SidebarBrand' : 'Brand',
+            type: 'Brand', // Always use 'Brand' type for removal
             value: name,
         });
     }
@@ -495,20 +542,19 @@ const handleRemoveFilter = (filterType, value, filterName = null) => {
                 return newSet;
             });
         }
-    } else if (filterType === 'SidebarBrand') {
-        setSidebarBrandSelected(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(value);
-            return newSet;
-        });
+    } else if (filterType === 'SidebarBrand' || filterType === 'Brand') {
+    setSidebarBrandSelected(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(value);
+        return newSet;
+    });
+    setSelectedBrands(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(value);
+        return newSet;
+    });
     } else if (filterType === 'SidebarPriceRange') {
         setSidebarPriceRange([sidebarMinPrice, sidebarMaxPrice]);
-    } else if (filterType === 'Brand') {
-        setSelectedBrands(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(value);
-            return newSet;
-        });
     } else if (filterType === 'Attribute' && filterName) {
         setSelectedFilters(prev => {
             const newFilters = { ...prev };
@@ -1680,37 +1726,43 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
                     {viewMode === 'list' ? (
                         <TableContainer component={Paper} sx={{ maxHeight: '100%' }}>
                             <Table stickyHeader>
-                                <TableHead>
-                                    <TableRow>
-                                        {[
-                                            { label: 'Image' },
-                                            // { label: 'SKU', key: 'sku' }, // SKU is excluded from header mapping based on provided code
-                                            { label: 'Title', key: 'name' },
-                                            { label: 'MPN', key: 'mpn' },
-                                            { label: 'Category', key: 'category' },
-                                            { label: 'Brand', key: 'brand_name' },
-                                            { label: 'Price', key: 'price' },
-                                        ].map((col, index) => (
-                                           <TableCell
-    key={index}
-    sx={{ textAlign: 'center', cursor: col.key ? 'pointer' : 'default', fontWeight: 'bold', backgroundColor: '#f5f5f5', fontSize: '14px' }}
-    onClick={col.key ? () => handleSidebarSort(col.key) : undefined}
->
-    {col.label} {col.key ? (sidebarSortConfig.key === col.key ? (sidebarSortConfig.direction === 'asc' ? '↑' : '↓') : '↕') : ''}
-</TableCell>
-                                        ))}
-                                    </TableRow>
-                                </TableHead>
+                              <TableHead>
+    <TableRow>
+        {[
+            { label: 'Image' },
+            { label: 'Title', key: 'name' },
+            { label: 'MPN', key: 'mpn' },
+            { label: 'Category', key: 'category' },
+            { label: 'Brand', key: 'brand_name' },
+            { label: 'Price', key: 'price' },
+            { label: '' }, // <-- Add Delete column
+        ].map((col, index) => (
+            <TableCell
+                key={index}
+                sx={{
+                    textAlign: 'center',
+                    cursor: col.key ? 'pointer' : 'default',
+                    fontWeight: 'bold',
+                    backgroundColor: '#f5f5f5',
+                    fontSize: '14px'
+                }}
+                onClick={col.key ? () => handleSidebarSort(col.key) : undefined}
+            >
+                {col.label} {col.key ? (sidebarSortConfig.key === col.key ? (sidebarSortConfig.direction === 'asc' ? '↑' : '↓') : '↕') : ''}
+            </TableCell>
+        ))}
+    </TableRow>
+</TableHead>
 <TableBody>
     {loading ? (
         <TableRow>
-            <TableCell colSpan={7} align="center">
+            <TableCell colSpan={8} align="center">
                 <DotLoading />
             </TableCell>
         </TableRow>
     ) : sidebarFilteredProducts.length === 0 ? (
         <TableRow>
-            <TableCell colSpan={7} align="center">
+            <TableCell colSpan={8} align="center">
                 No Data Found
             </TableCell>
         </TableRow>
@@ -1718,45 +1770,55 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
         sidebarFilteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
             .map((product) => (
                 <TableRow key={product.id} hover>
-                                                    <TableCell sx={{ textAlign: 'center' }}>
-                                                        <Link to={`/details/${product.id}?page=${page}`} style={{ textDecoration: 'none' }}>
-                                                            <img
-                                                                src={
-                                                                    product.image_url && (product.image_url.startsWith('http://') || product.image_url.startsWith('https://'))
-                                                                        ? product.image_url
-                                                                        : 'https://placehold.co/40x40?text=No+Img' 
-                                                                }
-                                                                alt={product.name}
-                                                                style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #ddd' }}
-                                                                onError={(e) => {
-                                                                    e.target.onerror = null;
-                                                                    e.target.src = "https://placehold.co/40x40?text=No+Img";
-                                                                }}
-                                                            />
-                                                        </Link>
-                                                    </TableCell>
-                                                    {/* NOTE: SKU column removed from map, but should be added here if needed */}
-                                                    <TableCell sx={{ textAlign: 'left', maxWidth: 300 }}>
-                                                        <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                                                            <Typography component="span" sx={{ textAlign: 'center' ,fontSize: 13 }}>
-                                                                {product.name}
-                                                            </Typography>
-                                                        </Link>
-                                                    </TableCell>
-                                                    <TableCell sx={{ textAlign: 'center' }}>
-                                                        <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                                                            <Typography component="span" sx={{ color: '#212121',fontSize: 13  }}>
-                                                                {product.mpn}
-                                                            </Typography>
-                                                        </Link>
-                                                    </TableCell>
-                                                    <TableCell sx={{ textAlign: 'center' ,fontSize: 13 }}>{product.category}</TableCell>
-                                                    <TableCell sx={{ textAlign: 'center',fontSize: 13  }}>{product.brand_name || 'N/A'}</TableCell>
-                                                    <TableCell sx={{ textAlign: 'center',fontSize: 13  }}>${product.price}</TableCell>
-                                                </TableRow>
-                                            ))
-                                    )}
-                                </TableBody>
+                    {/* ...existing cells... */}
+                    <TableCell sx={{ textAlign: 'center' }}>
+                        <Link to={`/details/${product.id}?page=${page}`} style={{ textDecoration: 'none' }}>
+                            <img
+                                src={
+                                    product.image_url && (product.image_url.startsWith('http://') || product.image_url.startsWith('https://'))
+                                        ? product.image_url
+                                        : 'https://placehold.co/40x40?text=No+Img'
+                                }
+                                alt={product.name}
+                                style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #ddd' }}
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "https://placehold.co/40x40?text=No+Img";
+                                }}
+                            />
+                        </Link>
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'left', maxWidth: 300 }}>
+                        <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <Typography component="span" sx={{ textAlign: 'center', fontSize: 13 }}>
+                                {product.name}
+                            </Typography>
+                        </Link>
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>
+                        <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <Typography component="span" sx={{ color: '#212121', fontSize: 13 }}>
+                                {product.mpn}
+                            </Typography>
+                        </Link>
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: 13 }}>{product.category}</TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: 13 }}>{product.brand_name || 'N/A'}</TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: 13 }}>${product.price}</TableCell>
+                    {/* Delete Icon Cell */}
+  <TableCell sx={{ textAlign: 'center' }}>
+    <IconButton
+        color="error"
+        onClick={() => handleDeleteProduct(product.id)}
+    >
+        <CloseIcon />
+    </IconButton>
+</TableCell>
+                </TableRow>
+            ))
+    )}
+</TableBody>
+
                             </Table>
                         </TableContainer>
                     ) : (
@@ -1771,49 +1833,49 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
                                 </Box>
                             ) : (
 <Grid container spacing={0.5} sx={{ margin: 0, width: '100%' }}>
-   {sidebarFilteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => (
-        <Grid item 
-            xs={12}
-            sm={6}
-            md={4}
-            lg={4}
-            xl={4}
-            key={product.id}
-            sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                paddingLeft: '8px !important',
-                paddingTop: '8px !important',
-            }}
-        >
+                {sidebarFilteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => (
+                    <Grid item
+                        xs={12}
+                        sm={6}
+                        md={4}
+                        lg={4}
+                        xl={4}
+                        key={product.id}
+                        sx={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            paddingLeft: '8px !important',
+                            paddingTop: '8px !important',
+                        }}
+                    >
             <Card
-                sx={{
-                    width: '230px',
-                    maxWidth: '230px',
-                    height: '455px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    position: 'relative',
-                    backgroundColor: '#fff',
-                    border: '1px solid #e3e6ef',
-                    borderRadius: '12px',
-                    transition: 'box-shadow 0.2s, transform 0.2s, border-color 0.2s',
-                    cursor: 'pointer',
-                    '&:hover': {
-                        boxShadow: '0 8px 24px 0 rgba(37,99,235,0.18)',
-                    },
-                }}
-            >
+                            sx={{
+                                width: '230px',
+                                maxWidth: '230px',
+                                height: '455px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                position: 'relative',
+                                backgroundColor: '#fff',
+                                border: '1px solid #e3e6ef',
+                                borderRadius: '12px',
+                                transition: 'box-shadow 0.2s, transform 0.2s, border-color 0.2s',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    boxShadow: '0 8px 24px 0 rgba(37,99,235,0.18)',
+                                },
+                            }}
+                        >
                 <Link
-                    to={`/details/${product.id}`}
-                    style={{
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                    }}
-                >
+                                to={`/details/${product.id}`}
+                                style={{
+                                    textDecoration: 'none',
+                                    color: 'inherit',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    height: '100%',
+                                }}
+                            >
                     <Box
                         sx={{
                             height: '270px',
@@ -1851,32 +1913,32 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
                             }}
                         />
                     </Box>
-                    <CardContent
-                        sx={{
-                            flex: 1,
-                            p: 2,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            paddingBottom: '12px !important',
-                        }}
-                    >
-                        <Typography
-                            variant="body1"
-                            sx={{
-                                fontSize: '10px',
-                                color: '#222',
-                                lineHeight: 1.3,
-                                mb: 0.5,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: '-webkit-box',
-                                WebkitBoxOrient: 'vertical',
-                                WebkitLineClamp: 4,
-                                minHeight: '34px',
-                            }}
-                        >
-                            {product.name}
+                     <CardContent
+                                    sx={{
+                                        flex: 1,
+                                        p: 2,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-between',
+                                        paddingBottom: '12px !important',
+                                    }}
+                                >
+                                    <Typography
+                                        variant="body1"
+                                        sx={{
+                                            fontSize: '10px',
+                                            color: '#222',
+                                            lineHeight: 1.3,
+                                            mb: 0.5,
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            display: '-webkit-box',
+                                            WebkitBoxOrient: 'vertical',
+                                            WebkitLineClamp: 4,
+                                            minHeight: '34px',
+                                        }}
+                                    >
+                                        {product.name}
                         </Typography>
                         <Box sx={{ fontSize: '11px', color: '#222', textAlign: 'left', mb: 0.1 }}>
                             <Typography variant="body2" sx={{ fontSize: '10px', mb: 0.1, fontWeight: 200 }}>

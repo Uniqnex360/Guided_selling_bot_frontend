@@ -149,23 +149,35 @@ const ImportProducts = ({ open, onClose, onSuccess }) => {
           Import Products
         </DialogTitle>
 
-        <DialogContent sx={{ p: 3, backgroundColor: '#FFFFFF' }}>
-          <CleanFileInput
-            file={file}
-            onFileChange={handleFileChange}
-            loading={loading}
-          />
+<DialogContent sx={{ p: 3, backgroundColor: '#FFFFFF' }}>
+  <CleanFileInput
+    file={file}
+    onFileChange={handleFileChange}
+    loading={loading}
+  />
 
-          {!loading && (
-            <Alert
-              severity="info"
-              variant="outlined"
-              sx={{ mt: 3, fontSize: 13, borderColor: '#BFDBFE', color: '#1D4ED8' }}
-            >
-              Please use our official template to ensure all fields are mapped correctly.
-            </Alert>
-          )}
-        </DialogContent>
+  {!loading && (
+    <>
+      <Alert
+        severity="info"
+        variant="outlined"
+        sx={{ mt: 3, fontSize: 13, borderColor: '#BFDBFE', color: '#1D4ED8' }}
+      >
+        Please use our official template to ensure all fields are mapped correctly.
+      </Alert>
+      <Button
+        variant="outlined"
+        color="primary"
+        sx={{ mt: 2, fontWeight: 600 }}
+        startIcon={<FileDownloadOutlinedIcon />}
+        href="/product_template.xlsx"
+        download
+      >
+        Download Template
+      </Button>
+    </>
+  )}
+</DialogContent>
 
         <DialogActions sx={{ p: 2, borderTop: '1px solid #F3F4F6', backgroundColor: '#F9FAFB' }}>
           <Button
