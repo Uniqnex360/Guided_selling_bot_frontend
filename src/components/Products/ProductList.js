@@ -7,6 +7,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; 
+import ImportProducts from "./ImportProducts";
 import {
     Typography,
     Box,
@@ -46,6 +47,7 @@ import {
     FormControl,
     InputLabel,
 } from '@mui/material';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import TablePagination from '@mui/material/TablePagination';
 import { Link } from 'react-router-dom';
 import { ListAlt as ListAltIcon, GridView as GridViewIcon } from '@mui/icons-material';
@@ -70,6 +72,7 @@ const ProductList = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [showPopup, setShowPopup] = useState(false);
     const [wishlist, setWishlist] = useState(new Set());
+    const [importOpen, setImportOpen] = useState(false);
     
 
     
@@ -362,20 +365,24 @@ const getAppliedFilterChips = useCallback(() => {
 
         
     // Sidebar Categories (name-based, only if not already present by label or key)
-    Array.from(sidebarSelected).forEach(name => {
-        const category =
-            sidebarCategories.find(c => c.name === name) ||
-            categoryOptions.find(c => c.name === name);
-        // Only add if not already present by label or key
-        if (category && !chips.some(c => c.label === category.name || c.key === `category-${category.id}`)) {
-            addChip({
-                key: `category-${name}`,
-                label: category.name,
-                type: 'SidebarCategory',
-                value: name,
-            });
-        }
-    });
+Array.from(sidebarSelected).forEach(name => {
+    const category =
+        sidebarCategories.find(c => c.name === name) ||
+        categoryOptions.find(c => c.name === name);
+    // Only add if NOT present in selectedCategories (by id)
+    if (
+        category &&
+        !selectedCategories.has(category.id) &&
+        !chips.some(c => c.label === category.name || c.key === `category-${category.id}`)
+    ) {
+        addChip({
+            key: `category-${name}`,
+            label: category.name,
+            type: 'SidebarCategory',
+            value: name,
+        });
+    }
+});
 
 
 
@@ -465,31 +472,22 @@ if (priceRange[0] !== minPrice || priceRange[1] !== maxPrice) {
     searchQuery,
 ]);
 
-  // Handle removing a single filter chip
 const handleRemoveFilter = (filterType, value, filterName = null) => {
-    if (filterType === 'SidebarCategory') {
-        setSidebarSelected(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(value);
-            return newSet;
-        });
-
-        const category = categoryOptions.find(c => c.name === value);
-        if (category) {
-            setSelectedCategories(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(category.id);
-                return newSet;
-            });
+    if (filterType === 'SidebarCategory' || filterType === 'Category') {
+        // Always remove by id
+        let categoryId = value;
+        if (filterType === 'SidebarCategory') {
+            // If value is name, find id
+            const category = categoryOptions.find(c => c.name === value);
+            if (category) categoryId = category.id;
         }
-    } else if (filterType === 'Category') {
         setSelectedCategories(prev => {
             const newSet = new Set(prev);
-            newSet.delete(value);
+            newSet.delete(categoryId);
             return newSet;
         });
-        // Also remove from sidebarSelected if possible
-        const category = categoryOptions.find(c => c.id === value);
+        // Also remove from sidebarSelected by name
+        const category = categoryOptions.find(c => c.id === categoryId);
         if (category) {
             setSidebarSelected(prev => {
                 const newSet = new Set(prev);
@@ -1592,6 +1590,30 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
                                 <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.37-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                             </svg>
                         </IconButton>
+<Button
+  variant="contained"
+  color="secondary"
+  onClick={() => setImportOpen(true)}
+  sx={{
+    ml: 2,
+    minWidth: 0,
+    padding: 1,
+    backgroundColor: '#fff',
+    boxShadow: 'none',
+    '&:hover': {
+      backgroundColor: '#f5f5f5',
+      boxShadow: 'none',
+    },
+  }}
+>
+  <FileDownloadOutlinedIcon sx={{ color: '#2563EB' }} />
+</Button>
+
+<ImportProducts
+  open={importOpen}
+  onClose={() => setImportOpen(false)}
+  onSuccess={fetchProducts}
+/>
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 2 }}>
