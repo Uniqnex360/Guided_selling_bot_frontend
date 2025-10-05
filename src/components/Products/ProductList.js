@@ -8,7 +8,8 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; 
 import ImportProducts from "./ImportProducts";
-import deleteProductById from "./DeleteProducts";
+
+import DeleteProducts from "./DeleteProducts";
 
 import {
     Typography,
@@ -130,6 +131,8 @@ const [sidebarPriceRange, setSidebarPriceRange] = useState([0, 1000]);
 
 const [sidebarSelectedBrands, setSidebarSelectedBrands] = useState(new Set());
 const [sidebarSortConfig, setSidebarSortConfig] = useState({ key: 'name', direction: 'asc' });
+const [deleteProductId, setDeleteProductId] = useState(null);
+
 
 
 
@@ -277,41 +280,17 @@ const handleSidebarBrandSearchChange = (e) => {
 
 // --- FIX: The handleDeleteProduct in ProductList.js ---
 
-const handleDeleteProduct = async (productId) => {
-    // Note: We are using the imported function from DeleteProducts.js here.
-    // The alert messages are now handled by the imported function's logic.
-    
-    // We modify the implementation here to check for success via the imported component's structure:
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
-
-    try {
-        // --- Custom logic mirroring the imported component's API call ---
-        const res = await fetch(`${API_BASE_URL}/delete_product/${productId}/`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-        });
-        
-        const data = await res.json();
-
-        if (res.ok) {
-            // Success feedback
-            setSnackbarMessage(data.message || "Product deleted successfully!");
-            setSnackbarSeverity("success");
-            setSnackbarOpen(true);
-            
-            // Re-fetch data to update UI
-            fetchProducts();
-        } else {
-            // Error feedback
-            setSnackbarMessage(data.error || "Failed to delete product.");
-            setSnackbarSeverity("error");
-            setSnackbarOpen(true);
-        }
-    } catch (err) {
-        setSnackbarMessage("Network error during deletion.");
-        setSnackbarSeverity("error");
-        setSnackbarOpen(true);
-    }
+const handleDeleteProduct = (productId) => {
+  setDeleteProductId(productId);
+};
+const handleProductDeleted = () => {
+  setSnackbarMessage("Product deleted successfully!");
+  setSnackbarSeverity("success");
+  setSnackbarOpen(true);
+  setDeleteProductId(null);
+  fetchProducts();
+  fetchSidebarCategories(sidebarCategorySearch); // <-- Add this line
+  fetchSidebarBrands(sidebarBrandSearch);       // <-- Add this line
 };
 
     // Function to toggle wishlist status
@@ -945,6 +924,9 @@ if (appliedChips.length > 0) {
     return(
 
         <Box sx={{ display: 'flex', height: '100vh' }}>
+            {deleteProductId && (
+  <DeleteProducts productId={deleteProductId} onDeleted={handleProductDeleted} />
+)}
             {/* Left Sidebar */}
             <Box
                 sx={{
@@ -1788,7 +1770,7 @@ onChange={() => handleSidebarBrandSelect(brand.name)}
                             />
                         </Link>
                     </TableCell>
-                    <TableCell sx={{ textAlign: 'left', maxWidth: 300 }}>
+                    <TableCell sx={{ textAlign: 'center', maxWidth: 300 }}>
                         <Link to={`/details/${product.id}?page=${page}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                             <Typography component="span" sx={{ textAlign: 'center', fontSize: 13 }}>
                                 {product.name}
