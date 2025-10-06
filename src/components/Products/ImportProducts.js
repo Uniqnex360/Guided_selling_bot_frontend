@@ -172,7 +172,7 @@ const ImportProducts = ({ open, onClose, onSuccess }) => {
         startIcon={<FileDownloadOutlinedIcon />}
         href="/product_template.xlsx"
         download
-      >,BVCXZBNM,.., 
+      >
         Download Template
       </Button>
     </>
