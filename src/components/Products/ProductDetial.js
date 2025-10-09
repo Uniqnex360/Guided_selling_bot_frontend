@@ -963,12 +963,12 @@ const handleTitleChange = (index) => {
     }
   }, [messages]);
 
-  const handleBackClick = () => {
-    navigate({
-      pathname: "/",
-      search: `?page=${currentPage}`,
-    });
-  };
+const handleBackClick = () => {
+        navigate({
+            pathname: "/products",
+            search: `?page=${currentPage}`,
+        });
+    };
 
   const handleUpdateProduct = (updatedProduct) => {
     console.log("3333111", updatedProduct);
