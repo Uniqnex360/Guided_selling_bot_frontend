@@ -2093,7 +2093,7 @@ const handleTitleChange = (index) => {
                       const isSelected = selectedDescription === descValue;
 
                       return (
-                       <ListItem
+<ListItem
   key={index}
   sx={{
     fontWeight: "bold",
@@ -2101,21 +2101,16 @@ const handleTitleChange = (index) => {
     maxWidth: "90ch",
     overflowWrap: "break-word",
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start", // ✅ top-align all items
     justifyContent: "space-between",
     transition: "all 0.2s ease-in-out",
+    gap: 1,
   }}
 >
   {editMode.description && selectedEditIndex === index ? (
-    <Box
-      sx={{
-        position: "relative",
-        width: "100%",
-        maxWidth: "550px",
-      }}
-    >
+    <Box sx={{ position: "relative", width: "100%", maxWidth: "550px" }}>
       {/* Top-right buttons */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
         <IconButton onClick={handleSaveClickDescription}>
           <SaveIcon />
         </IconButton>
@@ -2131,7 +2126,6 @@ const handleTitleChange = (index) => {
         </IconButton>
       </Box>
 
-      {/* Editable Textarea */}
       <TextareaAutosize
         value={editedDescription}
         onChange={(e) => setEditedDescription(e.target.value)}
@@ -2149,31 +2143,48 @@ const handleTitleChange = (index) => {
     </Box>
   ) : (
     <>
-      <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
+      <Box sx={{ display: "flex", alignItems: "flex-start", flexGrow: 1 }}>
         <FormControlLabel
           value={descValue}
           control={
             <Radio
               checked={desc.checked === true}
               onClick={() => {
-                // if same radio clicked again -> deselect
+                // Toggle selection/deselection
                 if (desc.checked) {
                   handleDescriptionChange({ target: { value: null } });
                 } else {
                   handleDescriptionChange({ target: { value: descValue } });
                 }
               }}
+              sx={{
+                alignSelf: "flex-start", // ✅ radio button top-aligned
+                mt: "3px",
+              }}
             />
           }
           label={
-            <Typography variant="body2" sx={{ fontSize: "16px" }}>
+            <Typography
+              variant="body2"
+              sx={{
+                fontSize: "16px",
+                whiteSpace: "pre-line", // ✅ preserves paragraph formatting
+                textAlign: "justify",
+              }}
+            >
               {descValue}
             </Typography>
           }
+          sx={{
+            flexGrow: 1,
+            display: "flex",
+            alignItems: "flex-start", // ✅ top-align radio + text
+            margin: 0,
+          }}
         />
       </Box>
 
-      {/* Edit icon — stable position */}
+      {/* Edit icon aligned to top-right */}
       <IconButton
         onClick={() => {
           setSelectedEditIndex(index);
@@ -2188,6 +2199,8 @@ const handleTitleChange = (index) => {
           opacity: desc.checked ? 1 : 0.3,
           transition: "opacity 0.2s ease-in-out",
           pointerEvents: desc.checked ? "auto" : "none",
+          alignSelf: "flex-start", // ✅ keep icon at top
+          mt: "2px",
         }}
       >
         <EditIcon />
