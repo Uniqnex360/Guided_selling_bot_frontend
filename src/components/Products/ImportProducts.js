@@ -168,7 +168,7 @@ const ImportProducts = ({ open, onClose, onSuccess }) => {
       <Button
         variant="outlined"
         color="primary"
-        sx={{ mt: 2, fontWeight: 600 }}
+        sx={{ mt: 2, fontWeight: 400 }}
         startIcon={<FileDownloadOutlinedIcon />}
         href="/product_template.xlsx"
         download
