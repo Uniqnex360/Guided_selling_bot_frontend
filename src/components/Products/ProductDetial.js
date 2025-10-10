@@ -1774,7 +1774,7 @@ const handleBackClick = () => {
             >
               {/* Tab feilds */}
 
-             <TabPanel value={tabIndex} index={0}>
+<TabPanel value={tabIndex} index={0}>
   {Array.isArray(productTab?.title) && productTab.title.length > 0 ? (
     <Box sx={{ width: "100%" }}>
       <List
@@ -1782,104 +1782,97 @@ const handleBackClick = () => {
           padding: 0,
           mb: 1,
           width: "100%",
-          maxWidth: {
-            xs: "100%",
-            sm: "90%",
-            md: "80%",
-            lg: "90ch",
-          },
+          maxWidth: { xs: "100%", sm: "90%", md: "80%", lg: "90ch" },
           fontSize: { xs: "13px", md: "14px" },
-        
           wordWrap: "break-word",
           overflowWrap: "break-word",
           whiteSpace: "normal",
         }}
-      >
-        {productTab.title.map((title, index) => (
-          <ListItem
-            key={index}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              transition: "all 0.2s ease-in-out",
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
-              <FormControlLabel
-                value={title.value}
-                control={
-                  <Radio
-                    checked={title.checked === true}
-                    onClick={() => {
-                      const isCurrentlyChecked = title.checked === true;
-
-                      // Toggle logic: deselect if same one clicked again
-                      const updatedTitles = productTab.title.map((t, i) =>
-                        i === index
-                          ? { ...t, checked: !isCurrentlyChecked }
-                          : { ...t, checked: false } // deselect others
-                      );
-
-                      setProductTab({
-                        ...productTab,
-                        title: updatedTitles,
-                      });
-                    }}
+      >{productTab.title.map((title, index) => (
+  <ListItem
+    key={index}
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      transition: "all 0.2s ease-in-out",
+      gap: 1,
+    }}
+  >
+    {editMode.title && selectedEditIndex === index ? (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
+        <TextField
+          value={editedTitle}
+          onChange={(e) => setEditedTitle(e.target.value)}
+          
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          size="small"
+          multiline
+          minRows={2}
+          maxRows={6}
+        />
+                <IconButton onClick={() => handleSaveClick("title")}>
+                  <SaveIcon />
+                </IconButton>
+                <IconButton
+                  onClick={() =>
+                    setEditMode({
+                      ...editMode,
+                      title: false,
+                    })
+                  }
+                >
+                  <CancelIcon />
+                </IconButton>
+              </Box>
+            ) : (
+              <>
+                <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
+                  <FormControlLabel
+                    value={title.value}
+                    control={
+                      <Radio
+                        checked={title.checked === true}
+                        onClick={() => {
+                          const isCurrentlyChecked = title.checked === true;
+                          const updatedTitles = productTab.title.map((t, i) =>
+                            i === index
+                              ? { ...t, checked: !isCurrentlyChecked }
+                              : { ...t, checked: false }
+                          );
+                          setProductTab({
+                            ...productTab,
+                            title: updatedTitles,
+                          });
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body1">{title.value}</Typography>
+                    }
                   />
-                }
-                label={
-                  <Typography variant="body1" sx={{ }}>
-                    {title.value}
-                  </Typography>
-                }
-              />
-            </Box>
-
-            {/* Stable Edit Icon */}
-            <IconButton
-              onClick={() => handleEditClickTitle("title", index)}
-              sx={{
-                opacity: title.checked ? 1 : 0.3,
-                transition: "opacity 0.2s ease-in-out",
-                pointerEvents: title.checked ? "auto" : "none",
-              }}
-            >
-              <EditIcon />
-            </IconButton>
+                </Box>
+                <IconButton
+                  onClick={() => {
+                    handleEditClickTitle("title", index);
+                  }}
+                  sx={{
+                    opacity: title.checked ? 1 : 0.3,
+                    transition: "opacity 0.2s ease-in-out",
+                    pointerEvents: title.checked ? "auto" : "none",
+                  }}
+                >
+                  <EditIcon />
+                </IconButton>
+              </>
+            )}
           </ListItem>
         ))}
       </List>
-
-      {/* Editable Mode Section */}
-      {editMode.title && selectedEditIndex !== null && (
-        <Box>
-          <TextField
-            value={editedTitle}
-            onChange={(e) => setEditedTitle(e.target.value)}
-            label="Edit Title"
-            fullWidth
-            variant="outlined"
-            margin="normal"
-          />
-          <IconButton onClick={() => handleSaveClick("title")}>
-            <SaveIcon />
-          </IconButton>
-          <IconButton
-            onClick={() =>
-              setEditMode({
-                ...editMode,
-                title: false,
-              })
-            }
-          >
-            <CancelIcon />
-          </IconButton>
-        </Box>
-      )}
     </Box>
   ) : (
-    // 👇 Centered “No title available” placeholder
     <ListItem
       sx={{
         display: "flex",
@@ -1905,390 +1898,256 @@ const handleBackClick = () => {
   )}
 </TabPanel>
 
-
-              <TabPanel value={tabIndex} index={1}>
-                <Box>
-                  <Box
-                    display="flex"
-                    alignItems="center"
-                    marginBottom={1}
-                    sx={{ width: "60%" }}
-                  >
-                    {/* <Typography variant="h6" marginRight={2} sx={{ fontSize: '1.2rem' }}>
-        Features:
-      </Typography> */}
-                  </Box>
-
-                  {editMode.features ? (
-                    <Box>
-                      {Array.isArray(productTab?.features) &&
-                      productTab.features.length > 0 ? (
-                        productTab.features.map((featureObj, listIndex) => {
-                          const featureList = Array.isArray(featureObj.value)
-                            ? featureObj.value
-                            : [];
-
-                          return (
-                            <Box key={listIndex} sx={{ marginBottom: 2 }}>
-                              <Box display="flex" alignItems="center" gap={1}>
-                                <Typography
-                                  variant="subtitle1"
-                                  sx={{ fontWeight: "bold" }}
-                                >
-                                  Feature Set {listIndex + 1}
-                                </Typography>
-
-                                {/* 👇 Show edit icon only for selected set */}
-                                {/* {selectedFeatureSetIndex === listIndex && editingSetIndex === null && ( */}
-                                {productTab.features[listIndex]?.checked ===
-                                  true && (
-                                  <IconButton
-                                    onClick={() =>
-                                      setEditingSetIndex(listIndex)
-                                    }
-                                    size="small"
-                                  >
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                )}
-                                {/* )} */}
-
-                                {/* 👇 Show save only in edit mode */}
-                                {productTab.features[listIndex]?.checked ===
-                                  true &&
-                                  editingSetIndex === listIndex && (
-                                    <Box>
-                                      <IconButton
-                                        onClick={handleSaveClickFeatures}
-                                      >
-                                        <SaveIcon />
-                                      </IconButton>
-                                      <IconButton
-                                        onClick={handleCancelFeatures}
-                                      >
-                                        <CancelIcon />
-                                      </IconButton>
-                                    </Box>
-                                  )}
-                              </Box>
-
-                              {featureList.map((feature, featureIndex) => (
-                                <Box
-                                  key={featureIndex}
-                                  sx={{
-                                    marginBottom: 1,
-                                    marginLeft: "3px",
-                                    maxWidth: "90ch",
-                                    overflowWrap: "break-word",
-                                  }}
-                                >
-                                  {editingSetIndex === listIndex ? (
-                                    <TextField
-                                      sx={{ maxWidth: "90ch" }}
-                                      value={
-                                        editingFeatures[listIndex]?.[
-                                          featureIndex
-                                        ] || feature
-                                      }
-                                      onChange={(e) =>
-                                        handleFeatureChange(
-                                          listIndex,
-                                          featureIndex,
-                                          e.target.value
-                                        )
-                                      }
-                                      label={`Feature ${featureIndex + 1}`}
-                                      fullWidth
-                                      variant="outlined"
-                                      margin="normal"
-                                    />
-                                  ) : (
-                                    <Typography
-                                      variant="body1"
-                                      sx={{ paddingLeft: "16px" }}
-                                    >
-                                      • {feature}
-                                    </Typography>
-                                  )}
-                                </Box>
-                              ))}
-                            </Box>
-                          );
-                        })
-                      ) : (
-                        <Typography
-                          variant="body1"
-                          sx={{ fontSize: "16px", marginLeft: "18%" }}
-                          color="textSecondary"
-                        >
-                          No features available.
-                        </Typography>
-                      )}
-                    </Box>
-                  ) : (
-                    <RadioGroup
-                      value={selectedFeatureSetIndex ?? ""}
-                      onChange={(e) =>
-                        handleFeatureSetSelect(e, Number(e.target.value))
-                      }
-                    >
-                      {Array.isArray(productTab?.features) &&
-                      productTab.features.length > 0 ? (
-                        productTab.features.map((featureObj, listIndex) => {
-                          const featureList = Array.isArray(featureObj.value)
-                            ? featureObj.value
-                            : [];
-
-                          return (
-                            <React.Fragment key={listIndex}>
-                           <ListItem
-  key={listIndex}
-  sx={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    transition: "all 0.2s ease-in-out",
-  }}
->
-  <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
-    <FormControlLabel
-      value={listIndex}
-      control={
-        <Radio
-          checked={productTab.features[listIndex]?.checked === true}
-          onClick={() => {
-            // Toggle logic: deselect if already checked
-            const isCurrentlyChecked =
-              productTab.features[listIndex]?.checked === true;
-
-            // Clone the features array
-            const updatedFeatures = productTab.features.map((f, i) =>
-              i === listIndex
-                ? { ...f, checked: !isCurrentlyChecked }
-                : { ...f, checked: false } // keep others unchecked
-            );
-
-            // Update parent state (you may have a handler for this)
-            setProductTab({
-              ...productTab,
-              features: updatedFeatures,
-            });
-          }}
-        />
-      }
-      label={
-        <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-          Feature Set {listIndex + 1}
-        </Typography>
-      }
-    />
-  </Box>
-
-  {/* Edit Icon (stable position) */}
-  <IconButton
-    onClick={() => {
-      setEditingSetIndex(listIndex);
-      const featuresCopy = productTab.features.map((set) => [...set.value]);
-      setEditingFeatures(featuresCopy);
-      setEditMode({
-        ...editMode,
-        features: true,
-      });
-    }}
-    size="small"
-    sx={{
-      opacity: productTab.features[listIndex]?.checked ? 1 : 0.3,
-      transition: "opacity 0.2s ease-in-out",
-      pointerEvents: productTab.features[listIndex]?.checked
-        ? "auto"
-        : "none",
-    }}
-  >
-    <EditIcon fontSize="small" />
-  </IconButton>
-</ListItem>
-
-
-                              {featureList.map((feature, featureIndex) => (
-                                <ListItem
-                                  key={featureIndex}
-                                  sx={{
-                                    padding: "4px 0",
-                                    fontSize: "0.9rem",
-                                    maxWidth: "90ch",
-                                    overflowWrap: "break-word",
-                                    paddingLeft: "18px",
-                                  }}
-                                >
-                                  <Typography variant="body1">
-                                    • {feature}
-                                  </Typography>
-                                </ListItem>
-                              ))}
-                            </React.Fragment>
-                          );
-                        })
-                      ) : (
-                        <Typography
-                          variant="body1"
-                          sx={{ fontSize: "16px", marginLeft: "18%" }}
-                          color="textSecondary"
-                        >
-                          No features available.
-                        </Typography>
-                      )}
-                    </RadioGroup>
-                  )}
-                </Box>
-              </TabPanel>
-
-              <TabPanel value={tabIndex} index={2}>
-                {/* <Typography variant="h6" mt={1} mb={1} sx={{ fontSize: '1.2rem' }}>
-    Description:
-  </Typography> */}
-
-                {productTab?.description?.length > 0 ? (
-                  <RadioGroup
-                    // Remove value and onChange from RadioGroup here
-                  >
-                    {productTab.description.map((desc, index) => {
-                      const descValue = desc?.value || "";
-                      const isSelected = selectedDescription === descValue;
-
-                      return (
-<ListItem
-  key={index}
-  sx={{
-    fontWeight: "bold",
-    fontSize: "16px",
-    maxWidth: "90ch",
-    overflowWrap: "break-word",
-    display: "flex",
-    alignItems: "flex-start", // ✅ top-align all items
-    justifyContent: "space-between",
-    transition: "all 0.2s ease-in-out",
-    gap: 1,
-  }}
->
-  {editMode.description && selectedEditIndex === index ? (
-    <Box sx={{ position: "relative", width: "100%", maxWidth: "550px" }}>
-      {/* Top-right buttons */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
-        <IconButton onClick={handleSaveClickDescription}>
-          <SaveIcon />
-        </IconButton>
-        <IconButton
-          onClick={() =>
-            setEditMode({
-              ...editMode,
-              description: false,
-            })
-          }
-        >
-          <CancelIcon />
-        </IconButton>
-      </Box>
-
-      <TextareaAutosize
-        value={editedDescription}
-        onChange={(e) => setEditedDescription(e.target.value)}
-        placeholder="Edit Description"
-        minRows={3}
-        style={{
-          width: "100%",
-          fontSize: "14px",
-          padding: "10px",
-          borderRadius: "4px",
-          border: "1px solid #ccc",
-          fontFamily: "Roboto, Helvetica, sans-serif",
-        }}
-      />
-    </Box>
-  ) : (
-    <>
-      <Box sx={{ display: "flex", alignItems: "flex-start", flexGrow: 1 }}>
-        <FormControlLabel
-          value={descValue}
-          control={
-            <Radio
-              checked={desc.checked === true}
-              onClick={() => {
-                // Toggle selection/deselection
-                if (desc.checked) {
-                  handleDescriptionChange({ target: { value: null } });
-                } else {
-                  handleDescriptionChange({ target: { value: descValue } });
-                }
-              }}
-              sx={{
-                alignSelf: "flex-start", // ✅ radio button top-aligned
-                mt: "3px",
-              }}
-            />
-          }
-          label={
-            <Typography
-              variant="body2"
-              sx={{
-                fontSize: "16px",
-                whiteSpace: "pre-line", // ✅ preserves paragraph formatting
-                textAlign: "justify",
-              }}
-            >
-              {descValue}
-            </Typography>
-          }
-          sx={{
-            flexGrow: 1,
-            display: "flex",
-            alignItems: "flex-start", // ✅ top-align radio + text
-            margin: 0,
-          }}
-        />
-      </Box>
-
-      {/* Edit icon aligned to top-right */}
-      <IconButton
+<TabPanel value={tabIndex} index={1}>
+  <Box>
+    {Array.isArray(productTab?.features) && productTab.features.length > 0 ? (
+      productTab.features.map((featureObj, listIndex) => {
+        const featureList = Array.isArray(featureObj.value)
+          ? featureObj.value
+          : [];
+        return (
+          <Box key={listIndex} sx={{ marginBottom: 2 }}>
+            <Box display="flex" alignItems="center" gap={1} sx={{ width: "100%" }}>
+  <FormControlLabel
+    value={listIndex}
+    control={
+      <Radio
+        checked={productTab.features[listIndex]?.checked === true}
         onClick={() => {
-          setSelectedEditIndex(index);
-          setEditedDescription(descValue);
-          setSelectedDescription(descValue);
-          setEditMode({
-            ...editMode,
-            description: true,
+          const isCurrentlyChecked =
+            productTab.features[listIndex]?.checked === true;
+          const updatedFeatures = productTab.features.map((f, i) =>
+            i === listIndex
+              ? { ...f, checked: !isCurrentlyChecked }
+              : { ...f, checked: false }
+          );
+          setProductTab({
+            ...productTab,
+            features: updatedFeatures,
           });
         }}
+      />
+    }
+    label={
+      <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+        Feature Set {listIndex + 1}
+      </Typography>
+    }
+    sx={{ marginRight: 2 }}
+  />
+  <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+    {editMode.features && editingSetIndex === listIndex ? (
+      <>
+        <IconButton onClick={handleSaveClickFeatures}>
+          <SaveIcon />
+        </IconButton>
+        <IconButton onClick={handleCancelFeatures}>
+          <CancelIcon />
+        </IconButton>
+      </>
+    ) : (
+      <IconButton
+        onClick={() => {
+          setEditingSetIndex(listIndex);
+          const featuresCopy = productTab.features.map((set) => [...set.value]);
+          setEditingFeatures(featuresCopy);
+          setEditMode({
+            ...editMode,
+            features: true,
+          });
+        }}
+        size="small"
         sx={{
-          opacity: desc.checked ? 1 : 0.3,
+          opacity: productTab.features[listIndex]?.checked ? 1 : 0.3,
           transition: "opacity 0.2s ease-in-out",
-          pointerEvents: desc.checked ? "auto" : "none",
-          alignSelf: "flex-start", // ✅ keep icon at top
-          mt: "2px",
+          pointerEvents: productTab.features[listIndex]?.checked
+            ? "auto"
+            : "none",
         }}
       >
-        <EditIcon />
+        <EditIcon fontSize="small" />
       </IconButton>
-    </>
-  )}
-</ListItem>
-
-                      );
-                    })}
-                  </RadioGroup>
+    )}
+  </Box>
+</Box>
+            {featureList.map((feature, featureIndex) => (
+              <Box key={featureIndex} sx={{ marginBottom: 1, marginLeft: "3px", maxWidth: "90ch", overflowWrap: "break-word", display: "flex", alignItems: "center", gap: 1 }}>
+                {editMode.features && editingSetIndex === listIndex ? (
+                  <TextField
+                    sx={{ maxWidth: "90ch" }}
+                    value={editingFeatures[listIndex]?.[featureIndex] || feature}
+                    onChange={(e) =>
+                      handleFeatureChange(listIndex, featureIndex, e.target.value)
+                    }
+                    label={`Feature ${featureIndex + 1}`}
+                    fullWidth
+                    variant="outlined"
+                    margin="normal"
+                    size="small"
+                  />
                 ) : (
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontSize: "16px",
-                      marginLeft: "15%",
-                      alignItems: "center",
-                    }}
-                    color="textSecondary"
-                  >
-                    No description available.
+                  <Typography variant="body1" sx={{ paddingLeft: "16px" }}>
+                    • {feature}
                   </Typography>
                 )}
-              </TabPanel>
+              </Box>
+            ))}
+          </Box>
+        );
+      })
+    ) : (
+      <Typography
+        variant="body1"
+        sx={{ fontSize: "16px", marginLeft: "18%" }}
+        color="textSecondary"
+      >
+        No features available.
+      </Typography>
+    )}
+  </Box>
+</TabPanel>
+
+             <TabPanel value={tabIndex} index={2}>
+  {productTab?.description?.length > 0 ? (
+    <RadioGroup>
+      {productTab.description.map((desc, index) => {
+        const descValue = desc?.value || "";
+        const isSelected = selectedDescription === descValue;
+
+        return (
+          <ListItem
+            key={index}
+            sx={{
+              fontWeight: "bold",
+              fontSize: "16px",
+              maxWidth: "90ch",
+              overflowWrap: "break-word",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              transition: "all 0.2s ease-in-out",
+              gap: 1,
+            }}
+          >
+          {editMode.description && selectedEditIndex === index ? (
+  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, width: "100%", maxWidth: "550px" }}>
+ <TextareaAutosize
+  value={editedDescription}
+  onChange={(e) => setEditedDescription(e.target.value)}
+  placeholder="Edit Description"
+  minRows={3}
+  style={{
+    width: "100%",
+    fontSize: "16px", // Match Typography font size
+    padding: "10px",
+    borderRadius: "4px",
+    border: "1px solid #ccc",
+    fontFamily: "Roboto, Helvetica, Arial, sans-serif", // Match Typography font family
+    resize: "vertical", 
+    whiteSpace: "pre-line", // Match Typography whiteSpace
+    textAlign: "justify",   // Match Typography textAlign
+  }}
+/>
+    <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", mt: 0 }}>
+      <IconButton onClick={handleSaveClickDescription}>
+        <SaveIcon />
+      </IconButton>
+      <IconButton
+        onClick={() =>
+          setEditMode({
+            ...editMode,
+            description: false,
+          })
+        }
+      >
+        <CancelIcon />
+      </IconButton>
+    </Box>
+  </Box>
+            ) : (
+              <>
+                <Box sx={{ display: "flex", alignItems: "flex-start", flexGrow: 1 }}>
+                  <FormControlLabel
+                    value={descValue}
+                    control={
+                      <Radio
+                        checked={desc.checked === true}
+                        onClick={() => {
+                          if (desc.checked) {
+                            handleDescriptionChange({ target: { value: null } });
+                          } else {
+                            handleDescriptionChange({ target: { value: descValue } });
+                          }
+                        }}
+                        sx={{
+                          alignSelf: "flex-start",
+                          mt: "3px",
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontSize: "16px",
+                          whiteSpace: "pre-line",
+                          textAlign: "justify",
+                        }}
+                      >
+                        {descValue}
+                      </Typography>
+                    }
+                    sx={{
+                      flexGrow: 1,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      margin: 0,
+                    }}
+                  />
+                </Box>
+                {/* Edit icon aligned to top-right */}
+                <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+                  <IconButton
+                    onClick={() => {
+                      setSelectedEditIndex(index);
+                      setEditedDescription(descValue);
+                      setSelectedDescription(descValue);
+                      setEditMode({
+                        ...editMode,
+                        description: true,
+                      });
+                    }}
+                    sx={{
+                      opacity: desc.checked ? 1 : 0.3,
+                      transition: "opacity 0.2s ease-in-out",
+                      pointerEvents: desc.checked ? "auto" : "none",
+                      alignSelf: "flex-start",
+                      mt: "2px",
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Box>
+              </>
+            )}
+          </ListItem>
+        );
+      })}
+    </RadioGroup>
+  ) : (
+    <Typography
+      variant="body2"
+      sx={{
+        fontSize: "16px",
+        marginLeft: "15%",
+        alignItems: "center",
+      }}
+      color="textSecondary"
+    >
+      No description available.
+    </Typography>
+  )}
+</TabPanel>
             </Box>
           </Box>
         </Grid>
