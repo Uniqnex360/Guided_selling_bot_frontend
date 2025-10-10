@@ -27,6 +27,10 @@ import {
   Tab,
 } from "@mui/material";
 // import AddIcon from '@mui/icons-material/Add';
+import AddIcon from "@mui/icons-material/Add"; // Already imported
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 import { useFetcher, useParams } from "react-router-dom";
@@ -41,7 +45,9 @@ import CropSquareIcon from "@mui/icons-material/CropSquare";
 import CancelIcon from "@mui/icons-material/Cancel";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
-import AddIcon from "@mui/icons-material/Add";
+import { Card, CardContent } from "@mui/material";
+
+
 
 import TextareaAutosize from "@mui/material/TextareaAutosize";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -113,6 +119,8 @@ const ProductDetail = () => {
   // const [mainImage, setMainImage] = useState('');
   const isMobile = useMediaQuery("(max-width:600px)");
   const [mainImage, setMainImage] = useState(product?.images?.[0] || soonImg);
+  const [showFeatures, setShowFeatures] = useState(false); // default collapsed
+  const [showDescription, setShowDescription] = useState(false); // default collapsed
 
   const { id } = useParams();
   const [productTab, setProductTab] = useState({
@@ -129,7 +137,14 @@ const ProductDetail = () => {
   const [isBotTyping, setIsBotTyping] = useState(false); // State for bot typing indicator
   const currentPrice = product?.list_price;
   const originalPrice = product?.was_price;
-  const discountPercentage = product?.discount;
+   const discountPercentage =
+    product?.discount &&
+    typeof product.discount === "string" &&
+    product.discount !== "NaN%"
+        ? product.discount
+        : typeof product?.discount === "number" && !isNaN(product.discount)
+        ? `${product.discount}%`
+        : "";
   const [selectedDescription, setSelectedDescription] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState("");
   const [promptList, setPromptList] = useState([]);
@@ -1212,17 +1227,17 @@ const handleBackClick = () => {
 
               {/* Main Image with Hover Zoom using react-image-magnify */}
               <Box sx={{ width: isMobile ? "100%" : "400px" }}>
-                <img
-                  alt="Product Image"
-                  src={mainImage || soonImg}
-                  style={{
-                    width: isMobile ? "100%" : "300px",
-                    height: isMobile ? undefined : "225px",
-                    objectFit: "contain",
-                    borderRadius: "4px",
-                    cursor: "zoom-in",
-                  }}
-                />
+                 <img
+    alt="Product Image"
+    src={mainImage || soonImg}
+    style={{
+      width: isMobile ? "100%" : "400px", // Increased width
+      height: isMobile ? undefined : "300px", // Increased height
+      objectFit: "contain",
+      borderRadius: "4px",
+      cursor: "zoom-in",
+    }}
+  />
               </Box>
             </Box>
           </Box>
@@ -1253,55 +1268,59 @@ const handleBackClick = () => {
               </Typography>
 
               {/* Price Section */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                  mb: 2,
-                  gap: 1,
-                }}
-              >
-                {currentPrice !== undefined && currentPrice !== null && (
-                  <Typography
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#1a73e8",
-                      fontSize: { xs: "16px", sm: "20px" },
-                    }}
-                  >
-                    {currency}
-                    {currentPrice}
-                  </Typography>
-                )}
-                {originalPrice !== undefined &&
-                  originalPrice !== null &&
-                  originalPrice > currentPrice && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#777",
-                        textDecoration: "line-through",
-                        fontSize: { xs: "14px", sm: "16px" },
-                      }}
-                    >
-                      {currency}
-                      {originalPrice}
-                    </Typography>
-                  )}
-                {discountPercentage && (
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "green",
-                      fontWeight: "bold",
-                      fontSize: { xs: "14px", sm: "16px" },
-                    }}
-                  >
-                    {discountPercentage} OFF
-                  </Typography>
-                )}
-              </Box>
+<Box
+  sx={{
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    mb: 2,
+    gap: 1,
+  }}
+>
+  {currentPrice !== undefined && currentPrice !== null && (
+    <Typography
+      sx={{
+        fontWeight: "bold",
+        color: "#1a73e8",
+        fontSize: { xs: "16px", sm: "20px" },
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
+      {currency}
+      <span style={{ marginLeft: "4px" }}>{currentPrice}</span>
+    </Typography>
+  )}
+  {originalPrice !== undefined &&
+    originalPrice !== null &&
+    originalPrice > currentPrice && (
+      <Typography
+        variant="body2"
+        sx={{
+          color: "#777",
+          textDecoration: "line-through",
+          fontSize: { xs: "14px", sm: "16px" },
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        {currency}
+        <span style={{ marginLeft: "4px" }}>{originalPrice}</span>
+      </Typography>
+    )}
+  {discountPercentage && (
+    <Typography
+      variant="body2"
+      sx={{
+        color: "green",
+        fontWeight: "bold",
+        fontSize: { xs: "14px", sm: "16px" },
+      }}
+    >
+      {discountPercentage} OFF
+    </Typography>
+  )}
+</Box>
               <Box
                 sx={{ display: "flex", flexDirection: "row", mb: 2, gap: 4 }}
               >
@@ -1440,18 +1459,35 @@ const handleBackClick = () => {
                 {/* Prompt selection or custom input */}
                 {!isAddingNewPrompt ? (
                   <Box display="flex" alignItems="center" gap={1}>
-                    <select
-                      value={selectedPrompt}
-                      onChange={handleSelectChange}
-                      style={{ padding: "8px", fontSize: "14px" }}
-                    >
-                      <option value="">Select a Prompt</option>
-                      {promptList.map((prompt) => (
-                        <option key={prompt.id} value={prompt.id}>
-                          {prompt.name}
-                        </option>
-                      ))}
-                    </select>
+                   <Select
+    value={selectedPrompt}
+    onChange={handleSelectChange}
+    displayEmpty
+    size="small"
+    sx={{
+      minWidth: 180,
+      fontSize: "14px",
+      background: "#fff",
+      zIndex: 10,
+    }}
+    MenuProps={{
+      PaperProps: {
+        sx: {
+          maxHeight: 250,
+          zIndex: 1300, // Ensures dropdown is above other content
+        },
+      },
+    }}
+  >
+    <MenuItem value="">
+      <em>Select a Prompt</em>
+    </MenuItem>
+    {promptList.map((prompt) => (
+      <MenuItem key={prompt.id} value={prompt.id}>
+        {prompt.name}
+      </MenuItem>
+    ))}
+  </Select>
 
                     {/* Add button with icon */}
                     <Button
@@ -1552,114 +1588,141 @@ const handleBackClick = () => {
       <Grid container spacing={2}>
         {/* Left Side - Product Features and Description */}
         <Box
-          sx={{
-            mt: 6,
-            width: "526px",
-            maxWidth: {
-              xs: "100%", // full width on small screens
-              sm: "100%",
-              md: "530px", // fixed max width on medium and larger screens
-            },
-            px: {
-              xs: 2, // horizontal padding on small screens
-              sm: 2,
-              md: 0,
-            },
-          }}
-        >
-          {/* Product Features */}
-          <Box sx={{ maxWidth: "510px", marginTop: "-100px" }}>
-            {/* Product Features */}
-            <Box display="flex" alignItems="center" mt={3} mb={1}>
-              <Typography
-                variant="h6"
-                mr={2}
-                sx={{ fontSize: "18px", fontWeight: 600 }}
-              >
-                Features:
+  sx={{
+    mt: 6,
+    width: "526px",
+    maxWidth: {
+      xs: "100%", // full width on small screens
+      sm: "100%",
+      md: "530px", // fixed max width on medium and larger screens
+    },
+    px: {
+      xs: 2, // horizontal padding on small screens
+      sm: 2,
+      md: 0,
+    },
+  }}
+>
+ {/* 🔹 Product Description First */}
+<Card sx={{ maxWidth: 510, mb: 2 }}>
+  <Box
+    display="flex"
+    alignItems="center"
+    justifyContent="space-between"
+    sx={{ cursor: "pointer", px: 2, py: 1 }}
+    onClick={() => setShowDescription((prev) => !prev)}
+  >
+    <Typography
+      variant="h6"
+      sx={{ fontSize: "18px", fontWeight: 600 }}
+    >
+      Description
+    </Typography>
+    <IconButton size="large">
+      {showDescription ? <ExpandLessIcon /> : <AddIcon />}
+    </IconButton>
+  </Box>
+  <Divider />
+  {showDescription && (
+    <CardContent sx={{ pt: 1, pb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          fontSize: "16px",
+          color: product?.long_description ? "inherit" : "gray",
+        }}
+      >
+        {product?.long_description || "No description available."}
+      </Typography>
+    </CardContent>
+  )}
+</Card>
+
+
+  {/* 🔹 Product Features Next */}
+  <Box sx={{ maxWidth: "510px", marginTop: "20px" }}>
+ <Card sx={{ maxWidth: 510, boxShadow: 2, mb: 2 }}>
+  <Box
+    display="flex"
+    alignItems="center"
+    justifyContent="space-between"
+    sx={{ cursor: "pointer", px: 2, py: 1 }}
+    onClick={() => setShowFeatures((prev) => !prev)}
+  >
+    <Typography
+      variant="h6"
+      sx={{ fontSize: "18px", fontWeight: 600 }}
+    >
+      Features
+    </Typography>
+    <IconButton size="large">
+      {showFeatures ? <ExpandLessIcon /> : <AddIcon />}
+    </IconButton>
+  </Box>
+ <Divider />
+  {showFeatures && (
+    <CardContent sx={{ pt: 1, pb: 2 }}>
+      <List
+        sx={{
+          "& a": {
+            color: "blue !important",
+            textDecoration: "underline",
+          },
+          "& a:visited": {
+            color: "blue !important",
+          },
+          "& a:hover": {
+            color: "darkblue !important",
+          },
+        }}
+      >
+        {product?.features && product.features.length > 0 ? (
+          product.features.map((feature, index) => (
+            <ListItem key={index} sx={{ padding: "4px 0" }}>
+              <Typography sx={{ fontSize: "16px" }}>
+                {/<a|<img/.test(feature) ? (
+                  <span
+                  dangerouslySetInnerHTML={{
+                      __html: feature.replace(
+                        /<img /g,
+                        '<img style="width: 500px; display: block; margin: 10px 0;" '
+                      ),
+                    }}
+                  />
+                ) : (
+                  `• ${feature}`
+                )}
               </Typography>
-            </Box>
-
-            <List
-              sx={{
-                "& a": {
-                  color: "blue !important", // Use !important to override other styles
-                  textDecoration: "underline", // Optional, if you want the underline
-                },
-                "& a:visited": {
-                  // Style for visited links
-                  color: "blue !important",
-                },
-                "& a:hover": {
-                  // Optional: style for hover state
-                  color: "darkblue !important",
-                },
-              }}
-            >
-              {product?.features && product.features.length > 0 ? (
-                product.features.map((feature, index) => (
-                  <ListItem key={index} sx={{ padding: "4px 0" }}>
-                    <Typography sx={{ fontSize: "16px" }}>
-                      {/<a|<img/.test(feature) ? (
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: feature.replace(
-                              /<img /g,
-                              '<img style="width: 500px; display: block; margin: 10px 0;" '
-                            ),
-                          }}
-                        />
-                      ) : (
-                        `• ${feature}`
-                      )}
-                    </Typography>
-                  </ListItem>
-                ))
-              ) : (
-                <Typography sx={{ fontSize: "16px", color: "gray" }}>
-                  No features available
-                </Typography>
-              )}
-            </List>
-
-            {/* Example URL link */}
-            <Box mt={2}>
-              {product?.pdfUrl && (
-                <a
-                  href={product.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    fontSize: "16px",
-                    textDecoration: "underline",
-                    color: "blue", // 👈 This sets the link color to blue
-                  }}
-                >
-                  View the PDF
-                </a>
-              )}
-            </Box>
-          </Box>
-
-          {/* Product Description */}
-          <Typography
-            variant="h6"
-            mt={3}
-            mb={1}
-            sx={{ fontSize: "18px", fontWeight: 600 }}
-          >
-            Description:
+            </ListItem>
+          ))
+        ) : (
+          <Typography sx={{ fontSize: "16px", color: "gray" }}>
+            No features available
           </Typography>
-          <Typography
-            variant="body2"
-            sx={{
+        )}
+      </List>
+      <Box mt={2}>
+        {product?.pdfUrl && (
+          <a
+            href={product.pdfUrl}
+          target="_blank"
+            rel="noopener noreferrer"
+            style={{
               fontSize: "16px",
-              color: product?.long_description ? "inherit" : "gray",
+              textDecoration: "underline",
+              color: "blue",
             }}
           >
-            {product?.long_description || "No description available."}
-          </Typography>
-        </Box>
+            View the PDF
+          </a>
+        )}
+      </Box>
+      </CardContent>
+  )}
+</Card>
+  </Box>
+</Box>
+
 
         <Grid item xs={12} sm={12} md={6}>
           <Box
