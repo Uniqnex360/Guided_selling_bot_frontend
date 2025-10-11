@@ -1603,7 +1603,8 @@ const handleBackClick = () => {
     },
   }}
 >
- {/* 🔹 Product Description First */}
+
+{/* 🔹 Product Description First */}
 <Card sx={{ maxWidth: 510, mb: 2 }}>
   <Box
     display="flex"
@@ -1622,7 +1623,9 @@ const handleBackClick = () => {
       {showDescription ? <ExpandLessIcon /> : <AddIcon />}
     </IconButton>
   </Box>
+
   <Divider />
+
   {showDescription && (
     <CardContent sx={{ pt: 1, pb: 2 }}>
       <Typography
@@ -1630,6 +1633,8 @@ const handleBackClick = () => {
         sx={{
           fontSize: "16px",
           color: product?.long_description ? "inherit" : "gray",
+          whiteSpace: "pre-line", // 👈 This preserves line breaks (paragraphs)
+          textAlign: "justify",   // 👈 Optional: match your other description style
         }}
       >
         {product?.long_description || "No description available."}
@@ -1637,6 +1642,7 @@ const handleBackClick = () => {
     </CardContent>
   )}
 </Card>
+
 
 
   {/* 🔹 Product Features Next */}
