@@ -56,9 +56,7 @@ import { Link } from 'react-router-dom';
 import { ListAlt as ListAltIcon, GridView as GridViewIcon } from '@mui/icons-material';
 import DotLoading from '../Loading/DotLoading';
 import { API_BASE_URL } from '../../utils/config';
-import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SearchIcon from '@mui/icons-material/Search';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 
 
@@ -109,8 +107,6 @@ const ProductList = () => {
     const [showCategorySearch, setShowCategorySearch] = useState(false);
     const [brandSortBy, setBrandSortBy] = useState('name'); 
     const [brandProductCountFilter, setBrandProductCountFilter] = useState('all'); 
-    const [showBrandFilters, setShowBrandFilters] = useState(false);
-    const [sidebarSelectedCategories, setSidebarSelectedCategories] = useState(new Set());
 
 
     // ...existing code...
@@ -123,13 +119,11 @@ const [sidebarShowAll, setSidebarShowAll] = useState(false);
 const [sidebarBrands, setSidebarBrands] = useState([]);
 const [sidebarBrandSelected, setSidebarBrandSelected] = useState(new Set());
 const [sidebarBrandSearch, setSidebarBrandSearch] = useState('');
-const [sidebarShowAllBrands, setSidebarShowAllBrands] = useState(false);
 
 const [sidebarMinPrice, setSidebarMinPrice] = useState(0);
 const [sidebarMaxPrice, setSidebarMaxPrice] = useState(1000);
 const [sidebarPriceRange, setSidebarPriceRange] = useState([0, 1000]);
 
-const [sidebarSelectedBrands, setSidebarSelectedBrands] = useState(new Set());
 const [sidebarSortConfig, setSidebarSortConfig] = useState({ key: 'name', direction: 'asc' });
 const [deleteProductId, setDeleteProductId] = useState(null);
 
@@ -266,14 +260,8 @@ const fetchSidebarPriceRange = (categoryId = '') => {
     };
 
     const groupedBrands = groupBrandsByLetter(getFilteredSortedBrands());
-    const sortedLetters = Object.keys(groupedBrands).sort();
 
-    const handleCategorySearchChange = (e) => {
-        setCategorySearch(e.target.value);
-    };
-    const handleBrandSearchChange = (e) => {
-        setBrandSearch(e.target.value);
-    };
+   
 const handleSidebarBrandSearchChange = (e) => {
     setSidebarBrandSearch(e.target.value);
 };
@@ -352,17 +340,7 @@ const handleSidebarCategorySelect = (categoryName) => {
         return '↕';
     };
 
-    const toggleFavorite = (productId) => {
-        setFavorites(prev => {
-            const newFavorites = new Set(prev);
-            if (newFavorites.has(productId)) {
-                newFavorites.delete(productId);
-            } else {
-                newFavorites.add(productId);
-            }
-            return newFavorites;
-        });
-    };
+    
 
     // Helper function to derive filter chips from state
 const getAppliedFilterChips = useCallback(() => {
@@ -749,29 +727,9 @@ const fetchProducts = useCallback(() => {
         setSnackbarOpen(true);
     };
 
-    const handleBrandChange = (brandName) => {
-        const newBrands = new Set(selectedBrands);
-        if (newBrands.has(brandName)) {
-            newBrands.delete(brandName);
-        } else {
-            newBrands.add(brandName);
-        }
-        setSelectedBrands(newBrands);
-    };
+   
 
-    const handleFilterChange = (filterName, option) => {
-        const newFilters = { ...selectedFilters };
-        if (newFilters[filterName]) {
-            if (newFilters[filterName].includes(option)) {
-                newFilters[filterName] = newFilters[filterName].filter(f => f !== option);
-            } else {
-                newFilters[filterName].push(option);
-            }
-        } else {
-            newFilters[filterName] = [option];
-        }
-        setSelectedFilters(newFilters);
-    };
+    
 
     const handleClearFilters = () => {
         setSelectedCategories(new Set());

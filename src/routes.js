@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Cookies from "js-cookie";
 import Login from "./components/Login/Login"; 
 import ProductList from "./components/Products/ProductList";
-import ProductDetail from "./components/Products/ProductDetial";
+import ProductDetail from "./components/Products/ProductDetail";
 
 // ProtectedRoute component
 const ProtectedRoute = ({ children }) => {

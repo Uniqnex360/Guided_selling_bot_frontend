@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import SendIcon from "@mui/icons-material/Send";
-
 import {
   Button,
   Container,
@@ -23,14 +22,13 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
-
 import AddIcon from "@mui/icons-material/Add";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
-import {  useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import CardMedia from "@mui/material/CardMedia";
 import { styled } from "@mui/material/styles";
 import FetchApi from "./FetchApi";
@@ -42,7 +40,6 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import { Card, CardContent } from "@mui/material";
-
 import TextareaAutosize from "@mui/material/TextareaAutosize";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -50,22 +47,18 @@ import soonImg from "../assets/soon-img.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import DotLoading from "../Loading/DotLoading";
 import { API_BASE_URL } from "../../utils/config";
-
 const DetailLabel = styled(Typography)(({ theme }) => ({
   fontWeight: 600,
   fontSize: "0.9rem",
   color: theme.palette.text.secondary,
   marginRight: theme.spacing(1),
 }));
-
 const DetailValue = styled(Typography)(({ theme }) => ({
   fontSize: "0.9rem",
   color: theme.palette.text.primary,
 }));
-
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
-
   return (
     <div
       role="tabpanel"
@@ -78,41 +71,32 @@ function TabPanel(props) {
     </div>
   );
 }
-
 function a11yProps(index) {
   return {
     id: `product-tab-${index}`,
     "aria-controls": `product-tabpanel-${index}`,
   };
 }
-
 const ProductDetail = () => {
   const defaultHeight = "450px";
   const defaultWidth = "320px";
-
   const navigate = useNavigate();
-
   const location = useLocation();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingQuestion, setLoadingQuestion] = useState(true);
-
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-
   const [isAddingNewPrompt, setIsAddingNewPrompt] = useState(false);
-
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [userMessage, setUserMessage] = useState("");
   const [aiSuggestions, setAISuggestions] = useState([]);
   const [aiModalOpen, setAIModalOpen] = useState(false);
-
   const isMobile = useMediaQuery("(max-width:600px)");
   const [mainImage, setMainImage] = useState(product?.images?.[0] || soonImg);
   const [showFeatures, setShowFeatures] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
-
   const { id } = useParams();
   const [productTab, setProductTab] = useState({
     title: [],
@@ -120,7 +104,6 @@ const ProductDetail = () => {
     features: [],
   });
   const [tabIndex, setTabIndex] = useState(0);
-
   const [responseChat, setResponseChat] = useState("");
   const messagesEndRef = useRef(null);
   const [isBotTyping, setIsBotTyping] = useState(false);
@@ -138,18 +121,14 @@ const ProductDetail = () => {
   const [selectedPrompt, setSelectedPrompt] = useState("");
   const [promptList, setPromptList] = useState([]);
   const [customPrompt, setCustomPrompt] = useState("");
-
   const [selectedFeatureSetIndex, setSelectedFeatureSetIndex] = useState(0);
   const [selectedFeatures, setSelectedFeatures] = useState(
     productTab?.features || [],
   );
-
- 
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [editedTitle, setEditedTitle] = useState("");
   const [getTitle, setGetTitle] = useState([]);
   const [getTitleRewrite, setGetTitleRewrite] = useState([]);
-
   const [getFeatures, setGetFeatures] = useState([]);
   const [getDescription, setGetDescription] = useState([]);
   const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(null);
@@ -157,19 +136,15 @@ const ProductDetail = () => {
   const [editingSetIndex, setEditingSetIndex] = useState(null);
   const [editingFeatures, setEditingFeatures] = useState([]);
   const [getRewriteDescription, setGetRewriteDescription] = useState([]);
-
   const [editedValueDec, setEditedValueDec] = useState([]);
   const [editValueFeatures, setEditValueFeatures] = useState([]);
-
   const [finalTitle, setFinalTitle] = useState("");
   const [finalDescription, setFinalDescription] = useState("");
   const queryParams = new URLSearchParams(location.search);
   const currentPage = queryParams.get("page") || 0;
-
   const { searchQuery } = location.state || {};
   console.log("searchQuery-Details:", searchQuery);
   const [productIds, setProductIds] = useState([]);
-
   const [editMode, setEditMode] = useState({
     title: false,
     features: false,
@@ -179,34 +154,27 @@ const ProductDetail = () => {
   const currency = product?.currency || "$";
   const [selectedTitle, setSelectedTitle] = useState("");
   const [data, setData] = useState([]);
-
   const [editValueTitle, seteditValueTitle] = useState("");
-
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [selectedEditIndex, setSelectedEditIndex] = useState(null);
   const [editedDescription, setEditedDescription] = useState("");
   const [updateDesc, setUpdateDesc] = useState("");
   const chatbotRef = useRef(null);
-
   const handleClickOutside = (e) => {
     if (chatbotRef.current && !chatbotRef.current.contains(e.target)) {
       setChatOpen(false);
     }
   };
-
   useEffect(() => {
     document.addEventListener("mousedown", handleClickOutside);
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
   useEffect(() => {
     fetchProducts();
   }, []);
-
   const fetchProducts = () => {
     setLoading(true);
     fetch(`${API_BASE_URL}/productList/`, {
@@ -230,23 +198,19 @@ const ProductDetail = () => {
         setLoading(false);
       });
   };
-
   const currentIndex = productIds.findIndex((pid) => pid === id);
-
   const handleNext = () => {
     if (currentIndex !== -1 && currentIndex < productIds.length - 1) {
       const nextId = productIds[currentIndex + 1];
       navigate(`/details/${nextId}`);
     }
   };
-
   const handlePrevious = () => {
     if (currentIndex > 0) {
       const prevId = productIds[currentIndex - 1];
       navigate(`/details/${prevId}`);
     }
   };
-
   useEffect(() => {
     const checkedFeatureSet = productTab?.features?.findIndex(
       (f) => f?.checked,
@@ -255,22 +219,17 @@ const ProductDetail = () => {
       setSelectedFeatureSetIndex(checkedFeatureSet);
     }
   }, [productTab?.features]);
-
- 
-
   useEffect(() => {
     const defaultIndex = productTab?.features?.findIndex((set) => set.checked);
     if (defaultIndex !== -1 && defaultIndex !== undefined) {
       setSelectedFeatureSetIndex(defaultIndex);
     }
   }, [productTab?.features]);
-
   const handleFeatureChange = (setIndex, featureIndex, newValue) => {
     const updated = [...editingFeatures];
     updated[setIndex][featureIndex] = newValue;
     setEditingFeatures(updated);
   };
-
   const handleSaveClickFeatures = () => {
     const updatedFeatures = productTab.features.map((feature, index) => {
       if (index === editingSetIndex) {
@@ -286,12 +245,10 @@ const ProductDetail = () => {
         };
       }
     });
-
     const updatedProductTab = {
       ...productTab,
       features: updatedFeatures,
     };
-
     setProductTab(updatedProductTab);
     setGetFeatures(updatedFeatures);
     setEditMode({ ...editMode, features: false });
@@ -299,7 +256,6 @@ const ProductDetail = () => {
     setSelectedFeatureSetIndex(editingSetIndex);
     console.log("oppo", updatedFeatures);
     setEditValueFeatures(updatedFeatures);
-
     if (updatedFeatures) {
       fetch(`${API_BASE_URL}/updategeneratedContent/`, {
         method: "POST",
@@ -308,7 +264,6 @@ const ProductDetail = () => {
         },
         body: JSON.stringify({
           product_id: id,
-
           features: updatedFeatures,
         }),
       })
@@ -324,14 +279,10 @@ const ProductDetail = () => {
         });
     }
   };
-
   const handleCancelFeatures = () => {
     setEditingSetIndex(null);
     setEditMode({ ...editMode, features: false });
-
-  }
-
-
+  };
   const handleFeatureSetChange = (event, listIndex) => {
     const updatedSelectedFeatures = [...selectedFeatures];
     if (event.target.checked) {
@@ -343,36 +294,28 @@ const ProductDetail = () => {
     }
     setSelectedFeatures(updatedSelectedFeatures);
   };
-
   const handleLocalUpdate = (updatedFields) => {
     const updatedProductTab = {
       ...productTab,
       ...updatedFields,
     };
-
     const checkedDescription = updatedProductTab.description?.find(
       (desc) => desc.checked,
     );
     setGetDescription(checkedDescription ? checkedDescription.value : "");
-
     setGetTitle(updatedProductTab.title || []);
     console.log("last", updatedProductTab.title);
     setGetFeatures(updatedProductTab.features || []);
     setGetRewriteDescription(updatedProductTab.description || []);
-
     setGetTitleRewrite(updatedProductTab.title || []);
-
     setProductTab(updatedProductTab);
     console.log("Local state updated with:", updatedProductTab);
   };
-
   const handleDescriptionChange = (event) => {
     const clickedValue = event.target.value;
-
     const isCurrentlySelected = selectedDescription === clickedValue;
     let finalValue;
     let updatedDescriptions;
-
     if (isCurrentlySelected) {
       finalValue = "";
       updatedDescriptions = productTab.description.map((desc) => ({
@@ -386,26 +329,20 @@ const ProductDetail = () => {
         checked: desc.value === clickedValue,
       }));
     }
-
     setSelectedDescription(finalValue);
     setEditedDescription(finalValue);
-
     handleLocalUpdate({ description: updatedDescriptions });
-
     const longDescription = finalValue;
     setUpdateDesc(longDescription);
-
     console.log("✅ Selected Description:", longDescription);
   };
   const handleSaveClickDescription = () => {
     const updatedDescriptions = [...productTab.description];
-
     updatedDescriptions[selectedEditIndex] = {
       ...updatedDescriptions[selectedEditIndex],
       value: editedDescription.trim(),
       checked: true,
     };
-
     setProductTab((prev) => ({
       ...prev,
       description: updatedDescriptions,
@@ -413,17 +350,13 @@ const ProductDetail = () => {
     setGetRewriteDescription(updatedDescriptions);
     setEditedValueDec(updatedDescriptions);
     console.log("query one", updatedDescriptions);
-
     const checkedDescriptions = updatedDescriptions.filter(
       (item) => item.checked,
     );
-
     const longDescription = checkedDescriptions
       .map((item) => item.value)
       .join("\n\n");
-
     setUpdateDesc(longDescription);
-
     setEditMode({ ...editMode, description: false });
     setSelectedEditIndex(null);
     if (updatedDescriptions) {
@@ -434,7 +367,6 @@ const ProductDetail = () => {
         },
         body: JSON.stringify({
           product_id: id,
-
           description: updatedDescriptions,
         }),
       })
@@ -449,23 +381,17 @@ const ProductDetail = () => {
           setLoading(false);
         });
     }
-
     console.log("✅ Final Long Description:", longDescription);
   };
-
   const handleSaveClick = (type) => {
     if (type === "title") {
       const updatedTitles = productTab.title.map((title, index) =>
         index === selectedEditIndex ? { ...title, value: editedTitle } : title,
       );
-
       handleLocalUpdate({ ...productTab, title: updatedTitles });
-
       seteditValueTitle(updatedTitles);
       console.log("0000", updatedTitles);
-
       const checkedTitle = updatedTitles.find((t) => t.checked)?.value || "";
-
       if (updatedTitles) {
         fetch(`${API_BASE_URL}/updategeneratedContent/`, {
           method: "POST",
@@ -489,28 +415,21 @@ const ProductDetail = () => {
           });
       }
     }
-
     setSelectedTitle(editedTitle);
     setEditMode({ ...editMode, title: false });
     setSelectedEditIndex(null);
   };
-
   const handleTitleChange = (index) => {
     const willBeChecked = !productTab.title[index].checked;
-
     const updatedTitles = productTab.title.map((title, idx) => ({
       ...title,
-
       checked: idx === index ? willBeChecked : false,
     }));
-
     const newSelectedTitle = willBeChecked ? productTab.title[index].value : "";
     setSelectedTitle(newSelectedTitle);
-
     handleLocalUpdate({ title: updatedTitles });
     setGetTitle(updatedTitles);
   };
-
   useEffect(() => {
     const checkedTitle = productTab?.title?.find((title) => title?.checked);
     if (checkedTitle) {
@@ -519,14 +438,12 @@ const ProductDetail = () => {
       setSelectedTitle(productTab.title[0].value);
     }
   }, [productTab?.title]);
-
   useEffect(() => {
     const checkedTitle = productTab?.title?.find((title) => title?.checked);
     if (checkedTitle) {
       setSelectedTitle(checkedTitle.value);
     }
   }, [productTab?.title]);
-
   const handleRadioChange = (type, index, value) => {
     setSelectedTitle(value);
     const updatedTitles = productTab.title.map((title, i) => ({
@@ -535,7 +452,6 @@ const ProductDetail = () => {
     }));
     handleLocalUpdate({ ...productTab, title: updatedTitles });
   };
-
   const handleEditClickTitle = (type, index) => {
     setEditMode({ ...editMode, [type]: true });
     setSelectedEditIndex(index);
@@ -544,7 +460,6 @@ const ProductDetail = () => {
       setSelectedTitle(productTab.title[index].value);
     }
   };
-
   useEffect(() => {
     const checkedDescription = productTab?.description?.find(
       (desc) => desc?.checked,
@@ -553,54 +468,44 @@ const ProductDetail = () => {
       setSelectedDescription(checkedDescription.value);
     }
   }, [productTab?.description]);
-
   const handleLocalUpdateDescription = (updatedProductTab) => {
     console.log("Local state updated with:", updatedProductTab);
-
     const selectedTitle =
       updatedProductTab.title.find((item) => item.checked)?.value || "";
     setFinalTitle(selectedTitle);
-
     const selectedDescription =
       updatedProductTab.description.find((item) => item.checked)?.value || "";
     setFinalDescription(selectedDescription);
   };
-
   const handleEditClickDescription = (index) => {
     setEditMode({ ...editMode, description: true });
     setSelectedEditIndex(index);
     const currentValue = productTab?.description?.[index]?.value || "";
     setEditedDescription(currentValue);
   };
-
   const handleMinimize = () => {
     setIsMinimized(true);
     setIsMaximized(false);
   };
-
   const handleMaximize = () => {
     setIsMaximized(true);
     setIsMinimized(false);
   };
-
   const handleRestore = () => {
     setIsMaximized(false);
     setIsMinimized(false);
   };
-
   useEffect(() => {
     if (Array.isArray(productTab?.features)) {
       const initialSelectedFeatures = productTab.features.map(() => []);
       setSelectedFeatures(initialSelectedFeatures);
     }
   }, [productTab?.features]);
-
   useEffect(() => {
     const fetchPromptList = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/fetchPromptList/`);
         const data = await response.json();
-
         if (data?.status && Array.isArray(data.data)) {
           setPromptList(data.data);
         }
@@ -608,10 +513,8 @@ const ProductDetail = () => {
         console.error("Error fetching prompt list:", error);
       }
     };
-
     fetchPromptList();
   }, []);
-
   const handleSelectChange = (e) => {
     const value = e.target.value;
     if (value === "__add_new__") {
@@ -622,50 +525,41 @@ const ProductDetail = () => {
       setIsAddingNewPrompt(false);
     }
   };
-
   const sendSelectedPromptToAPI = async () => {
     const selectedPromptName = isAddingNewPrompt
       ? customPrompt
       : promptList.find((p) => p.id === selectedPrompt)?.name;
-
     if (!selectedPromptName || selectedPromptName.trim() === "") {
       alert("Please enter or select a prompt before submitting.");
       return;
     }
-
     const selectedTitles =
-  productTab.title?.filter((item) => item.checked) || [];
-
-const selectedDescriptions =
-  productTab.description?.filter((item) => item.checked) || [];
-
-const selectedFeatures =
-  productTab.features?.filter((item) => item.checked) || [];
-
-if (
-  selectedTitles.length === 0 &&
-  selectedDescriptions.length === 0 &&
-  selectedFeatures.length === 0
-) {
-  setSnackbarMessage(
-    "Please select at least one title, description, or feature set."
-  );
-  setSnackbarOpen(true);
-  return;
-}
-
+      productTab.title?.filter((item) => item.checked) || [];
+    const selectedDescriptions =
+      productTab.description?.filter((item) => item.checked) || [];
+    const selectedFeatures =
+      productTab.features?.filter((item) => item.checked) || [];
+    if (
+      selectedTitles.length === 0 &&
+      selectedDescriptions.length === 0 &&
+      selectedFeatures.length === 0
+    ) {
+      setSnackbarMessage(
+        "Please select at least one title, description, or feature set.",
+      );
+      setSnackbarOpen(true);
+      return;
+    }
     const titleData = productTab.title;
     setGetTitleRewrite(titleData);
     console.log("Title Only:", productTab, getFeatures, getDescription);
-
-   const requestPayload = {
-  option: selectedPromptName,
-  title: selectedTitles,
-  description: selectedDescriptions,
-  features: selectedFeatures,
-  product_id: id,
-};
-
+    const requestPayload = {
+      option: selectedPromptName,
+      title: selectedTitles,
+      description: selectedDescriptions,
+      features: selectedFeatures,
+      product_id: id,
+    };
     try {
       const response = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
         method: "POST",
@@ -674,35 +568,27 @@ if (
         },
         body: JSON.stringify(requestPayload),
       });
-
       const result = await response.json();
-
       if (result.status && result.message === "success") {
         const updatedTitle = result.data?.title || [];
         const updatedDescription = result.data?.description || [];
         const updatedFeaturesRes = result.data?.features || [];
-
         setProductTab({
           title: updatedTitle,
           description: updatedDescription,
           features: updatedFeaturesRes,
         });
-
         const selectedTitle =
           updatedTitle.find((item) => item?.checked)?.value || "";
         setGetTitle(selectedTitle);
-
         const selectedDescription =
           updatedDescription.find((item) => item?.checked)?.value || "";
         setUpdateDesc(selectedDescription);
-
         const selectedFeatures = updatedFeaturesRes
           .filter((item) => item?.checked)
           .flatMap((item) => item?.value || []);
         setGetFeatures(selectedFeatures);
-
         console.log("Updated Features:", selectedFeatures);
-
         setSnackbarMessage("AI content Rewrite successfully!");
       } else {
         setSnackbarMessage("Something went wrong. Please try again.");
@@ -711,10 +597,8 @@ if (
       console.error("Error sending data to API:", error);
       setSnackbarMessage("Something went wrong. Please try again.");
     }
-
     setSnackbarOpen(true);
   };
-
   useEffect(() => {
     if (productTab?.features && Array.isArray(productTab.features)) {
       setSelectedFeatures(
@@ -724,13 +608,10 @@ if (
       );
     }
   }, [productTab]);
-
   const handleAIOptions = () => {
     setAIModalOpen(true);
   };
-
   const toggleChat = () => setChatOpen(!chatOpen);
-
   useEffect(() => {
     if (chatOpen && id) {
       setLoadingQuestion(true);
@@ -745,25 +626,20 @@ if (
         });
     }
   }, [chatOpen, id]);
-
   const handleQuestionClick = (questionId) => {
     console.log("Question clicked:", questionId);
-
     const question = data.find((item) => item.id === questionId);
     if (question) {
       setMessages([...messages, { sender: "user", text: question.question }]);
       sendMessageToAPI(question.question);
     }
   };
-
   const sendMessageToAPI = (messageText) => {
     const requestPayload = {
       message: messageText,
       product_id: id,
     };
-
     setIsBotTyping(true);
-
     setTimeout(() => {
       fetch(`${API_BASE_URL}/chatbotView/`, {
         method: "POST",
@@ -777,34 +653,28 @@ if (
           const apiResponse =
             data?.data?.response || "Sorry, I couldn't understand your query.";
           setResponseChat(apiResponse);
-
           const newMessages = [
             ...messages,
             { sender: "user", text: messageText },
             { sender: "chatbot", text: apiResponse },
           ];
           setMessages(newMessages);
-
           setIsBotTyping(false);
         })
         .catch((error) => {
           console.error("Error sending message to API:", error);
-
           const errorResponse = "Something went wrong. Please try again.";
           setResponseChat(errorResponse);
-
           const newMessages = [
             ...messages,
             { sender: "user", text: messageText },
             { sender: "chatbot", text: errorResponse },
           ];
           setMessages(newMessages);
-
           setIsBotTyping(false);
         });
     }, 1000);
   };
-
   const handleSendMessage = () => {
     if (userMessage.trim() !== "") {
       const newMessages = [...messages, { sender: "user", text: userMessage }];
@@ -813,44 +683,35 @@ if (
       setUserMessage("");
     }
   };
-
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
-
   const handleBackClick = () => {
     navigate({
       pathname: "/products",
       search: `?page=${currentPage}`,
     });
   };
-
   const handleUpdateProduct = (updatedProduct) => {
     console.log("3333111", updatedProduct);
     setProductTab(updatedProduct);
     fetchProductDetails(id);
   };
-
   const handleCloseAIModal = () => {
     setAIModalOpen(false);
   };
-
   useEffect(() => {
     fetchProductDetails(id);
   }, []);
-
   const handleUpdateProductTotal = async () => {
     const selectedTitle =
       productTab?.title?.find((item) => item.checked)?.value || "";
-
     const selectedDescription =
       productTab?.description?.find((item) => item.checked)?.value || "";
-
     const selectedFeatures =
       productTab?.features?.find((item) => item.checked)?.value || [];
-
     const payload = {
       product_id: id,
       product_obj: {
@@ -859,11 +720,8 @@ if (
         features: selectedFeatures,
       },
     };
-
     console.log("Update payload:", payload);
-
     setLoading(true);
-
     try {
       const response = await fetch(`${API_BASE_URL}/updateProductContent/`, {
         method: "POST",
@@ -872,14 +730,11 @@ if (
         },
         body: JSON.stringify(payload),
       });
-
       const data = await response.json();
-
       if (data?.status) {
         setSnackbarMessage("Product updated successfully!");
         setSnackbarSeverity("success");
         setSnackbarOpen(true);
-
         fetchProductDetails(id);
       } else {
         setSnackbarMessage("Update failed. Please try again.");
@@ -888,7 +743,6 @@ if (
       }
     } catch (error) {
       console.error("Error updating product:", error);
-
       setSnackbarMessage("Something went wrong while updating the product.");
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
@@ -901,10 +755,8 @@ if (
       fetchProductDetails(id);
     }
   }, [id]);
-
   const fetchProductDetails = (id) => {
     setLoading(true);
-
     fetch(`${API_BASE_URL}/productDetail/${id}`)
       .then((response) => response.json())
       .then((data) => {
@@ -926,19 +778,30 @@ if (
         setLoading(false);
       });
   };
-
   const handleAISuggestionSelect = (suggestion) => {
     setAIModalOpen(false);
   };
-
   const fetchAIOptions = () => {
     setAISuggestions(["AI Feature 1", "AI Feature 2", "AI Description"]);
   };
-
   const handleTabChange = (event, newTabIndex) => {
     setTabIndex(newTabIndex);
   };
 
+  const hasAiContent = (arr) =>
+    Array.isArray(arr) &&
+    arr.some((item) => {
+      if (!item) return false;
+      const v = item.value;
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === "string") return v.trim() !== "";
+      return false;
+    });
+
+  const hasGeneratedContent =
+    hasAiContent(productTab?.title) ||
+    hasAiContent(productTab?.description) ||
+    hasAiContent(productTab?.features);
   if (loading)
     return (
       <div style={{ marginTop: "10%" }}>
@@ -946,10 +809,8 @@ if (
         ...
       </div>
     );
-
   return (
     <Container sx={{ maxWidth: "100%", margin: "0 auto" }}>
-      {/* Navigation Buttons */}
       <Box
         mb={2}
         sx={{
@@ -960,7 +821,6 @@ if (
           flexWrap: "wrap",
         }}
       >
-        {/* Left Side - Back to Products */}
         <Box>
           <Button
             startIcon={<ArrowBackIcon />}
@@ -970,60 +830,122 @@ if (
             Back to Products
           </Button>
         </Box>
+       <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          {/* Rewrite */}
+          <Tooltip
+            title={
+              !hasGeneratedContent
+                ? "Generate AI content first, then Rewrite becomes available"
+                : ""
+            }
+            arrow
+          >
+            <span>
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={sendSelectedPromptToAPI}
+                disabled={!hasGeneratedContent}
+                sx={{ textTransform: "capitalize" }}
+              >
+                Rewrite
+              </Button>
+            </span>
+          </Tooltip>
 
-        <Box sx={{ display: "flex", gap: 1 }}>
+          {/* Generate */}
+          <Tooltip
+            title={
+              hasGeneratedContent
+                ? "Content already generated. Use Rewrite to improve it."
+                : ""
+            }
+            arrow
+          >
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleAIOptions}
+                disabled={hasGeneratedContent}
+                sx={{
+                  backgroundColor: hasGeneratedContent ? "#eee" : "#f2f3ae",
+                  color: "black",
+                  textTransform: "none",
+                  fontSize: { xs: "12px", sm: "14px" },
+                }}
+              >
+                Generate Content With AI
+              </Button>
+            </span>
+          </Tooltip>
+
+          {/* Add custom prompt */}
+          <Tooltip
+            title={
+              !hasGeneratedContent
+                ? "Generate AI content first, then add a rewrite prompt"
+                : ""
+            }
+            arrow
+          >
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                disabled={!hasGeneratedContent}
+                onClick={() => setCustomPromptModalOpen(true)}
+                sx={{ textTransform: "capitalize" }}
+              >
+                Add
+              </Button>
+            </span>
+          </Tooltip>
+
+          {/* Active custom prompt chip (shown after confirming in modal) */}
+          {isAddingNewPrompt && customPrompt && (
             <Button
-            variant="outlined"
-            size="small"
-            onClick={handleAIOptions}
-            sx={{
-              backgroundColor: "#f2f3ae",
-              color: "black",
-              textTransform: "none",
-              fontSize: { xs: "12px", sm: "14px" },
-              mr: 1,
-            }}
-          >
-            Generate Content With AI
-          </Button>
-          {/* Prev Icon Button */}
-          <IconButton
-            onClick={handlePrevious}
-            disabled={currentIndex === 0}
-            sx={{
-              bgcolor: "#fbc02d",
-              color: "white",
-              borderRadius: "50%",
-              minWidth: "32px",
-              minHeight: "32px",
-              "&:hover": {
-                bgcolor: "#f9a825",
-              },
-            }}
-          >
-            <ArrowBackIcon fontSize="small" />
-          </IconButton>
+              variant="outlined"
+              size="small"
+              onClick={() => setCustomPromptModalOpen(true)}
+              sx={{
+                textTransform: "none",
+                maxWidth: 220,
+                justifyContent: "flex-start",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {customPrompt}
+            </Button>
+          )}
 
-          {/* Next Icon Button */}
-          <IconButton
-            onClick={handleNext}
-            disabled={currentIndex === productIds.length - 1}
+          {/* Update */}
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleUpdateProductTotal}
+            disabled={loading || !hasGeneratedContent}
             sx={{
-              bgcolor: "#66bb6a",
+              backgroundColor: (theme) => theme.palette.primary.main,
+              textTransform: "capitalize",
               color: "white",
-              borderRadius: "50%",
-              minWidth: "32px",
-              minHeight: "32px",
-              "&:hover": {
-                bgcolor: "#43a047",
-              },
             }}
           >
-            <ArrowForwardIcon fontSize="small" />
-          </IconButton>
+            {loading ? "Updating..." : "Update"}
+          </Button>
         </Box>
       </Box>
-
       <Grid container spacing={3} marginTop={3}>
         {/* Left Section: Image & Thumbnails */}
         <Grid item xs={12} md={6}>
@@ -1034,7 +956,6 @@ if (
             gap={2}
           >
             {/* Thumbnails - responsive orientation */}
-
             <Box
               display="flex"
               flexDirection={isMobile ? "column" : "row"}
@@ -1076,7 +997,6 @@ if (
                   );
                 })}
               </Box>
-
               {/* Main Image with Hover Zoom using react-image-magnify */}
               <Box sx={{ width: isMobile ? "100%" : "400px" }}>
                 <img
@@ -1094,7 +1014,6 @@ if (
             </Box>
           </Box>
         </Grid>
-
         {/* Right Section: Product Details and Tabs */}
         <Grid item xs={12} md={6}>
           {" "}
@@ -1118,7 +1037,6 @@ if (
               >
                 {product?.product_name || "Product Title Not Available"}
               </Typography>
-
               {/* Price Section */}
               <Box
                 sx={{
@@ -1201,7 +1119,6 @@ if (
                   <DetailValue>{product?.mpn || "N/A"}</DetailValue>
                 </Box>
               </Box>
-
               {/* Category, Vendor, Brand */}
               <Box
                 sx={{
@@ -1250,7 +1167,6 @@ if (
                   <DetailValue>{product?.brand_name || "N/A"}</DetailValue>
                 </Box>
               </Box>
-
               <Box mt={2}>
                 <Box
                   sx={{
@@ -1273,7 +1189,6 @@ if (
                     Generate Content With AI
                   </Button> */}
                 </Box>
-
                 {/* Modal Component */}
                 <Modal
                   open={aiModalOpen}
@@ -1305,93 +1220,14 @@ if (
                   </Box>
                 </Modal>
               </Box>
-
               <Box mt={2} display="flex" gap={2} alignItems="center">
                 {/* Prompt selection or custom input */}
-                {!isAddingNewPrompt ? (
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Select
-                      value={selectedPrompt}
-                      onChange={handleSelectChange}
-                      displayEmpty
-                      size="small"
-                      sx={{
-                        minWidth: 180,
-                        fontSize: "14px",
-                        background: "#fff",
-                        zIndex: 10,
-                      }}
-                      MenuProps={{
-                        PaperProps: {
-                          sx: {
-                            maxHeight: 250,
-                            zIndex: 1300,
-                          },
-                        },
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>Select a Prompt</em>
-                      </MenuItem>
-                      {promptList.map((prompt) => (
-                        <MenuItem key={prompt.id} value={prompt.id}>
-                          {prompt.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={() => setCustomPromptModalOpen(true)}
-                      sx={{ textTransform: "capitalize" }}
-                    >
-                      Add
-                    </Button>
-                  </Box>
-                ) : (
-                 <Box display="flex" alignItems="center" gap={1}>
-  <Button
-    variant="outlined"
-    onClick={() => setCustomPromptModalOpen(true)}
-    sx={{
-      textTransform: "none",
-      width: "220px",
-      justifyContent: "flex-start",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-    }}
-  >
-    {customPrompt}
-  </Button>
-
-  <Button
-    onClick={() => {
-      setCustomPrompt("");
-      setIsAddingNewPrompt(false);
-    }}
-    sx={{ textTransform: "capitalize" }}
-  >
-    Cancel
-  </Button>
-</Box>
-                )}
-
+                
                 {/* Rewrite button */}
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={sendSelectedPromptToAPI}
-                  sx={{ textTransform: "capitalize" }}
-                >
-                  Rewrite
-                </Button>
-
                 {/* Update button */}
-                <Button
+                {/* <Button
                   onClick={handleUpdateProductTotal}
-                  disabled={loading}
+                  disabled={loading || !hasGeneratedContent}
                   color="primary"
                   sx={{
                     marginLeft: "5px",
@@ -1401,7 +1237,7 @@ if (
                   }}
                 >
                   {loading ? "Updating..." : "Update"}
-                </Button>
+                </Button> */}
               </Box>
               <Modal
                 open={customPromptModalOpen}
@@ -1442,7 +1278,6 @@ if (
                         fontFamily: "inherit",
                       }}
                     />
-
                     <Box
                       sx={{
                         display: "flex",
@@ -1474,7 +1309,6 @@ if (
                       </IconButton>
                     </Box>
                   </Box>
-
                   <Box
                     sx={{
                       display: "flex",
@@ -1488,6 +1322,9 @@ if (
                       "Make the content more concise",
                       "Make the content more detailed",
                       "Optimize content for SEO and GEO",
+                      "Make longer",
+                      "Make shorter",
+                      "Break into bullet points",
                     ].map((text) => (
                       <Button
                         key={text}
@@ -1545,7 +1382,6 @@ if (
           )}
         </Grid>
       </Grid>
-
       <Grid container spacing={2}>
         {/* Left Side - Product Features and Description */}
         <Box
@@ -1583,9 +1419,7 @@ if (
                 {showDescription ? <ExpandLessIcon /> : <AddIcon />}
               </IconButton>
             </Box>
-
             <Divider />
-
             {showDescription && (
               <CardContent sx={{ pt: 1, pb: 2 }}>
                 <Typography
@@ -1602,7 +1436,6 @@ if (
               </CardContent>
             )}
           </Card>
-
           {/* 🔹 Product Features Next */}
           <Box sx={{ maxWidth: "510px", marginTop: "20px" }}>
             <Card sx={{ maxWidth: 510, boxShadow: 2, mb: 2 }}>
@@ -1686,7 +1519,6 @@ if (
             </Card>
           </Box>
         </Box>
-
         <Grid item xs={12} sm={12} md={6}>
           <Box
             sx={{
@@ -1720,11 +1552,7 @@ if (
               <Tab label="Description" {...a11yProps(2)} />
             </Tabs>
             {/* <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
-
-
-
 </Box> */}
-
             <Box
               sx={{
                 mt: 2,
@@ -1736,7 +1564,6 @@ if (
               }}
             >
               {/* Tab feilds */}
-
               <TabPanel value={tabIndex} index={0}>
                 {Array.isArray(productTab?.title) &&
                 productTab.title.length > 0 ? (
@@ -1890,7 +1717,6 @@ if (
                   </ListItem>
                 )}
               </TabPanel>
-
               <TabPanel value={tabIndex} index={1}>
                 <Box>
                   {Array.isArray(productTab?.features) &&
@@ -2055,14 +1881,12 @@ if (
                   )}
                 </Box>
               </TabPanel>
-
               <TabPanel value={tabIndex} index={2}>
                 {productTab?.description?.length > 0 ? (
                   <RadioGroup>
                     {productTab.description.map((desc, index) => {
                       const descValue = desc?.value || "";
                       const isSelected = selectedDescription === descValue;
-
                       return (
                         <ListItem
                           key={index}
@@ -2241,7 +2065,6 @@ if (
           </Box>
         </Grid>
       </Grid>
-
       {/* Chatbot UI */}
       <IconButton
         onClick={toggleChat}
@@ -2256,7 +2079,6 @@ if (
       >
         <ChatIcon />
       </IconButton>
-
       {chatOpen && (
         <Box
           ref={chatbotRef}
@@ -2275,7 +2097,6 @@ if (
             flexDirection: "column",
           }}
         >
-          {/* Header */}
           <Box
             sx={{
               bgcolor: "#1976d2",
@@ -2287,7 +2108,6 @@ if (
             <Typography variant="subtitle1" fontWeight="bold">
               Product Chat Assistant
             </Typography>
-
             <Box
               sx={{
                 position: "absolute",
@@ -2297,7 +2117,6 @@ if (
                 gap: 1,
               }}
             >
-              {/* Minimize Button */}
               <Tooltip title="Minimize" arrow>
                 <span>
                   <IconButton
@@ -2313,8 +2132,6 @@ if (
                   </IconButton>
                 </span>
               </Tooltip>
-
-              {/* Maximize Button */}
               <Tooltip title="Maximize" arrow>
                 <span>
                   <IconButton
@@ -2327,7 +2144,6 @@ if (
                   </IconButton>
                 </span>
               </Tooltip>
-
               {/* Close Button */}
               <Tooltip title="Close" arrow>
                 <IconButton
@@ -2340,8 +2156,6 @@ if (
               </Tooltip>
             </Box>
           </Box>
-
-          {/* Chat Body */}
           <Box
             sx={{
               p: 2,
@@ -2352,34 +2166,6 @@ if (
               overflowY: "auto",
             }}
           >
-            {/* Display Chat Messages */}
-            {/* {data && data.length > 0 && (
-            <Box sx={{ marginTop: 2 }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                Frequently Asked Questions:
-              </Typography>
-              {data.map((item) => (
-                <Box
-                  key={item.id}
-                  sx={{
-                    backgroundColor: '#f9f9f9',
-                    padding: '8px',
-                    borderRadius: '5px',
-                    marginTop: '5px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  
-                  <Typography variant="body2">{item.question}</Typography>
-                  <IconButton sx={{ padding: 0 }} onClick={() => handleQuestionClick(item.id)}>
-                    <ArrowForwardIcon />
-                  </IconButton>
-                </Box>
-              ))}
-            </Box>
-          )} */}
-
             {messages.length === 0 && (
               <Typography
                 sx={{
@@ -2392,7 +2178,6 @@ if (
                 Hello! Ask me about this product.
               </Typography>
             )}
-
             {loadingQuestion ? (
               <Box
                 sx={{
@@ -2430,7 +2215,6 @@ if (
                 </Box>
               ))
             )}
-
             {messages.map((message, index) => (
               <Box
                 key={index}
@@ -2455,8 +2239,6 @@ if (
                 </Typography>
               </Box>
             ))}
-
-            {/* Bot Typing Indicator */}
             {isBotTyping && (
               <Box
                 sx={{
@@ -2477,11 +2259,9 @@ if (
                 </Paper>
               </Box>
             )}
-
             {/* Scroll to bottom reference */}
             <div ref={messagesEndRef} />
           </Box>
-
           {/* Input Box */}
           <Box
             sx={{
@@ -2521,7 +2301,6 @@ if (
           </Box>
         </Box>
       )}
-
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3000}
@@ -2542,5 +2321,4 @@ if (
     </Container>
   );
 };
-
 export default ProductDetail;
