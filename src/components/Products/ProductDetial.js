@@ -12,9 +12,7 @@ import {
   Typography,
   Paper,
   FormControlLabel,
-  Checkbox,
   Box,
-  Badge,
   TextField,
   Modal,
   List,
@@ -22,7 +20,6 @@ import {
   CircularProgress,
   IconButton,
   Divider,
-  Link,
   Tabs,
   Tab,
 } from "@mui/material";
@@ -33,14 +30,13 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
-import { useFetcher, useParams } from "react-router-dom";
+import {  useParams } from "react-router-dom";
 import CardMedia from "@mui/material/CardMedia";
 import { styled } from "@mui/material/styles";
 import FetchApi from "./FetchApi";
 import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import MinimizeOutlinedIcon from "@mui/icons-material/MinimizeOutlined";
-import MaximizeOutlinedIcon from "@mui/icons-material/MaximizeOutlined";
 import CropSquareIcon from "@mui/icons-material/CropSquare";
 import CancelIcon from "@mui/icons-material/Cancel";
 import Snackbar from "@mui/material/Snackbar";
@@ -52,7 +48,6 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import soonImg from "../assets/soon-img.png";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowBack } from "@mui/icons-material";
 import DotLoading from "../Loading/DotLoading";
 import { API_BASE_URL } from "../../utils/config";
 
@@ -126,8 +121,6 @@ const ProductDetail = () => {
   });
   const [tabIndex, setTabIndex] = useState(0);
 
-  const [selectedTitles, setSelectedTitles] = useState([]);
-  const [selectedDescriptions, setSelectedDescriptions] = useState([]);
   const [responseChat, setResponseChat] = useState("");
   const messagesEndRef = useRef(null);
   const [isBotTyping, setIsBotTyping] = useState(false);
@@ -144,7 +137,6 @@ const ProductDetail = () => {
   const [selectedDescription, setSelectedDescription] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState("");
   const [promptList, setPromptList] = useState([]);
-  const [showCustomPromptInput, setShowCustomPromptInput] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
 
   const [selectedFeatureSetIndex, setSelectedFeatureSetIndex] = useState(0);
@@ -152,17 +144,9 @@ const ProductDetail = () => {
     productTab?.features || [],
   );
 
-  const [updateTitle, setUpdateTitle] = useState("");
-  const [updateFeatures, setUpdateFeatures] = useState([]);
-  const [updateDescription, setUpdateDescription] = useState("");
-  const [updatedDescription, setUpdatedDescription] = useState(
-    productTab?.description || [],
-  );
-
+ 
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
-  const [selectedTitleIndex, setSelectedTitleIndex] = useState(null);
   const [editedTitle, setEditedTitle] = useState("");
-  const [editModeTitle, setEditModeTitle] = useState(false);
   const [getTitle, setGetTitle] = useState([]);
   const [getTitleRewrite, setGetTitleRewrite] = useState([]);
 
@@ -179,7 +163,6 @@ const ProductDetail = () => {
 
   const [finalTitle, setFinalTitle] = useState("");
   const [finalDescription, setFinalDescription] = useState("");
-  const [editModeDescription, setEditModeDescription] = useState(false);
   const queryParams = new URLSearchParams(location.search);
   const currentPage = queryParams.get("page") || 0;
 
@@ -273,17 +256,7 @@ const ProductDetail = () => {
     }
   }, [productTab?.features]);
 
-  const handleFeatureSetSelect = (e, index) => {
-    setSelectedFeatureSetIndex(index);
-    setEditingSetIndex(null);
-
-    const updatedFeatures = productTab.features.map((set, i) => ({
-      ...set,
-      checked: i === index,
-    }));
-
-    handleLocalUpdate({ features: updatedFeatures });
-  };
+ 
 
   useEffect(() => {
     const defaultIndex = productTab?.features?.findIndex((set) => set.checked);
@@ -356,20 +329,8 @@ const ProductDetail = () => {
     setEditingSetIndex(null);
     setEditMode({ ...editMode, features: false });
 
-    const checkedFeature = productTab.features.find((f) => f.checked);
-    const featuresCopy = productTab.features.map((set) => [...set.value]);
-    setEditingFeatures(featuresCopy);
+  }
 
-    const checkedIndex = productTab.features.findIndex((f) => f.checked);
-    setSelectedFeatureSetIndex(checkedIndex !== -1 ? checkedIndex : null);
-  };
-
-  const handleEditClickFeatures = (featureIndex) => {
-    setSelectedFeatureIndex(featureIndex);
-    const featureValue =
-      productTab.features[selectedFeatureSetIndex]?.value[featureIndex];
-    setSelectedFeatureValue(featureValue || "");
-  };
 
   const handleFeatureSetChange = (event, listIndex) => {
     const updatedSelectedFeatures = [...selectedFeatures];
@@ -1333,7 +1294,6 @@ if (
                       border: "2px solid #000",
                       boxShadow: 24,
                       p: 2,
-                      borderRadius: "15px",
                     }}
                   >
                     <div id="ai-modal-description">
