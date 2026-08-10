@@ -24,8 +24,6 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 import { useParams } from "react-router-dom";
@@ -94,6 +92,9 @@ const ProductDetail = () => {
   const [aiSuggestions, setAISuggestions] = useState([]);
   const [aiModalOpen, setAIModalOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width:600px)");
+  const [generating,setGenerating]=useState(false)
+  const[rewriting,setRewriting]=useState(false)
+  const [updating,setUpdating]=useState(false)
   const [mainImage, setMainImage] = useState(product?.images?.[0] || soonImg);
   const [showFeatures, setShowFeatures] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
@@ -525,80 +526,166 @@ const ProductDetail = () => {
       setIsAddingNewPrompt(false);
     }
   };
-  const sendSelectedPromptToAPI = async () => {
-    const selectedPromptName = isAddingNewPrompt
-      ? customPrompt
-      : promptList.find((p) => p.id === selectedPrompt)?.name;
-    if (!selectedPromptName || selectedPromptName.trim() === "") {
-      alert("Please enter or select a prompt before submitting.");
-      return;
-    }
-    const selectedTitles =
-      productTab.title?.filter((item) => item.checked) || [];
-    const selectedDescriptions =
-      productTab.description?.filter((item) => item.checked) || [];
-    const selectedFeatures =
-      productTab.features?.filter((item) => item.checked) || [];
-    if (
-      selectedTitles.length === 0 &&
-      selectedDescriptions.length === 0 &&
-      selectedFeatures.length === 0
-    ) {
-      setSnackbarMessage(
-        "Please select at least one title, description, or feature set.",
-      );
-      setSnackbarOpen(true);
-      return;
-    }
-    const titleData = productTab.title;
-    setGetTitleRewrite(titleData);
-    console.log("Title Only:", productTab, getFeatures, getDescription);
-    const requestPayload = {
-      option: selectedPromptName,
-      title: selectedTitles,
-      description: selectedDescriptions,
-      features: selectedFeatures,
-      product_id: id,
-    };
-    try {
-      const response = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestPayload),
-      });
-      const result = await response.json();
-      if (result.status && result.message === "success") {
-        const updatedTitle = result.data?.title || [];
-        const updatedDescription = result.data?.description || [];
-        const updatedFeaturesRes = result.data?.features || [];
-        setProductTab({
-          title: updatedTitle,
-          description: updatedDescription,
-          features: updatedFeaturesRes,
-        });
-        const selectedTitle =
-          updatedTitle.find((item) => item?.checked)?.value || "";
-        setGetTitle(selectedTitle);
-        const selectedDescription =
-          updatedDescription.find((item) => item?.checked)?.value || "";
-        setUpdateDesc(selectedDescription);
-        const selectedFeatures = updatedFeaturesRes
-          .filter((item) => item?.checked)
-          .flatMap((item) => item?.value || []);
-        setGetFeatures(selectedFeatures);
-        console.log("Updated Features:", selectedFeatures);
-        setSnackbarMessage("AI content Rewrite successfully!");
-      } else {
-        setSnackbarMessage("Something went wrong. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error sending data to API:", error);
-      setSnackbarMessage("Something went wrong. Please try again.");
-    }
+  // const sendSelectedPromptToAPI = async () => {
+  //   const selectedPromptName = isAddingNewPrompt
+  //     ? customPrompt
+  //     : promptList.find((p) => p.id === selectedPrompt)?.name;
+  //   if (!selectedPromptName || selectedPromptName.trim() === "") {
+  //     alert("Please enter or select a prompt before submitting.");
+  //     return;
+  //   }
+  //   const selectedTitles =
+  //     productTab.title?.filter((item) => item.checked) || [];
+  //   const selectedDescriptions =
+  //     productTab.description?.filter((item) => item.checked) || [];
+  //   const selectedFeatures =
+  //     productTab.features?.filter((item) => item.checked) || [];
+  //   if (
+  //   selectedTitles.length === 0 &&
+  //   selectedDescriptions.length === 0 &&
+  //   selectedFeatures.length === 0
+  // ) {
+  //   setSnackbarSeverity("warning");
+  //   setSnackbarMessage("Select a title, feature set, or description to rewrite.");
+  //   setSnackbarOpen(true);
+  //   return;
+  // }
+  // setRewriting(true);
+  // setSnackbarSeverity("info");
+  // setSnackbarMessage("Rewriting selected content...");
+  // setSnackbarOpen(true);
+  
+  //   const requestPayload = {
+  //     option: selectedPromptName,
+  //     title: selectedTitles,
+  //     description: selectedDescriptions,
+  //     features: selectedFeatures,
+  //     product_id: id,
+  //   };
+  //   try {
+  //     const response = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(requestPayload),
+  //     });
+  //     const result = await response.json();
+  //     if (result.status && result.message === "success") {
+  //       const updatedTitle = result.data?.title || [];
+  //       const updatedDescription = result.data?.description || [];
+  //       const updatedFeaturesRes = result.data?.features || [];
+  //       setProductTab({
+  //         title: updatedTitle,
+  //         description: updatedDescription,
+  //         features: updatedFeaturesRes,
+  //       });
+  //       const selectedTitle =
+  //         updatedTitle.find((item) => item?.checked)?.value || "";
+  //       setGetTitle(selectedTitle);
+  //       const selectedDescription =
+  //         updatedDescription.find((item) => item?.checked)?.value || "";
+  //       setUpdateDesc(selectedDescription);
+  //       const selectedFeatures = updatedFeaturesRes
+  //         .filter((item) => item?.checked)
+  //         .flatMap((item) => item?.value || []);
+  //       setGetFeatures(selectedFeatures);
+  //       console.log("Updated Features:", selectedFeatures);
+  //       setSnackbarMessage("AI content Rewrite successfully!");
+  //     } else {
+  //       setSnackbarMessage("Something went wrong. Please try again.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error sending data to API:", error);
+  //     setSnackbarMessage("Something went wrong. Please try again.");
+  //   }
+  //   setSnackbarOpen(true);
+  // };
+
+const handleQuickPrompt = (text) => {
+  // Just fill the textarea; don't close the modal or run the rewrite.
+  setCustomPrompt(text);
+
+  // Notify the user
+  setSnackbarSeverity("info");
+  setSnackbarMessage(`Prompt selected: "${text}". Click → to apply.`);
+  setSnackbarOpen(true);
+};
+  const sendSelectedPromptToAPI = async (promptOverride) => {
+  const rawPromptName = promptOverride
+  ? promptOverride
+  : isAddingNewPrompt
+  ? customPrompt
+  : promptList.find((p) => p.id === selectedPrompt)?.name;
+
+// Coerce to string so .trim() never throws
+const selectedPromptName =
+  rawPromptName != null ? String(rawPromptName) : "";
+
+if (!selectedPromptName.trim()) {
+  setSnackbarSeverity("warning");
+  setSnackbarMessage("Please select or add a prompt before rewriting.");
+  setSnackbarOpen(true);
+  return;
+}
+
+  const selectedTitles = productTab.title?.filter((i) => i.checked) || [];
+  const selectedDescriptions = productTab.description?.filter((i) => i.checked) || [];
+  const selectedFeatures = productTab.features?.filter((i) => i.checked) || [];
+
+  if (
+    selectedTitles.length === 0 &&
+    selectedDescriptions.length === 0 &&
+    selectedFeatures.length === 0
+  ) {
+    setSnackbarSeverity("warning");
+    setSnackbarMessage("Select a title, feature set, or description to rewrite.");
     setSnackbarOpen(true);
+    return;
+  }
+
+  setRewriting(true);
+  setSnackbarSeverity("info");
+  setSnackbarMessage("Rewriting selected content...");
+  setSnackbarOpen(true);
+
+  const requestPayload = {
+    option: selectedPromptName,
+    title: selectedTitles,
+    description: selectedDescriptions,
+    features: selectedFeatures,
+    product_id: id,
   };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestPayload),
+    });
+    const result = await response.json();
+
+    if (result.status && result.message === "success") {
+      setProductTab({
+        title: result.data?.title || [],
+        description: result.data?.description || [],
+        features: result.data?.features || [],
+      });
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Content rewritten successfully!");
+    } else {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(result.error || "Rewrite failed. Please try again.");
+    }
+  } catch (error) {
+    console.error("Rewrite error:", error);
+    setSnackbarSeverity("error");
+    setSnackbarMessage("Network error while rewriting.");
+  } finally {
+    setRewriting(false);
+    setSnackbarOpen(true);
+  }
+};
   useEffect(() => {
     if (productTab?.features && Array.isArray(productTab.features)) {
       setSelectedFeatures(
@@ -695,12 +782,13 @@ const ProductDetail = () => {
     });
   };
   const handleUpdateProduct = (updatedProduct) => {
-    console.log("3333111", updatedProduct);
     setProductTab(updatedProduct);
+    setGenerating(false);
     fetchProductDetails(id);
   };
   const handleCloseAIModal = () => {
     setAIModalOpen(false);
+     setGenerating(false);
   };
   useEffect(() => {
     fetchProductDetails(id);
@@ -720,8 +808,11 @@ const ProductDetail = () => {
         features: selectedFeatures,
       },
     };
-    console.log("Update payload:", payload);
-    setLoading(true);
+    
+setUpdating(true);
+setSnackbarSeverity("info");
+setSnackbarMessage("Updating product...");
+setSnackbarOpen(true);
     try {
       const response = await fetch(`${API_BASE_URL}/updateProductContent/`, {
         method: "POST",
@@ -732,23 +823,20 @@ const ProductDetail = () => {
       });
       const data = await response.json();
       if (data?.status) {
-        setSnackbarMessage("Product updated successfully!");
-        setSnackbarSeverity("success");
-        setSnackbarOpen(true);
-        fetchProductDetails(id);
-      } else {
-        setSnackbarMessage("Update failed. Please try again.");
-        setSnackbarSeverity("error");
-        setSnackbarOpen(true);
-      }
-    } catch (error) {
-      console.error("Error updating product:", error);
-      setSnackbarMessage("Something went wrong while updating the product.");
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Product updated successfully!");
+      fetchProductDetails(id);
+    } else {
       setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-    } finally {
-      setLoading(false);
+      setSnackbarMessage("Update failed. Please try again.");
     }
+  } catch (error) {
+    setSnackbarSeverity("error");
+    setSnackbarMessage("Network error while updating.");
+  } finally {
+    setUpdating(false);
+    setSnackbarOpen(true);
+  }
   };
   useEffect(() => {
     if (id && id !== "undefined") {
@@ -838,116 +926,68 @@ const ProductDetail = () => {
             flexWrap: "wrap",
           }}
         >
-          {/* Rewrite */}
-          <Tooltip
-            title={
-              !hasGeneratedContent
-                ? "Generate AI content first, then Rewrite becomes available"
-                : ""
-            }
-            arrow
-          >
-            <span>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={sendSelectedPromptToAPI}
-                disabled={!hasGeneratedContent}
-                sx={{ textTransform: "capitalize" }}
-              >
-                Rewrite
-              </Button>
-            </span>
-          </Tooltip>
+<Tooltip title={!hasGeneratedContent ? "Generate AI content first" : ""} arrow>
+  <span>
+    <Button
+      variant="contained"
+      size="small"
+      onClick={sendSelectedPromptToAPI}
+      disabled={!hasGeneratedContent || rewriting}
+      startIcon={rewriting ? <CircularProgress size={14} sx={{ color: "white" }} /> : null}
+      sx={{ textTransform: "capitalize" }}
+    >
+      {rewriting ? "Rewriting..." : "Rewrite"}
+    </Button>
+  </span>
+</Tooltip>
 
-          {/* Generate */}
-          <Tooltip
-            title={
-              hasGeneratedContent
-                ? "Content already generated. Use Rewrite to improve it."
-                : ""
-            }
-            arrow
-          >
-            <span>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleAIOptions}
-                disabled={hasGeneratedContent}
-                sx={{
-                  backgroundColor: hasGeneratedContent ? "#eee" : "#f2f3ae",
-                  color: "black",
-                  textTransform: "none",
-                  fontSize: { xs: "12px", sm: "14px" },
-                }}
-              >
-                Generate Content With AI
-              </Button>
-            </span>
-          </Tooltip>
+<Tooltip title={hasGeneratedContent ? "Content already generated. Use Rewrite." : ""} arrow>
+  <span>
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={() => { setGenerating(true); handleAIOptions(); }}
+      disabled={hasGeneratedContent || generating}
+      startIcon={generating ? <CircularProgress size={14} /> : null}
+      sx={{
+        backgroundColor: hasGeneratedContent ? "#eee" : "#f2f3ae",
+        color: "black",
+        textTransform: "none",
+        fontSize: { xs: "12px", sm: "14px" },
+      }}
+    >
+      {generating ? "Generating..." : "Generate Content With AI"}
+    </Button>
+  </span>
+</Tooltip>
 
-          {/* Add custom prompt */}
-          <Tooltip
-            title={
-              !hasGeneratedContent
-                ? "Generate AI content first, then add a rewrite prompt"
-                : ""
-            }
-            arrow
-          >
-            <span>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                disabled={!hasGeneratedContent}
-                onClick={() => setCustomPromptModalOpen(true)}
-                sx={{ textTransform: "capitalize" }}
-              >
-                Add
-              </Button>
-            </span>
-          </Tooltip>
+<Button
+  variant="outlined"
+  size="small"
+  startIcon={<AddIcon />}
+  disabled={!hasGeneratedContent || rewriting || updating}
+  onClick={() => setCustomPromptModalOpen(true)}
+>
+  Add
+</Button>
 
-          {/* Active custom prompt chip (shown after confirming in modal) */}
-          {isAddingNewPrompt && customPrompt && (
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setCustomPromptModalOpen(true)}
-              sx={{
-                textTransform: "none",
-                maxWidth: 220,
-                justifyContent: "flex-start",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {customPrompt}
-            </Button>
-          )}
-
-          {/* Update */}
-          <Button
-            variant="contained"
-            size="small"
-            onClick={handleUpdateProductTotal}
-            disabled={loading || !hasGeneratedContent}
-            sx={{
-              backgroundColor: (theme) => theme.palette.primary.main,
-              textTransform: "capitalize",
-              color: "white",
-            }}
-          >
-            {loading ? "Updating..." : "Update"}
-          </Button>
+<Button
+  variant="contained"
+  size="small"
+  onClick={handleUpdateProductTotal}
+  disabled={loading || !hasGeneratedContent || updating}
+  startIcon={updating ? <CircularProgress size={14} sx={{ color: "white" }} /> : null}
+  sx={{
+    backgroundColor: (theme) => theme.palette.primary.main,
+    textTransform: "capitalize",
+    color: "white",
+  }}
+>
+  {updating ? "Updating..." : "Update"}
+</Button>
         </Box>
       </Box>
       <Grid container spacing={3} marginTop={3}>
-        {/* Left Section: Image & Thumbnails */}
         <Grid item xs={12} md={6}>
           <Box
             display="flex"
@@ -955,7 +995,6 @@ const ProductDetail = () => {
             alignItems={{ xs: "center", sm: "flex-start" }}
             gap={2}
           >
-            {/* Thumbnails - responsive orientation */}
             <Box
               display="flex"
               flexDirection={isMobile ? "column" : "row"}
@@ -963,7 +1002,6 @@ const ProductDetail = () => {
               justifyContent="center"
               alignItems="flex-start"
             >
-              {/* Thumbnails */}
               <Box
                 sx={{
                   display: "flex",
@@ -997,7 +1035,6 @@ const ProductDetail = () => {
                   );
                 })}
               </Box>
-              {/* Main Image with Hover Zoom using react-image-magnify */}
               <Box sx={{ width: isMobile ? "100%" : "400px" }}>
                 <img
                   alt="Product Image"
@@ -1014,15 +1051,12 @@ const ProductDetail = () => {
             </Box>
           </Box>
         </Grid>
-        {/* Right Section: Product Details and Tabs */}
         <Grid item xs={12} md={6}>
           {" "}
-          {/* Occupies half width */}
           {loading ? (
             <CircularProgress />
           ) : (
             <Box sx={{ width: "100%", px: { xs: 2, sm: 3, md: 4 } }}>
-              {/* Product Title */}
               <Typography
                 variant="h4"
                 gutterBottom
@@ -1037,7 +1071,6 @@ const ProductDetail = () => {
               >
                 {product?.product_name || "Product Title Not Available"}
               </Typography>
-              {/* Price Section */}
               <Box
                 sx={{
                   display: "flex",
@@ -1119,7 +1152,6 @@ const ProductDetail = () => {
                   <DetailValue>{product?.mpn || "N/A"}</DetailValue>
                 </Box>
               </Box>
-              {/* Category, Vendor, Brand */}
               <Box
                 sx={{
                   display: "flex",
@@ -1175,21 +1207,8 @@ const ProductDetail = () => {
                     mb: 2,
                   }}
                 >
-                  {/* <Button
-                    variant="outlined"
-                    sx={{
-                      backgroundColor: "#f2f3ae",
-                      color: "black",
-                      textTransform: "none",
-                      fontSize: { xs: "14px", sm: "16px" },
-                    }}
-                    onClick={handleAIOptions}
-                    size="small"
-                  >
-                    Generate Content With AI
-                  </Button> */}
+               
                 </Box>
-                {/* Modal Component */}
                 <Modal
                   open={aiModalOpen}
                   onClose={handleCloseAIModal}
@@ -1221,23 +1240,7 @@ const ProductDetail = () => {
                 </Modal>
               </Box>
               <Box mt={2} display="flex" gap={2} alignItems="center">
-                {/* Prompt selection or custom input */}
                 
-                {/* Rewrite button */}
-                {/* Update button */}
-                {/* <Button
-                  onClick={handleUpdateProductTotal}
-                  disabled={loading || !hasGeneratedContent}
-                  color="primary"
-                  sx={{
-                    marginLeft: "5px",
-                    backgroundColor: (theme) => theme.palette.primary.main,
-                    textTransform: "capitalize",
-                    color: "white",
-                  }}
-                >
-                  {loading ? "Updating..." : "Update"}
-                </Button> */}
               </Box>
               <Modal
                 open={customPromptModalOpen}
@@ -1289,9 +1292,12 @@ const ProductDetail = () => {
                       <IconButton
                         disabled={!customPrompt.trim()}
                         onClick={() => {
-                          setIsAddingNewPrompt(true);
-                          setCustomPromptModalOpen(false);
-                        }}
+  setIsAddingNewPrompt(true);
+  setCustomPromptModalOpen(false);
+  setSnackbarSeverity("success");
+  setSnackbarMessage("Custom prompt saved. Click Rewrite to apply it.");
+  setSnackbarOpen(true);
+}}
                         sx={{
                           bgcolor: "#90caf9",
                           color: "white",
@@ -1329,7 +1335,8 @@ const ProductDetail = () => {
                       <Button
                         key={text}
                         size="small"
-                        onClick={() => setCustomPrompt(text)}
+                        onClick={() => handleQuickPrompt(text)}
+
                         sx={{
                           bgcolor: "#929786",
                           color: "white",
@@ -2307,16 +2314,14 @@ const ProductDetail = () => {
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity={
-            snackbarMessage.includes("successfully") ? "success" : "error"
-          }
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {snackbarMessage}
-        </Alert>
+       <Alert
+  onClose={() => setSnackbarOpen(false)}
+  severity={snackbarSeverity}
+  variant="filled"
+  sx={{ width: "100%" }}
+>
+  {snackbarMessage}
+</Alert>
       </Snackbar>
     </Container>
   );

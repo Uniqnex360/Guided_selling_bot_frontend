@@ -12,20 +12,22 @@ import {
   FormControlLabel,
   Snackbar,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import { Email, Lock, Visibility, VisibilityOff } from "@mui/icons-material";
-import { API_BASE_URL } from "../../utils/config";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading,setLoading]=useState(false)
   const [error, setError] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
+    setLoading(true)
     e.preventDefault();
     setError("");
     const trimmedEmail = email.trim();
@@ -55,6 +57,10 @@ const Login = () => {
       }
     } catch (err) {
       setError("Network error.");
+      setLoading(false)
+    }
+    finally{
+      setLoading(false)
     }
   };
 
@@ -217,6 +223,7 @@ const Login = () => {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -338,7 +345,14 @@ const Login = () => {
                 },
               }}
             >
-              Login
+              {loading ? (
+                <Box sx={{display:'flex',alignItems:'center',gap:1}}>
+                  <CircularProgress size={20} sx={{color:'white'}}/>
+                  <span>Logging in...</span>
+                </Box>
+              ):(
+                "Login"
+              )}
             </Button>
             {error && (
               <Typography color="error" sx={{ mt: 2, textAlign: "center" }}>
