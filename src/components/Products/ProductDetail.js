@@ -603,7 +603,6 @@ const ProductDetail = () => {
   // };
 
 const handleQuickPrompt = (text) => {
-  // Just fill the textarea; don't close the modal or run the rewrite.
   setCustomPrompt(text);
 
   // Notify the user
@@ -684,6 +683,7 @@ if (!selectedPromptName.trim()) {
   } finally {
     setRewriting(false);
     setSnackbarOpen(true);
+    setCustomPrompt('')
   }
 };
   useEffect(() => {
@@ -886,10 +886,14 @@ setSnackbarOpen(true);
       return false;
     });
 
-  const hasGeneratedContent =
+  const hasAnyContent =
     hasAiContent(productTab?.title) ||
     hasAiContent(productTab?.description) ||
     hasAiContent(productTab?.features);
+  const hasAllContent =
+  hasAiContent(productTab?.title) &&
+  hasAiContent(productTab?.description) &&
+  hasAiContent(productTab?.features);
   if (loading)
     return (
       <div style={{ marginTop: "10%" }}>
@@ -926,13 +930,13 @@ setSnackbarOpen(true);
             flexWrap: "wrap",
           }}
         >
-<Tooltip title={!hasGeneratedContent ? "Generate AI content first" : ""} arrow>
+<Tooltip title={!hasAnyContent ? "Generate AI content first" : ""} arrow>
   <span>
     <Button
       variant="contained"
       size="small"
       onClick={sendSelectedPromptToAPI}
-      disabled={!hasGeneratedContent || rewriting}
+      disabled={!hasAnyContent || rewriting}
       startIcon={rewriting ? <CircularProgress size={14} sx={{ color: "white" }} /> : null}
       sx={{ textTransform: "capitalize" }}
     >
@@ -941,16 +945,16 @@ setSnackbarOpen(true);
   </span>
 </Tooltip>
 
-<Tooltip title={hasGeneratedContent ? "Content already generated. Use Rewrite." : ""} arrow>
+<Tooltip title={hasAnyContent ? "Content already generated. Use Rewrite." : ""} arrow>
   <span>
     <Button
       variant="outlined"
       size="small"
       onClick={() => { setGenerating(true); handleAIOptions(); }}
-      disabled={hasGeneratedContent || generating}
+      disabled={hasAllContent || generating}  
       startIcon={generating ? <CircularProgress size={14} /> : null}
       sx={{
-        backgroundColor: hasGeneratedContent ? "#eee" : "#f2f3ae",
+        backgroundColor: hasAnyContent ? "#eee" : "#f2f3ae",
         color: "black",
         textTransform: "none",
         fontSize: { xs: "12px", sm: "14px" },
@@ -965,7 +969,7 @@ setSnackbarOpen(true);
   variant="outlined"
   size="small"
   startIcon={<AddIcon />}
-  disabled={!hasGeneratedContent || rewriting || updating}
+disabled={loading || !hasAnyContent || updating}
   onClick={() => setCustomPromptModalOpen(true)}
 >
   Add
@@ -975,7 +979,7 @@ setSnackbarOpen(true);
   variant="contained"
   size="small"
   onClick={handleUpdateProductTotal}
-  disabled={loading || !hasGeneratedContent || updating}
+  disabled={loading || !hasAnyContent || updating}
   startIcon={updating ? <CircularProgress size={14} sx={{ color: "white" }} /> : null}
   sx={{
     backgroundColor: (theme) => theme.palette.primary.main,
@@ -984,7 +988,65 @@ setSnackbarOpen(true);
   }}
 >
   {updating ? "Updating..." : "Update"}
+  
 </Button>
+{/* Previous + Next navigation */}
+<Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: 1 }}>
+  <Tooltip title={currentIndex > 0 ? "Previous product" : "This is the first product"} arrow>
+    <span>
+      <IconButton
+        onClick={handlePrevious}
+        disabled={currentIndex <= 0}
+        sx={{
+          bgcolor: currentIndex <= 0 ? "#e5e7eb" : "#fbc02d",
+          color: "white",
+          borderRadius: "50%",
+          width: 36,
+          height: 36,
+          "&:hover": { bgcolor: currentIndex <= 0 ? "#e5e7eb" : "#f9a825" },
+        }}
+      >
+        <ArrowBackIcon fontSize="small" />
+      </IconButton>
+    </span>
+  </Tooltip>
+
+ 
+
+  <Tooltip
+    title={
+      currentIndex < productIds.length - 1
+        ? "Next product"
+        : "This is the last product"
+    }
+    arrow
+  >
+    <span>
+      <IconButton
+        onClick={handleNext}
+        disabled={currentIndex === -1 || currentIndex >= productIds.length - 1}
+        sx={{
+          bgcolor:
+            currentIndex === -1 || currentIndex >= productIds.length - 1
+              ? "#e5e7eb"
+              : "#66bb6a",
+          color: "white",
+          borderRadius: "50%",
+          width: 36,
+          height: 36,
+          "&:hover": {
+            bgcolor:
+              currentIndex === -1 || currentIndex >= productIds.length - 1
+                ? "#e5e7eb"
+                : "#43a047",
+          },
+        }}
+      >
+        <ArrowForwardIcon fontSize="small" />
+      </IconButton>
+    </span>
+  </Tooltip>
+</Box>
         </Box>
       </Box>
       <Grid container spacing={3} marginTop={3}>
@@ -1234,6 +1296,7 @@ setSnackbarOpen(true);
                       <FetchApi
                         onClose={handleCloseAIModal}
                         onUpdateProduct={handleUpdateProduct}
+                         product={product}    
                       />
                     </div>
                   </Box>
@@ -1381,6 +1444,7 @@ setSnackbarOpen(true);
                     <FetchApi
                       onClose={handleCloseAIModal}
                       onUpdateProduct={handleUpdateProduct}
+                       product={product}    
                     />
                   </div>
                 </Box>
@@ -1773,7 +1837,7 @@ setSnackbarOpen(true);
                                   variant="subtitle1"
                                   sx={{ fontWeight: "bold" }}
                                 >
-                                  Feature Set {listIndex + 1}
+                                  Features
                                 </Typography>
                               }
                               sx={{ marginRight: 2 }}
