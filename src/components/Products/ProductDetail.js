@@ -92,9 +92,9 @@ const ProductDetail = () => {
   const [aiSuggestions, setAISuggestions] = useState([]);
   const [aiModalOpen, setAIModalOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width:600px)");
-  const [generating,setGenerating]=useState(false)
-  const[rewriting,setRewriting]=useState(false)
-  const [updating,setUpdating]=useState(false)
+  const [generating, setGenerating] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [mainImage, setMainImage] = useState(product?.images?.[0] || soonImg);
   const [showFeatures, setShowFeatures] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
@@ -554,7 +554,7 @@ const ProductDetail = () => {
   // setSnackbarSeverity("info");
   // setSnackbarMessage("Rewriting selected content...");
   // setSnackbarOpen(true);
-  
+
   //   const requestPayload = {
   //     option: selectedPromptName,
   //     title: selectedTitles,
@@ -602,90 +602,94 @@ const ProductDetail = () => {
   //   setSnackbarOpen(true);
   // };
 
-const handleQuickPrompt = (text) => {
-  setCustomPrompt(text);
+  const handleQuickPrompt = (text) => {
+    setCustomPrompt(text);
 
-  // Notify the user
-  setSnackbarSeverity("info");
-  setSnackbarMessage(`Prompt selected: "${text}". Click → to apply.`);
-  setSnackbarOpen(true);
-};
-  const sendSelectedPromptToAPI = async (promptOverride) => {
-  const rawPromptName = promptOverride
-  ? promptOverride
-  : isAddingNewPrompt
-  ? customPrompt
-  : promptList.find((p) => p.id === selectedPrompt)?.name;
-
-// Coerce to string so .trim() never throws
-const selectedPromptName =
-  rawPromptName != null ? String(rawPromptName) : "";
-
-if (!selectedPromptName.trim()) {
-  setSnackbarSeverity("warning");
-  setSnackbarMessage("Please select or add a prompt before rewriting.");
-  setSnackbarOpen(true);
-  return;
-}
-
-  const selectedTitles = productTab.title?.filter((i) => i.checked) || [];
-  const selectedDescriptions = productTab.description?.filter((i) => i.checked) || [];
-  const selectedFeatures = productTab.features?.filter((i) => i.checked) || [];
-
-  if (
-    selectedTitles.length === 0 &&
-    selectedDescriptions.length === 0 &&
-    selectedFeatures.length === 0
-  ) {
-    setSnackbarSeverity("warning");
-    setSnackbarMessage("Select a title, feature set, or description to rewrite.");
+    // Notify the user
+    setSnackbarSeverity("info");
+    setSnackbarMessage(`Prompt selected: "${text}". Click → to apply.`);
     setSnackbarOpen(true);
-    return;
-  }
-
-  setRewriting(true);
-  setSnackbarSeverity("info");
-  setSnackbarMessage("Rewriting selected content...");
-  setSnackbarOpen(true);
-
-  const requestPayload = {
-    option: selectedPromptName,
-    title: selectedTitles,
-    description: selectedDescriptions,
-    features: selectedFeatures,
-    product_id: id,
   };
+  const sendSelectedPromptToAPI = async (promptOverride) => {
+    const rawPromptName = promptOverride
+      ? promptOverride
+      : isAddingNewPrompt
+        ? customPrompt
+        : promptList.find((p) => p.id === selectedPrompt)?.name;
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestPayload),
-    });
-    const result = await response.json();
+    // Coerce to string so .trim() never throws
+    const selectedPromptName =
+      rawPromptName != null ? String(rawPromptName) : "";
 
-    if (result.status && result.message === "success") {
-      setProductTab({
-        title: result.data?.title || [],
-        description: result.data?.description || [],
-        features: result.data?.features || [],
-      });
-      setSnackbarSeverity("success");
-      setSnackbarMessage("Content rewritten successfully!");
-    } else {
-      setSnackbarSeverity("error");
-      setSnackbarMessage(result.error || "Rewrite failed. Please try again.");
+    if (!selectedPromptName.trim()) {
+      setSnackbarSeverity("warning");
+      setSnackbarMessage("Please select or add a prompt before rewriting.");
+      setSnackbarOpen(true);
+      return;
     }
-  } catch (error) {
-    console.error("Rewrite error:", error);
-    setSnackbarSeverity("error");
-    setSnackbarMessage("Network error while rewriting.");
-  } finally {
-    setRewriting(false);
+
+    const selectedTitles = productTab.title?.filter((i) => i.checked) || [];
+    const selectedDescriptions =
+      productTab.description?.filter((i) => i.checked) || [];
+    const selectedFeatures =
+      productTab.features?.filter((i) => i.checked) || [];
+
+    if (
+      selectedTitles.length === 0 &&
+      selectedDescriptions.length === 0 &&
+      selectedFeatures.length === 0
+    ) {
+      setSnackbarSeverity("warning");
+      setSnackbarMessage(
+        "Select a title, feature set, or description to rewrite.",
+      );
+      setSnackbarOpen(true);
+      return;
+    }
+
+    setRewriting(true);
+    setSnackbarSeverity("info");
+    setSnackbarMessage("Rewriting selected content...");
     setSnackbarOpen(true);
-    setCustomPrompt('')
-  }
-};
+
+    const requestPayload = {
+      option: selectedPromptName,
+      title: selectedTitles,
+      description: selectedDescriptions,
+      features: selectedFeatures,
+      product_id: id,
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestPayload),
+      });
+      const result = await response.json();
+
+      if (result.status && result.message === "success") {
+        setProductTab({
+          title: result.data?.title || [],
+          description: result.data?.description || [],
+          features: result.data?.features || [],
+        });
+        setSnackbarSeverity("success");
+        setSnackbarMessage("Content rewritten successfully!");
+      } else {
+        setSnackbarSeverity("error");
+        setSnackbarMessage(result.error || "Rewrite failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Rewrite error:", error);
+      setSnackbarSeverity("error");
+      setSnackbarMessage("Network error while rewriting.");
+    } finally {
+      setRewriting(false);
+      setSnackbarOpen(true);
+      setCustomPrompt("");
+    }
+  };
   useEffect(() => {
     if (productTab?.features && Array.isArray(productTab.features)) {
       setSelectedFeatures(
@@ -788,7 +792,7 @@ if (!selectedPromptName.trim()) {
   };
   const handleCloseAIModal = () => {
     setAIModalOpen(false);
-     setGenerating(false);
+    setGenerating(false);
   };
   useEffect(() => {
     fetchProductDetails(id);
@@ -808,11 +812,11 @@ if (!selectedPromptName.trim()) {
         features: selectedFeatures,
       },
     };
-    
-setUpdating(true);
-setSnackbarSeverity("info");
-setSnackbarMessage("Updating product...");
-setSnackbarOpen(true);
+
+    setUpdating(true);
+    setSnackbarSeverity("info");
+    setSnackbarMessage("Updating product...");
+    setSnackbarOpen(true);
     try {
       const response = await fetch(`${API_BASE_URL}/updateProductContent/`, {
         method: "POST",
@@ -823,20 +827,20 @@ setSnackbarOpen(true);
       });
       const data = await response.json();
       if (data?.status) {
-      setSnackbarSeverity("success");
-      setSnackbarMessage("Product updated successfully!");
-      fetchProductDetails(id);
-    } else {
+        setSnackbarSeverity("success");
+        setSnackbarMessage("Product updated successfully!");
+        fetchProductDetails(id);
+      } else {
+        setSnackbarSeverity("error");
+        setSnackbarMessage("Update failed. Please try again.");
+      }
+    } catch (error) {
       setSnackbarSeverity("error");
-      setSnackbarMessage("Update failed. Please try again.");
+      setSnackbarMessage("Network error while updating.");
+    } finally {
+      setUpdating(false);
+      setSnackbarOpen(true);
     }
-  } catch (error) {
-    setSnackbarSeverity("error");
-    setSnackbarMessage("Network error while updating.");
-  } finally {
-    setUpdating(false);
-    setSnackbarOpen(true);
-  }
   };
   useEffect(() => {
     if (id && id !== "undefined") {
@@ -891,9 +895,9 @@ setSnackbarOpen(true);
     hasAiContent(productTab?.description) ||
     hasAiContent(productTab?.features);
   const hasAllContent =
-  hasAiContent(productTab?.title) &&
-  hasAiContent(productTab?.description) &&
-  hasAiContent(productTab?.features);
+    hasAiContent(productTab?.title) &&
+    hasAiContent(productTab?.description) &&
+    hasAiContent(productTab?.features);
   if (loading)
     return (
       <div style={{ marginTop: "10%" }}>
@@ -922,7 +926,7 @@ setSnackbarOpen(true);
             Back to Products
           </Button>
         </Box>
-       <Box
+        <Box
           sx={{
             display: "flex",
             gap: 1,
@@ -930,123 +934,152 @@ setSnackbarOpen(true);
             flexWrap: "wrap",
           }}
         >
-<Tooltip title={!hasAnyContent ? "Generate AI content first" : ""} arrow>
-  <span>
-    <Button
-      variant="contained"
-      size="small"
-      onClick={sendSelectedPromptToAPI}
-      disabled={!hasAnyContent || rewriting}
-      startIcon={rewriting ? <CircularProgress size={14} sx={{ color: "white" }} /> : null}
-      sx={{ textTransform: "capitalize" }}
-    >
-      {rewriting ? "Rewriting..." : "Rewrite"}
-    </Button>
-  </span>
-</Tooltip>
+          <Tooltip
+            title={!hasAnyContent ? "Generate AI content first" : ""}
+            arrow
+          >
+            <span>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={sendSelectedPromptToAPI}
+                disabled={!hasAnyContent || rewriting}
+                startIcon={
+                  rewriting ? (
+                    <CircularProgress size={14} sx={{ color: "white" }} />
+                  ) : null
+                }
+                sx={{ textTransform: "capitalize" }}
+              >
+                {rewriting ? "Rewriting..." : "Rewrite"}
+              </Button>
+            </span>
+          </Tooltip>
 
-<Tooltip title={hasAnyContent ? "Content already generated. Use Rewrite." : ""} arrow>
-  <span>
-    <Button
-      variant="outlined"
-      size="small"
-      onClick={() => { setGenerating(true); handleAIOptions(); }}
-      disabled={hasAllContent || generating}  
-      startIcon={generating ? <CircularProgress size={14} /> : null}
-      sx={{
-        backgroundColor: hasAnyContent ? "#eee" : "#f2f3ae",
-        color: "black",
-        textTransform: "none",
-        fontSize: { xs: "12px", sm: "14px" },
-      }}
-    >
-      {generating ? "Generating..." : "Generate Content With AI"}
-    </Button>
-  </span>
-</Tooltip>
+          <Tooltip
+            title={
+              hasAnyContent ? "Content already generated. Use Rewrite." : ""
+            }
+            arrow
+          >
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setGenerating(true);
+                  handleAIOptions();
+                }}
+                disabled={hasAllContent || generating}
+                startIcon={generating ? <CircularProgress size={14} /> : null}
+                sx={{
+                  backgroundColor: hasAnyContent ? "#eee" : "#f2f3ae",
+                  color: "black",
+                  textTransform: "none",
+                  fontSize: { xs: "12px", sm: "14px" },
+                }}
+              >
+                {generating ? "Generating..." : "Generate Content With AI"}
+              </Button>
+            </span>
+          </Tooltip>
 
-<Button
-  variant="outlined"
-  size="small"
-  startIcon={<AddIcon />}
-disabled={loading || !hasAnyContent || updating}
-  onClick={() => setCustomPromptModalOpen(true)}
->
-  Add
-</Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            disabled={loading || !hasAnyContent || updating}
+            onClick={() => setCustomPromptModalOpen(true)}
+          >
+            Add
+          </Button>
 
-<Button
-  variant="contained"
-  size="small"
-  onClick={handleUpdateProductTotal}
-  disabled={loading || !hasAnyContent || updating}
-  startIcon={updating ? <CircularProgress size={14} sx={{ color: "white" }} /> : null}
-  sx={{
-    backgroundColor: (theme) => theme.palette.primary.main,
-    textTransform: "capitalize",
-    color: "white",
-  }}
->
-  {updating ? "Updating..." : "Update"}
-  
-</Button>
-{/* Previous + Next navigation */}
-<Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: 1 }}>
-  <Tooltip title={currentIndex > 0 ? "Previous product" : "This is the first product"} arrow>
-    <span>
-      <IconButton
-        onClick={handlePrevious}
-        disabled={currentIndex <= 0}
-        sx={{
-          bgcolor: currentIndex <= 0 ? "#e5e7eb" : "#fbc02d",
-          color: "white",
-          borderRadius: "50%",
-          width: 36,
-          height: 36,
-          "&:hover": { bgcolor: currentIndex <= 0 ? "#e5e7eb" : "#f9a825" },
-        }}
-      >
-        <ArrowBackIcon fontSize="small" />
-      </IconButton>
-    </span>
-  </Tooltip>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleUpdateProductTotal}
+            disabled={loading || !hasAnyContent || updating}
+            startIcon={
+              updating ? (
+                <CircularProgress size={14} sx={{ color: "white" }} />
+              ) : null
+            }
+            sx={{
+              backgroundColor: (theme) => theme.palette.primary.main,
+              textTransform: "capitalize",
+              color: "white",
+            }}
+          >
+            {updating ? "Updating..." : "Update"}
+          </Button>
+          {/* Previous + Next navigation */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: 1 }}>
+            <Tooltip
+              title={
+                currentIndex > 0
+                  ? "Previous product"
+                  : "This is the first product"
+              }
+              arrow
+            >
+              <span>
+                <IconButton
+                  onClick={handlePrevious}
+                  disabled={currentIndex <= 0}
+                  sx={{
+                    bgcolor: currentIndex <= 0 ? "#e5e7eb" : "#fbc02d",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: 36,
+                    height: 36,
+                    "&:hover": {
+                      bgcolor: currentIndex <= 0 ? "#e5e7eb" : "#f9a825",
+                    },
+                  }}
+                >
+                  <ArrowBackIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
 
- 
-
-  <Tooltip
-    title={
-      currentIndex < productIds.length - 1
-        ? "Next product"
-        : "This is the last product"
-    }
-    arrow
-  >
-    <span>
-      <IconButton
-        onClick={handleNext}
-        disabled={currentIndex === -1 || currentIndex >= productIds.length - 1}
-        sx={{
-          bgcolor:
-            currentIndex === -1 || currentIndex >= productIds.length - 1
-              ? "#e5e7eb"
-              : "#66bb6a",
-          color: "white",
-          borderRadius: "50%",
-          width: 36,
-          height: 36,
-          "&:hover": {
-            bgcolor:
-              currentIndex === -1 || currentIndex >= productIds.length - 1
-                ? "#e5e7eb"
-                : "#43a047",
-          },
-        }}
-      >
-        <ArrowForwardIcon fontSize="small" />
-      </IconButton>
-    </span>
-  </Tooltip>
-</Box>
+            <Tooltip
+              title={
+                currentIndex < productIds.length - 1
+                  ? "Next product"
+                  : "This is the last product"
+              }
+              arrow
+            >
+              <span>
+                <IconButton
+                  onClick={handleNext}
+                  disabled={
+                    currentIndex === -1 || currentIndex >= productIds.length - 1
+                  }
+                  sx={{
+                    bgcolor:
+                      currentIndex === -1 ||
+                      currentIndex >= productIds.length - 1
+                        ? "#e5e7eb"
+                        : "#66bb6a",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: 36,
+                    height: 36,
+                    "&:hover": {
+                      bgcolor:
+                        currentIndex === -1 ||
+                        currentIndex >= productIds.length - 1
+                          ? "#e5e7eb"
+                          : "#43a047",
+                    },
+                  }}
+                >
+                  <ArrowForwardIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
         </Box>
       </Box>
       <Grid container spacing={3} marginTop={3}>
@@ -1261,16 +1294,6 @@ disabled={loading || !hasAnyContent || updating}
                   <DetailValue>{product?.brand_name || "N/A"}</DetailValue>
                 </Box>
               </Box>
-              <Box mt={2}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: { xs: "center", sm: "flex-start" },
-                    mb: 2,
-                  }}
-                >
-               
-                </Box>
                 <Modal
                   open={aiModalOpen}
                   onClose={handleCloseAIModal}
@@ -1296,15 +1319,12 @@ disabled={loading || !hasAnyContent || updating}
                       <FetchApi
                         onClose={handleCloseAIModal}
                         onUpdateProduct={handleUpdateProduct}
-                         product={product}    
+                        product={product}
                       />
                     </div>
                   </Box>
                 </Modal>
-              </Box>
-              <Box mt={2} display="flex" gap={2} alignItems="center">
-                
-              </Box>
+
               <Modal
                 open={customPromptModalOpen}
                 onClose={() => setCustomPromptModalOpen(false)}
@@ -1355,12 +1375,14 @@ disabled={loading || !hasAnyContent || updating}
                       <IconButton
                         disabled={!customPrompt.trim()}
                         onClick={() => {
-  setIsAddingNewPrompt(true);
-  setCustomPromptModalOpen(false);
-  setSnackbarSeverity("success");
-  setSnackbarMessage("Custom prompt saved. Click Rewrite to apply it.");
-  setSnackbarOpen(true);
-}}
+                          setIsAddingNewPrompt(true);
+                          setCustomPromptModalOpen(false);
+                          setSnackbarSeverity("success");
+                          setSnackbarMessage(
+                            "Custom prompt saved. Click Rewrite to apply it.",
+                          );
+                          setSnackbarOpen(true);
+                        }}
                         sx={{
                           bgcolor: "#90caf9",
                           color: "white",
@@ -1399,7 +1421,6 @@ disabled={loading || !hasAnyContent || updating}
                         key={text}
                         size="small"
                         onClick={() => handleQuickPrompt(text)}
-
                         sx={{
                           bgcolor: "#929786",
                           color: "white",
@@ -1444,7 +1465,7 @@ disabled={loading || !hasAnyContent || updating}
                     <FetchApi
                       onClose={handleCloseAIModal}
                       onUpdateProduct={handleUpdateProduct}
-                       product={product}    
+                      product={product}
                     />
                   </div>
                 </Box>
@@ -2378,14 +2399,14 @@ disabled={loading || !hasAnyContent || updating}
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
       >
-       <Alert
-  onClose={() => setSnackbarOpen(false)}
-  severity={snackbarSeverity}
-  variant="filled"
-  sx={{ width: "100%" }}
->
-  {snackbarMessage}
-</Alert>
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
       </Snackbar>
     </Container>
   );
