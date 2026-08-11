@@ -3,7 +3,6 @@ import SendIcon from "@mui/icons-material/Send";
 import {
   Button,
   Container,
-  Grid,
   RadioGroup,
   useMediaQuery,
   Tooltip,
@@ -23,6 +22,7 @@ import {
   Tab,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
@@ -93,6 +93,9 @@ const ProductDetail = () => {
   const [aiModalOpen, setAIModalOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width:600px)");
   const [generating, setGenerating] = useState(false);
+  const [titleHistoryIndex, setTitleHistoryIndex] = useState(null);
+  const [featuresHistoryIndex, setFeaturesHistoryIndex] = useState(null);
+  const [descriptionHistoryIndex, setDescriptionHistoryIndex] = useState(null);
   const [rewriting, setRewriting] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [mainImage, setMainImage] = useState(product?.images?.[0] || soonImg);
@@ -157,6 +160,12 @@ const ProductDetail = () => {
   const [data, setData] = useState([]);
   const [editValueTitle, seteditValueTitle] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
+  const [aiHistory, setAiHistory] = useState({
+    title: [],
+    features: [],
+    description: [],
+  });
+  const [historyOpenIndex, setHistoryOpenIndex] = useState(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [selectedEditIndex, setSelectedEditIndex] = useState(null);
   const [editedDescription, setEditedDescription] = useState("");
@@ -174,8 +183,92 @@ const ProductDetail = () => {
     };
   }, []);
   useEffect(() => {
+    if (!id) return;
+fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
+     .then((res) => res.json())
+.then((json) => {
+  const h = json.data || {};
+  setAiHistory({
+    title: h.title_history || [],
+    features: h.features_history || [],
+    description: h.description_history || [],
+  });
+})
+      .catch((err) => {
+        console.error("Error fetching AI history", err);
+      });
+  }, [id]);
+  useEffect(() => {
     fetchProducts();
   }, []);
+  const applyHistoryTitle = (historyValue, rowIndex) => {
+    setProductTab((prev) => {
+      const newTitleArray = prev.title.map((t, i) =>
+        i === rowIndex
+          ? { ...t, value: historyValue, checked: true }
+          : { ...t, checked: false },
+      );
+
+      fetch(`${API_BASE_URL}/updategeneratedContent/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: id,
+          title: newTitleArray,
+        }),
+      }).catch((err) => console.error("Error updating AI title:", err));
+
+      return { ...prev, title: newTitleArray };
+    });
+
+    setTitleHistoryIndex(null);
+  };
+
+  const applyHistoryFeatures = (historyValueArray, setIndex) => {
+    setProductTab((prev) => {
+      const newFeaturesArray = prev.features.map((f, i) =>
+        i === setIndex
+          ? { ...f, value: historyValueArray, checked: true }
+          : { ...f, checked: false },
+      );
+
+      fetch(`${API_BASE_URL}/updategeneratedContent/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: id,
+          features: newFeaturesArray,
+        }),
+      }).catch((err) => console.error("Error updating AI features:", err));
+
+      return { ...prev, features: newFeaturesArray };
+    });
+
+    setFeaturesHistoryIndex(null);
+  };
+
+  const applyHistoryDescription = (historyValue, rowIndex) => {
+    setProductTab((prev) => {
+      const newDescArray = prev.description.map((d, i) =>
+        i === rowIndex
+          ? { ...d, value: historyValue, checked: true }
+          : { ...d, checked: false },
+      );
+
+      fetch(`${API_BASE_URL}/updategeneratedContent/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: id,
+          description: newDescArray,
+        }),
+      }).catch((err) => console.error("Error updating AI description:", err));
+
+      return { ...prev, description: newDescArray };
+    });
+
+    setDescriptionHistoryIndex(null);
+  };
   const fetchProducts = () => {
     setLoading(true);
     fetch(`${API_BASE_URL}/productList/`, {
@@ -667,6 +760,13 @@ const ProductDetail = () => {
         body: JSON.stringify(requestPayload),
       });
       const result = await response.json();
+      const apiError = result?.data?.error || result?.error;
+if (apiError) {
+  setSnackbarSeverity("warning");
+  setSnackbarMessage(apiError);
+  setSnackbarOpen(true);
+  return;
+}
 
       if (result.status && result.message === "success") {
         setProductTab({
@@ -898,6 +998,52 @@ const ProductDetail = () => {
     hasAiContent(productTab?.title) &&
     hasAiContent(productTab?.description) &&
     hasAiContent(productTab?.features);
+  const hasTitleAi = hasAiContent(productTab?.title);
+  const hasFeaturesAi = hasAiContent(productTab?.features);
+  const hasDescriptionAi = hasAiContent(productTab?.description);
+
+  const hasSelectedAiContent =
+    (Array.isArray(productTab?.title) &&
+      productTab.title.some((t) => t.checked)) ||
+    (Array.isArray(productTab?.features) &&
+      productTab.features.some((f) => f.checked)) ||
+    (Array.isArray(productTab?.description) &&
+      productTab.description.some((d) => d.checked));
+
+  const hasPrompt =
+    (isAddingNewPrompt && customPrompt.trim().length > 0) ||
+    (!isAddingNewPrompt &&
+      ((selectedPrompt &&
+        promptList.find((p) => p.id === selectedPrompt)?.name) ||
+        customPrompt.trim().length > 0));
+  let aiButtonLabel = "Generate Content With AI";
+  let aiButtonOnClick = () => {};
+  let aiButtonDisabled = false;
+  if (!hasAnyContent) {
+    // No AI content at all → pure generate
+    aiButtonLabel = "Generate Content With AI";
+    aiButtonOnClick = () => {
+      setGenerating(true);
+      handleAIOptions(); // opens FetchApi modal
+    };
+    aiButtonDisabled = generating;
+  } else if (hasSelectedAiContent && hasPrompt) {
+    // Some AI content is selected AND we have a prompt → direct regenerate
+    aiButtonLabel = rewriting ? "Regenerating..." : "Regenerate";
+    aiButtonOnClick = () => {
+      sendSelectedPromptToAPI(); // direct rewrite, no modal
+    };
+    aiButtonDisabled = rewriting;
+  } else {
+    // We have some AI content, but either nothing is selected OR no prompt yet
+    // Treat this as "generate/complete content with AI" using the modal
+    aiButtonLabel = "Generate Content With AI";
+    aiButtonOnClick = () => {
+      setGenerating(true);
+      handleAIOptions(); // FetchApi will decide what to generate (e.g., desc/features only)
+    };
+    aiButtonDisabled = generating;
+  }
   if (loading)
     return (
       <div style={{ marginTop: "10%" }}>
@@ -905,8 +1051,10 @@ const ProductDetail = () => {
         ...
       </div>
     );
+
   return (
     <Container sx={{ maxWidth: "100%", margin: "0 auto" }}>
+      {/* Top bar: back + AI buttons */}
       <Box
         mb={2}
         sx={{
@@ -934,52 +1082,40 @@ const ProductDetail = () => {
             flexWrap: "wrap",
           }}
         >
-          <Tooltip
-            title={!hasAnyContent ? "Generate AI content first" : ""}
-            arrow
-          >
-            <span>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={sendSelectedPromptToAPI}
-                disabled={!hasAnyContent || rewriting}
-                startIcon={
-                  rewriting ? (
-                    <CircularProgress size={14} sx={{ color: "white" }} />
-                  ) : null
-                }
-                sx={{ textTransform: "capitalize" }}
-              >
-                {rewriting ? "Rewriting..." : "Rewrite"}
-              </Button>
-            </span>
-          </Tooltip>
-
+          {/* Combined AI button: Generate or Regenerate depending on state */}
           <Tooltip
             title={
-              hasAnyContent ? "Content already generated. Use Rewrite." : ""
+              !hasAnyContent
+                ? "Generate AI title, features and description."
+                : hasSelectedAiContent && hasPrompt
+                  ? "Regenerate selected AI content using the current prompt."
+                  : "Generate or complete AI content. Select AI content and add a prompt to regenerate."
             }
             arrow
           >
             <span>
               <Button
-                variant="outlined"
+                variant={hasAnyContent ? "outlined" : "contained"}
                 size="small"
-                onClick={() => {
-                  setGenerating(true);
-                  handleAIOptions();
-                }}
-                disabled={hasAllContent || generating}
-                startIcon={generating ? <CircularProgress size={14} /> : null}
+                onClick={aiButtonOnClick}
+                disabled={aiButtonDisabled}
+                startIcon={
+                  rewriting || generating ? (
+                    <CircularProgress size={14} sx={{ color: "white" }} />
+                  ) : null
+                }
                 sx={{
-                  backgroundColor: hasAnyContent ? "#eee" : "#f2f3ae",
+                  backgroundColor:
+                    !hasAnyContent ||
+                    (hasAnyContent && !hasSelectedAiContent && !hasPrompt)
+                      ? "#f2f3ae"
+                      : "#eee",
                   color: "black",
                   textTransform: "none",
                   fontSize: { xs: "12px", sm: "14px" },
                 }}
               >
-                {generating ? "Generating..." : "Generate Content With AI"}
+                {aiButtonLabel}
               </Button>
             </span>
           </Tooltip>
@@ -1012,6 +1148,7 @@ const ProductDetail = () => {
           >
             {updating ? "Updating..." : "Update"}
           </Button>
+
           {/* Previous + Next navigation */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: 1 }}>
             <Tooltip
@@ -1082,417 +1219,94 @@ const ProductDetail = () => {
           </Box>
         </Box>
       </Box>
-      <Grid container spacing={3} marginTop={3}>
-        <Grid item xs={12} md={6}>
-          <Box
-            display="flex"
-            flexDirection={{ xs: "column", sm: "row" }}
-            alignItems={{ xs: "center", sm: "flex-start" }}
-            gap={2}
-          >
-            <Box
-              display="flex"
-              flexDirection={isMobile ? "column" : "row"}
-              gap={2}
-              justifyContent="center"
-              alignItems="flex-start"
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1,
-                  width: isMobile ? "100%" : "70px",
-                  alignItems: "center",
-                }}
-              >
-                {product?.images?.map((img, index) => {
-                  if (!img) return null;
-                  return (
-                    <CardMedia
-                      key={`${img}-${index}`}
-                      component="img"
-                      image={img}
-                      alt={`Thumbnail ${index + 1}`}
-                      sx={{
-                        borderRadius: "4px",
-                        height: "60px",
-                        width: "60px",
-                        cursor: "pointer",
-                        border:
-                          mainImage === img
-                            ? "2px solid #000"
-                            : "1px solid #ccc",
-                        objectFit: "cover",
-                      }}
-                      onClick={() => setMainImage(img)}
-                    />
-                  );
-                })}
-              </Box>
-              <Box sx={{ width: isMobile ? "100%" : "400px" }}>
-                <img
-                  alt="Product Image"
-                  src={mainImage || soonImg}
-                  style={{
-                    width: isMobile ? "100%" : "400px",
-                    height: isMobile ? undefined : "300px",
-                    objectFit: "contain",
-                    borderRadius: "4px",
-                    cursor: "zoom-in",
-                  }}
-                />
-              </Box>
-            </Box>
-          </Box>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          {" "}
-          {loading ? (
-            <CircularProgress />
-          ) : (
-            <Box sx={{ width: "100%", px: { xs: 2, sm: 3, md: 4 } }}>
-              <Typography
-                variant="h4"
-                gutterBottom
-                sx={{
-                  fontSize: { xs: "18px", sm: "20px", md: "24px", lg: "28px" },
-                  maxWidth: { xs: "100%", sm: "90%", md: "80%", lg: "37ch" },
-                  fontWeight: "bold",
-                  wordWrap: "break-word",
-                  overflowWrap: "break-word",
-                  whiteSpace: "normal",
-                }}
-              >
-                {product?.product_name || "Product Title Not Available"}
-              </Typography>
-              <Box
-                sx={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                  mb: 2,
-                  gap: 1,
-                }}
-              >
-                {currentPrice !== undefined && currentPrice !== null && (
-                  <Typography
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#1a73e8",
-                      fontSize: { xs: "16px", sm: "20px" },
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    {currency}
-                    <span style={{ marginLeft: "4px" }}>{currentPrice}</span>
-                  </Typography>
-                )}
-                {originalPrice !== undefined &&
-                  originalPrice !== null &&
-                  originalPrice > currentPrice && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#777",
-                        textDecoration: "line-through",
-                        fontSize: { xs: "14px", sm: "16px" },
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      {currency}
-                      <span style={{ marginLeft: "4px" }}>{originalPrice}</span>
-                    </Typography>
-                  )}
-                {discountPercentage && (
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "green",
-                      fontWeight: "bold",
-                      fontSize: { xs: "14px", sm: "16px" },
-                    }}
-                  >
-                    {discountPercentage} OFF
-                  </Typography>
-                )}
-              </Box>
-              <Box
-                sx={{ display: "flex", flexDirection: "row", mb: 2, gap: 4 }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    mb: 1,
-                  }}
-                >
-                  <DetailLabel>SKU:</DetailLabel>
-                  <DetailValue>
-                    {product?.sku_number_product_code_item_number || "N/A"}
-                  </DetailValue>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    mb: 1,
-                  }}
-                >
-                  <DetailLabel>MPN:</DetailLabel>
-                  <DetailValue>{product?.mpn || "N/A"}</DetailValue>
-                </Box>
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "row",
-                  mb: 2,
-                  gap: 4,
-                  flexWrap: "wrap",
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    mb: 1,
-                  }}
-                >
-                  <DetailLabel>Category:</DetailLabel>
-                  <DetailValue>
-                    {product?.end_level_category || "N/A"}
-                  </DetailValue>
-                </Box>
-                {product?.vendor && (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      mb: 1,
-                    }}
-                  >
-                    <DetailLabel>Vendor:</DetailLabel>
-                    <DetailValue>{product?.vendor}</DetailValue>
-                  </Box>
-                )}
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    mb: 1,
-                  }}
-                >
-                  <DetailLabel>Brand:</DetailLabel>
-                  <DetailValue>{product?.brand_name || "N/A"}</DetailValue>
-                </Box>
-              </Box>
-                <Modal
-                  open={aiModalOpen}
-                  onClose={handleCloseAIModal}
-                  aria-labelledby="ai-modal-title"
-                  aria-describedby="ai-modal-description"
-                >
-                  <Box
-                    sx={{
-                      borderRadius: "40px",
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      width: { xs: 280, sm: 300 },
-                      height: { xs: 272, sm: 300 },
-                      bgcolor: "background.paper",
-                      border: "2px solid #000",
-                      boxShadow: 24,
-                      p: 2,
-                    }}
-                  >
-                    <div id="ai-modal-description">
-                      <FetchApi
-                        onClose={handleCloseAIModal}
-                        onUpdateProduct={handleUpdateProduct}
-                        product={product}
-                      />
-                    </div>
-                  </Box>
-                </Modal>
 
-              <Modal
-                open={customPromptModalOpen}
-                onClose={() => setCustomPromptModalOpen(false)}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: { xs: "90%", sm: 650 },
-                    bgcolor: "#d8ddca",
-                    borderRadius: "22px",
-                    p: 2.5,
-                    boxShadow: 24,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      bgcolor: "white",
-                      border: "2px solid #2563eb",
-                      borderRadius: "16px",
-                      p: 2,
-                    }}
-                  >
-                    <TextareaAutosize
-                      minRows={4}
-                      placeholder="Please enter your prompt"
-                      value={customPrompt}
-                      onChange={(e) => setCustomPrompt(e.target.value)}
-                      style={{
-                        width: "100%",
-                        resize: "none",
-                        border: "none",
-                        outline: "none",
-                        fontSize: "16px",
-                        fontFamily: "inherit",
-                      }}
-                    />
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        alignItems: "center",
-                        mt: 1,
-                      }}
-                    >
-                      <IconButton
-                        disabled={!customPrompt.trim()}
-                        onClick={() => {
-                          setIsAddingNewPrompt(true);
-                          setCustomPromptModalOpen(false);
-                          setSnackbarSeverity("success");
-                          setSnackbarMessage(
-                            "Custom prompt saved. Click Rewrite to apply it.",
-                          );
-                          setSnackbarOpen(true);
-                        }}
-                        sx={{
-                          bgcolor: "#90caf9",
-                          color: "white",
-                          width: 34,
-                          height: 34,
-                          "&:hover": {
-                            bgcolor: "#64b5f6",
-                          },
-                          "&.Mui-disabled": {
-                            bgcolor: "#ddd",
-                          },
-                        }}
-                      >
-                        <ArrowForwardIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 1,
-                      mt: 1.5,
-                    }}
-                  >
-                    {[
-                      "Improve writing and readability",
-                      "Make the content more concise",
-                      "Make the content more detailed",
-                      "Optimize content for SEO and GEO",
-                      "Make longer",
-                      "Make shorter",
-                      "Break into bullet points",
-                    ].map((text) => (
-                      <Button
-                        key={text}
-                        size="small"
-                        onClick={() => handleQuickPrompt(text)}
-                        sx={{
-                          bgcolor: "#929786",
-                          color: "white",
-                          borderRadius: "18px",
-                          textTransform: "none",
-                          fontSize: "13px",
-                          px: 1.5,
-                          "&:hover": {
-                            bgcolor: "#7f8574",
-                          },
-                        }}
-                      >
-                        ✦&nbsp; {text}
-                      </Button>
-                    ))}
-                  </Box>
-                </Box>
-              </Modal>
-              {/* Modal Component */}
-              <Modal
-                open={aiModalOpen}
-                onClose={handleCloseAIModal}
-                aria-labelledby="ai-modal-title"
-                aria-describedby="ai-modal-description"
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: { xs: 280, sm: 300 },
-                    height: { xs: 280, sm: 300 },
-                    bgcolor: "background.paper",
-                    border: "2px solid #000",
-                    boxShadow: 24,
-                    p: 2,
-                    borderRadius: "8px",
-                  }}
-                >
-                  <div id="ai-modal-description">
-                    <FetchApi
-                      onClose={handleCloseAIModal}
-                      onUpdateProduct={handleUpdateProduct}
-                      product={product}
-                    />
-                  </div>
-                </Box>
-              </Modal>
-            </Box>
-          )}
-        </Grid>
-      </Grid>
-      <Grid container spacing={2}>
-        {/* Left Side - Product Features and Description */}
+      {/* TWO-COLUMN LAYOUT: 
+          LEFT = image + existing description/features,
+          RIGHT = AI title/features/description tabs */}
+      <Box
+        sx={{
+          mt: 0,
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          alignItems: "flex-start",
+          gap: 4,
+        }}
+      >
+        {/* LEFT COLUMN: image + REAL description/features */}
         <Box
           sx={{
-            mt: 6,
-            width: "526px",
-            maxWidth: {
-              xs: "100%",
-              sm: "100%",
-              md: "530px",
-            },
-            px: {
-              xs: 2,
-              sm: 2,
-              md: 0,
-            },
+            flex: "0 0 auto",
+            maxWidth: { xs: "100%", md: 520 },
           }}
         >
-          {/* 🔹 Product Description First */}
+          {/* Image + thumbnails */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "center", sm: "flex-start" },
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            {/* Thumbnails */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+                width: isMobile ? "100%" : "70px",
+                alignItems: "center",
+              }}
+            >
+              {product?.images?.map((img, index) => {
+                if (!img) return null;
+                return (
+                  <CardMedia
+                    key={`${img}-${index}`}
+                    component="img"
+                    image={img}
+                    alt={`Thumbnail ${index + 1}`}
+                    sx={{
+                      borderRadius: "4px",
+                      height: "60px",
+                      width: "60px",
+                      cursor: "pointer",
+                      border:
+                        mainImage === img ? "2px solid #000" : "1px solid #ccc",
+                      objectFit: "cover",
+                    }}
+                    onClick={() => setMainImage(img)}
+                  />
+                );
+              })}
+            </Box>
+
+            {/* Main image */}
+            <Box
+              sx={{
+                width: "100%",
+                maxWidth: { xs: "100%", sm: "400px" },
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                alt="Product Image"
+                src={mainImage || soonImg}
+                style={{
+                  width: "100%",
+                  maxWidth: "400px",
+                  maxHeight: "400px",
+                  height: "auto",
+                  objectFit: "contain",
+                  borderRadius: "4px",
+                  cursor: "zoom-in",
+                }}
+              />
+            </Box>
+          </Box>
+
           <Card sx={{ maxWidth: 510, mb: 2 }}>
             <Box
               display="flex"
@@ -1528,97 +1342,236 @@ const ProductDetail = () => {
               </CardContent>
             )}
           </Card>
-          {/* 🔹 Product Features Next */}
-          <Box sx={{ maxWidth: "510px", marginTop: "20px" }}>
-            <Card sx={{ maxWidth: 510, boxShadow: 2, mb: 2 }}>
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{ cursor: "pointer", px: 2, py: 1 }}
-                onClick={() => setShowFeatures((prev) => !prev)}
+
+          {/* Existing Features card */}
+          <Card sx={{ maxWidth: 510 }}>
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ cursor: "pointer", px: 2, py: 1 }}
+              onClick={() => setShowFeatures((prev) => !prev)}
+            >
+              <Typography
+                variant="h6"
+                sx={{ fontSize: "18px", fontWeight: 600 }}
               >
-                <Typography
-                  variant="h6"
-                  sx={{ fontSize: "18px", fontWeight: 600 }}
+                Features
+              </Typography>
+              <IconButton size="large">
+                {showFeatures ? <ExpandLessIcon /> : <AddIcon />}
+              </IconButton>
+            </Box>
+            <Divider />
+            {showFeatures && (
+              <CardContent sx={{ pt: 1, pb: 2 }}>
+                <List
+                  sx={{
+                    "& a": {
+                      color: "blue !important",
+                      textDecoration: "underline",
+                    },
+                    "& a:visited": { color: "blue !important" },
+                    "& a:hover": { color: "darkblue !important" },
+                  }}
                 >
-                  Features
-                </Typography>
-                <IconButton size="large">
-                  {showFeatures ? <ExpandLessIcon /> : <AddIcon />}
-                </IconButton>
-              </Box>
-              <Divider />
-              {showFeatures && (
-                <CardContent sx={{ pt: 1, pb: 2 }}>
-                  <List
-                    sx={{
-                      "& a": {
-                        color: "blue !important",
-                        textDecoration: "underline",
-                      },
-                      "& a:visited": {
-                        color: "blue !important",
-                      },
-                      "& a:hover": {
-                        color: "darkblue !important",
-                      },
-                    }}
-                  >
-                    {product?.features && product.features.length > 0 ? (
-                      product.features.map((feature, index) => (
-                        <ListItem key={index} sx={{ padding: "4px 0" }}>
-                          <Typography sx={{ fontSize: "16px" }}>
-                            {/<a|<img/.test(feature) ? (
-                              <span
-                                dangerouslySetInnerHTML={{
-                                  __html: feature.replace(
-                                    /<img /g,
-                                    '<img style="width: 500px; display: block; margin: 10px 0;" ',
-                                  ),
-                                }}
-                              />
-                            ) : (
-                              `• ${feature}`
-                            )}
-                          </Typography>
-                        </ListItem>
-                      ))
-                    ) : (
-                      <Typography sx={{ fontSize: "16px", color: "gray" }}>
-                        No features available
-                      </Typography>
-                    )}
-                  </List>
+                  {product?.features && product.features.length > 0 ? (
+                    product.features.map((feature, index) => (
+                      <ListItem key={index} sx={{ padding: "4px 0" }}>
+                        <Typography sx={{ fontSize: "16px" }}>
+                          {/<a|<img/.test(feature) ? (
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: feature.replace(
+                                  /<img /g,
+                                  '<img style="width: 500px; display: block; margin: 10px 0;" ',
+                                ),
+                              }}
+                            />
+                          ) : (
+                            `• ${feature}`
+                          )}
+                        </Typography>
+                      </ListItem>
+                    ))
+                  ) : (
+                    <Typography sx={{ fontSize: "16px", color: "gray" }}>
+                      No features available
+                    </Typography>
+                  )}
+                </List>
+                {product?.pdfUrl && (
                   <Box mt={2}>
-                    {product?.pdfUrl && (
-                      <a
-                        href={product.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          fontSize: "16px",
-                          textDecoration: "underline",
-                          color: "blue",
-                        }}
-                      >
-                        View the PDF
-                      </a>
-                    )}
+                    <a
+                      href={product.pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: "16px",
+                        textDecoration: "underline",
+                        color: "blue",
+                      }}
+                    >
+                      View the PDF
+                    </a>
                   </Box>
-                </CardContent>
-              )}
-            </Card>
-          </Box>
+                )}
+              </CardContent>
+            )}
+          </Card>
         </Box>
-        <Grid item xs={12} sm={12} md={6}>
-          <Box
+
+        {/* RIGHT COLUMN: AI content (title/price/meta + tabs) */}
+        <Box
+          sx={{
+            flex: 1,
+            px: { xs: 2, sm: 3, md: 4 },
+            mt: { xs: 3, md: 0 },
+          }}
+        >
+          <Typography
+            variant="h4"
+            gutterBottom
             sx={{
-              width: "100%",
-              overflowX: "auto",
-              marginTop: { xs: "0px", md: "-20px" },
+              fontSize: { xs: "18px", sm: "20px", md: "24px", lg: "28px" },
+              maxWidth: { xs: "100%", sm: "90%", md: "80%", lg: "37ch" },
+              fontWeight: "bold",
+              wordWrap: "break-word",
+              overflowWrap: "break-word",
+              whiteSpace: "normal",
             }}
           >
+            {product?.product_name || "Product Title Not Available"}
+          </Typography>
+
+          {/* Price */}
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              mb: 2,
+              gap: 1,
+            }}
+          >
+            {currentPrice != null && (
+              <Typography
+                sx={{
+                  fontWeight: "bold",
+                  color: "#1a73e8",
+                  fontSize: { xs: "16px", sm: "20px" },
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {currency}
+                <span style={{ marginLeft: "4px" }}>{currentPrice}</span>
+              </Typography>
+            )}
+            {originalPrice != null && originalPrice > currentPrice && (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#777",
+                  textDecoration: "line-through",
+                  fontSize: { xs: "14px", sm: "16px" },
+                }}
+              >
+                {currency}
+                <span style={{ marginLeft: "4px" }}>{originalPrice}</span>
+              </Typography>
+            )}
+            {discountPercentage && (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "green",
+                  fontWeight: "bold",
+                  fontSize: { xs: "14px", sm: "16px" },
+                }}
+              >
+                {discountPercentage} OFF
+              </Typography>
+            )}
+          </Box>
+
+          {/* SKU / MPN */}
+          <Box sx={{ display: "flex", flexDirection: "row", mb: 2, gap: 4 }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                mb: 1,
+              }}
+            >
+              <DetailLabel>SKU:</DetailLabel>
+              <DetailValue>
+                {product?.sku_number_product_code_item_number || "N/A"}
+              </DetailValue>
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                mb: 1,
+              }}
+            >
+              <DetailLabel>MPN:</DetailLabel>
+              <DetailValue>{product?.mpn || "N/A"}</DetailValue>
+            </Box>
+          </Box>
+
+          {/* Category / Vendor / Brand */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              gap: 4,
+              flexWrap: "wrap",
+              mb: 3,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                mb: 1,
+              }}
+            >
+              <DetailLabel>Category:</DetailLabel>
+              <DetailValue>{product?.end_level_category || "N/A"}</DetailValue>
+            </Box>
+            {product?.vendor && (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  mb: 1,
+                }}
+              >
+                <DetailLabel>Vendor:</DetailLabel>
+                <DetailValue>{product.vendor}</DetailValue>
+              </Box>
+            )}
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                mb: 1,
+              }}
+            >
+              <DetailLabel>Brand:</DetailLabel>
+              <DetailValue>{product?.brand_name || "N/A"}</DetailValue>
+            </Box>
+          </Box>
+
+          {/* Tabs */}
+          <Box sx={{ width: "100%", overflowX: "auto" }}>
             <Tabs
               value={tabIndex}
               onChange={handleTabChange}
@@ -1626,7 +1579,6 @@ const ProductDetail = () => {
               variant="scrollable"
               scrollButtons="auto"
               sx={{
-                marginTop: "30px",
                 minHeight: "40px",
                 "& .MuiTab-root": {
                   minHeight: "40px",
@@ -1634,153 +1586,185 @@ const ProductDetail = () => {
                   textTransform: "capitalize",
                   color: "black",
                 },
-                "& .Mui-selected": {
-                  color: "black !important",
-                },
+                "& .Mui-selected": { color: "black !important" },
               }}
             >
               <Tab label="Product Title" {...a11yProps(0)} />
               <Tab label="Features" {...a11yProps(1)} />
               <Tab label="Description" {...a11yProps(2)} />
             </Tabs>
-            {/* <Box display="flex" justifyContent="flex-end" alignItems="center" mt={1}>
-</Box> */}
-            <Box
-              sx={{
-                mt: 2,
-                width: {
-                  xs: "100%",
-                  sm: "100%",
-                  md: "600px",
-                },
-              }}
-            >
-              {/* Tab feilds */}
+
+            <Box sx={{ mt: 2, width: { xs: "100%", sm: "100%", md: "600px" } }}>
               <TabPanel value={tabIndex} index={0}>
                 {Array.isArray(productTab?.title) &&
                 productTab.title.length > 0 ? (
                   <Box sx={{ width: "100%" }}>
-                    <List
-                      sx={{
-                        padding: 0,
-                        mb: 1,
-                        width: "100%",
-                        maxWidth: {
-                          xs: "100%",
-                          sm: "90%",
-                          md: "80%",
-                          lg: "90ch",
-                        },
-                        fontSize: { xs: "13px", md: "14px" },
-                        wordWrap: "break-word",
-                        overflowWrap: "break-word",
-                        whiteSpace: "normal",
-                      }}
-                    >
+                    <List sx={{ padding: 0, mb: 1, width: "100%" }}>
                       {productTab.title.map((title, index) => (
-                        <ListItem
-                          key={index}
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            transition: "all 0.2s ease-in-out",
-                            gap: 1,
-                          }}
-                        >
-                          {editMode.title && selectedEditIndex === index ? (
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                                width: "100%",
-                              }}
-                            >
-                              <TextField
-                                value={editedTitle}
-                                onChange={(e) => setEditedTitle(e.target.value)}
-                                fullWidth
-                                variant="outlined"
-                                margin="normal"
-                                size="small"
-                                multiline
-                                minRows={2}
-                                maxRows={6}
-                              />
-                              <IconButton
-                                onClick={() => handleSaveClick("title")}
-                              >
-                                <SaveIcon />
-                              </IconButton>
-                              <IconButton
-                                onClick={() =>
-                                  setEditMode({
-                                    ...editMode,
-                                    title: false,
-                                  })
-                                }
-                              >
-                                <CancelIcon />
-                              </IconButton>
-                            </Box>
-                          ) : (
-                            <>
+                        <Box key={index} sx={{ width: "100%" }}>
+                          <ListItem
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              transition: "all 0.2s ease-in-out",
+                              gap: 1,
+                            }}
+                          >
+                            {editMode.title && selectedEditIndex === index ? (
                               <Box
                                 sx={{
                                   display: "flex",
                                   alignItems: "center",
-                                  flexGrow: 1,
+                                  gap: 1,
+                                  width: "100%",
                                 }}
                               >
-                                <FormControlLabel
-                                  value={title.value}
-                                  control={
-                                    <Radio
-                                      checked={title.checked === true}
-                                      onClick={() => {
-                                        const isCurrentlyChecked =
-                                          title.checked === true;
-                                        const updatedTitles =
-                                          productTab.title.map((t, i) =>
-                                            i === index
-                                              ? {
-                                                  ...t,
-                                                  checked: !isCurrentlyChecked,
-                                                }
-                                              : { ...t, checked: false },
-                                          );
-                                        setProductTab({
-                                          ...productTab,
-                                          title: updatedTitles,
-                                        });
-                                      }}
-                                    />
+                                <TextField
+                                  value={editedTitle}
+                                  onChange={(e) =>
+                                    setEditedTitle(e.target.value)
                                   }
-                                  label={
-                                    <Typography variant="body1">
-                                      {title.value}
-                                    </Typography>
-                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                  size="small"
+                                  multiline
+                                  minRows={2}
+                                  maxRows={6}
                                 />
+                                <IconButton
+                                  onClick={() => handleSaveClick("title")}
+                                >
+                                  <SaveIcon />
+                                </IconButton>
+                                <IconButton
+                                  onClick={() =>
+                                    setEditMode({ ...editMode, title: false })
+                                  }
+                                >
+                                  <CancelIcon />
+                                </IconButton>
                               </Box>
-                              <IconButton
-                                onClick={() => {
-                                  handleEditClickTitle("title", index);
-                                }}
-                                sx={{
-                                  opacity: title.checked ? 1 : 0.3,
-                                  transition: "opacity 0.2s ease-in-out",
-                                  pointerEvents: title.checked
-                                    ? "auto"
-                                    : "none",
-                                }}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </>
+                            ) : (
+                              <>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    flexGrow: 1,
+                                  }}
+                                >
+                                  <FormControlLabel
+                                    value={title.value}
+                                    control={
+                                      <Radio
+                                        checked={title.checked === true}
+                                        onClick={() => {
+                                          const updatedTitles =
+                                            productTab.title.map((t, i) => ({
+                                              ...t,
+                                              checked: i === index,
+                                            }));
+                                          setProductTab({
+                                            ...productTab,
+                                            title: updatedTitles,
+                                          });
+                                        }}
+                                      />
+                                    }
+                                    label={
+                                      <Typography variant="body1">
+                                        {title.value}
+                                      </Typography>
+                                    }
+                                  />
+                                </Box>
+
+                                {/* History chevron */}
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    setTitleHistoryIndex(
+                                      titleHistoryIndex === index
+                                        ? null
+                                        : index,
+                                    )
+                                  }
+                                  sx={{ mr: 0.5 }}
+                                >
+                                  {titleHistoryIndex === index ? (
+                                    <ExpandLessIcon fontSize="small" />
+                                  ) : (
+                                    <ExpandMoreIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+
+                                <IconButton
+                                  onClick={() =>
+                                    handleEditClickTitle("title", index)
+                                  }
+                                  sx={{ opacity: title.checked ? 1 : 0.3 }}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </>
+                            )}
+                          </ListItem>
+
+                          {/* History dropdown under this row */}
+                          {/* History dropdown under this row */}
+                          {titleHistoryIndex === index && (
+                            <Box
+                              sx={{
+                                ml: 6,
+                                mb: 1,
+                                p: 1,
+                                borderRadius: 1,
+                                border: "1px solid #e5e7eb",
+                                backgroundColor: "#f9fafb",
+                                maxHeight: 200,
+                                overflowY: "auto",
+                              }}
+                            >
+                              {aiHistory.title && aiHistory.title.length > 0 ? (
+                                aiHistory.title.map((entry, hIndex) => (
+                                  <Box
+                                    key={hIndex}
+                                    sx={{
+                                      mb: 0.5,
+                                      p: 0.5,
+                                      borderRadius: 0.5,
+                                      cursor: "pointer",
+                                      "&:hover": { backgroundColor: "#e5e7eb" },
+                                    }}
+                                    onClick={() =>
+                                      applyHistoryTitle(entry.value, index)
+                                    }
+                                  >
+                                    <Typography variant="body2">
+                                      {entry.value}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ display: "block" }}
+                                    >
+                                      {entry.type}
+                                      {entry.option ? ` • ${entry.option}` : ""}
+                                    </Typography>
+                                  </Box>
+                                ))
+                              ) : (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  No history available.
+                                </Typography>
+                              )}
+                            </Box>
                           )}
-                        </ListItem>
+                        </Box>
                       ))}
                     </List>
                   </Box>
@@ -1791,8 +1775,6 @@ const ProductDetail = () => {
                       alignItems: "center",
                       justifyContent: "center",
                       minHeight: "48px",
-                      transition: "all 0.2s ease-in-out",
-                      borderRadius: "8px",
                     }}
                   >
                     <Typography
@@ -1801,7 +1783,6 @@ const ProductDetail = () => {
                         fontSize: "16px",
                         color: "text.secondary",
                         fontStyle: "italic",
-                        textAlign: "center",
                       }}
                     >
                       No title available
@@ -1809,6 +1790,8 @@ const ProductDetail = () => {
                   </ListItem>
                 )}
               </TabPanel>
+
+              {/* Tab 1: Features */}
               <TabPanel value={tabIndex} index={1}>
                 <Box>
                   {Array.isArray(productTab?.features) &&
@@ -1820,10 +1803,12 @@ const ProductDetail = () => {
                       return (
                         <Box key={listIndex} sx={{ marginBottom: 2 }}>
                           <Box
-                            display="flex"
-                            alignItems="center"
-                            gap={1}
-                            sx={{ width: "100%" }}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              width: "100%",
+                            }}
                           >
                             <FormControlLabel
                               value={listIndex}
@@ -1834,18 +1819,11 @@ const ProductDetail = () => {
                                     true
                                   }
                                   onClick={() => {
-                                    const isCurrentlyChecked =
-                                      productTab.features[listIndex]
-                                        ?.checked === true;
                                     const updatedFeatures =
-                                      productTab.features.map((f, i) =>
-                                        i === listIndex
-                                          ? {
-                                              ...f,
-                                              checked: !isCurrentlyChecked,
-                                            }
-                                          : { ...f, checked: false },
-                                      );
+                                      productTab.features.map((f, i) => ({
+                                        ...f,
+                                        checked: i === listIndex,
+                                      }));
                                     setProductTab({
                                       ...productTab,
                                       features: updatedFeatures,
@@ -1861,7 +1839,6 @@ const ProductDetail = () => {
                                   Features
                                 </Typography>
                               }
-                              sx={{ marginRight: 2 }}
                             />
                             <Box
                               sx={{
@@ -1871,6 +1848,23 @@ const ProductDetail = () => {
                                 gap: 1,
                               }}
                             >
+                              <IconButton
+                                size="small"
+                                onClick={() =>
+                                  setFeaturesHistoryIndex(
+                                    featuresHistoryIndex === listIndex
+                                      ? null
+                                      : listIndex,
+                                  )
+                                }
+                              >
+                                {featuresHistoryIndex === listIndex ? (
+                                  <ExpandLessIcon fontSize="small" />
+                                ) : (
+                                  <ExpandMoreIcon fontSize="small" />
+                                )}
+                              </IconButton>
+
                               {editMode.features &&
                               editingSetIndex === listIndex ? (
                                 <>
@@ -1901,12 +1895,6 @@ const ProductDetail = () => {
                                       ?.checked
                                       ? 1
                                       : 0.3,
-                                    transition: "opacity 0.2s ease-in-out",
-                                    pointerEvents: productTab.features[
-                                      listIndex
-                                    ]?.checked
-                                      ? "auto"
-                                      : "none",
                                   }}
                                 >
                                   <EditIcon fontSize="small" />
@@ -1920,11 +1908,6 @@ const ProductDetail = () => {
                               sx={{
                                 marginBottom: 1,
                                 marginLeft: "3px",
-                                maxWidth: "90ch",
-                                overflowWrap: "break-word",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
                               }}
                             >
                               {editMode.features &&
@@ -1946,7 +1929,6 @@ const ProductDetail = () => {
                                   label={`Feature ${featureIndex + 1}`}
                                   fullWidth
                                   variant="outlined"
-                                  margin="normal"
                                   size="small"
                                 />
                               ) : (
@@ -1959,6 +1941,74 @@ const ProductDetail = () => {
                               )}
                             </Box>
                           ))}
+
+                          {/* History dropdown under this feature set */}
+                          {featuresHistoryIndex === listIndex && (
+                            <Box
+                              sx={{
+                                ml: 6,
+                                mb: 1,
+                                p: 1,
+                                borderRadius: 1,
+                                border: "1px solid #e5e7eb",
+                                backgroundColor: "#f9fafb",
+                                maxHeight: 200,
+                                overflowY: "auto",
+                              }}
+                            >
+                              {aiHistory.features &&
+                              aiHistory.features.length > 0 ? (
+                                aiHistory.features.map((entry, hIndex) => {
+                                  const valueArray = Array.isArray(entry.value)
+                                    ? entry.value
+                                    : [entry.value];
+                                  return (
+                                    <Box
+                                      key={hIndex}
+                                      sx={{
+                                        mb: 0.5,
+                                        p: 0.5,
+                                        borderRadius: 0.5,
+                                        cursor: "pointer",
+                                        "&:hover": {
+                                          backgroundColor: "#e5e7eb",
+                                        },
+                                      }}
+                                      onClick={() =>
+                                        applyHistoryFeatures(
+                                          valueArray,
+                                          listIndex,
+                                        )
+                                      }
+                                    >
+                                      {valueArray.map((line, idx) => (
+                                        <Typography key={idx} variant="body2">
+                                          • {line}
+                                        </Typography>
+                                      ))}
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                        sx={{ display: "block", mt: 0.5 }}
+                                      >
+                                        {entry.type}
+                                        {entry.option
+                                          ? ` • ${entry.option}`
+                                          : ""}
+                                      </Typography>
+                                    </Box>
+                                  );
+                                })
+                              ) : (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  No history available.
+                                </Typography>
+                              )}
+                            </Box>
+                          )}
                         </Box>
                       );
                     })
@@ -1973,169 +2023,239 @@ const ProductDetail = () => {
                   )}
                 </Box>
               </TabPanel>
+
+              {/* Tab 2: Description */}
               <TabPanel value={tabIndex} index={2}>
                 {productTab?.description?.length > 0 ? (
                   <RadioGroup>
                     {productTab.description.map((desc, index) => {
                       const descValue = desc?.value || "";
-                      const isSelected = selectedDescription === descValue;
                       return (
-                        <ListItem
-                          key={index}
-                          sx={{
-                            fontWeight: "bold",
-                            fontSize: "16px",
-                            maxWidth: "90ch",
-                            overflowWrap: "break-word",
-                            display: "flex",
-                            alignItems: "flex-start",
-                            justifyContent: "space-between",
-                            transition: "all 0.2s ease-in-out",
-                            gap: 1,
-                          }}
-                        >
-                          {editMode.description &&
-                          selectedEditIndex === index ? (
+                        <Box key={index} sx={{ width: "100%", mb: 1 }}>
+                          <ListItem
+                            sx={{
+                              fontWeight: "bold",
+                              fontSize: "16px",
+                              maxWidth: "90ch",
+                              display: "flex",
+                              alignItems: "flex-start",
+                              justifyContent: "space-between",
+                              gap: 1,
+                            }}
+                          >
+                            {editMode.description &&
+                            selectedEditIndex === index ? (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 1,
+                                  width: "100%",
+                                  maxWidth: "550px",
+                                }}
+                              >
+                                <TextareaAutosize
+                                  value={editedDescription}
+                                  onChange={(e) =>
+                                    setEditedDescription(e.target.value)
+                                  }
+                                  placeholder="Edit Description"
+                                  minRows={3}
+                                  style={{
+                                    width: "100%",
+                                    fontSize: "16px",
+                                    padding: "10px",
+                                    borderRadius: "4px",
+                                    border: "1px solid #ccc",
+                                    fontFamily:
+                                      "Roboto, Helvetica, Arial, sans-serif",
+                                    resize: "vertical",
+                                    whiteSpace: "pre-line",
+                                    textAlign: "justify",
+                                  }}
+                                />
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    gap: 1,
+                                    alignItems: "flex-start",
+                                    mt: 0,
+                                  }}
+                                >
+                                  <IconButton
+                                    onClick={handleSaveClickDescription}
+                                  >
+                                    <SaveIcon />
+                                  </IconButton>
+                                  <IconButton
+                                    onClick={() =>
+                                      setEditMode({
+                                        ...editMode,
+                                        description: false,
+                                      })
+                                    }
+                                  >
+                                    <CancelIcon />
+                                  </IconButton>
+                                </Box>
+                              </Box>
+                            ) : (
+                              <>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "flex-start",
+                                    flexGrow: 1,
+                                  }}
+                                >
+                                  <FormControlLabel
+                                    value={descValue}
+                                    control={
+                                      <Radio
+                                        checked={desc.checked === true}
+                                        onClick={() => {
+                                          if (desc.checked) {
+                                            handleDescriptionChange({
+                                              target: { value: null },
+                                            });
+                                          } else {
+                                            handleDescriptionChange({
+                                              target: { value: descValue },
+                                            });
+                                          }
+                                        }}
+                                        sx={{
+                                          alignSelf: "flex-start",
+                                          mt: "3px",
+                                        }}
+                                      />
+                                    }
+                                    label={
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          fontSize: "16px",
+                                          whiteSpace: "pre-line",
+                                          textAlign: "justify",
+                                        }}
+                                      >
+                                        {descValue}
+                                      </Typography>
+                                    }
+                                  />
+                                </Box>
+
+                                <Box
+                                  sx={{
+                                    ml: "auto",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
+                                >
+                                  <IconButton
+                                    size="small"
+                                    onClick={() =>
+                                      setDescriptionHistoryIndex(
+                                        descriptionHistoryIndex === index
+                                          ? null
+                                          : index,
+                                      )
+                                    }
+                                  >
+                                    {descriptionHistoryIndex === index ? (
+                                      <ExpandLessIcon fontSize="small" />
+                                    ) : (
+                                      <ExpandMoreIcon fontSize="small" />
+                                    )}
+                                  </IconButton>
+
+                                  <IconButton
+                                    onClick={() => {
+                                      setSelectedEditIndex(index);
+                                      setEditedDescription(descValue);
+                                      setSelectedDescription(descValue);
+                                      setEditMode({
+                                        ...editMode,
+                                        description: true,
+                                      });
+                                    }}
+                                    sx={{
+                                      opacity: desc.checked ? 1 : 0.3,
+                                    }}
+                                  >
+                                    <EditIcon />
+                                  </IconButton>
+                                </Box>
+                              </>
+                            )}
+                          </ListItem>
+
+                          {descriptionHistoryIndex === index && (
                             <Box
                               sx={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 1,
-                                width: "100%",
-                                maxWidth: "550px",
+                                ml: 6,
+                                mb: 1,
+                                p: 1,
+                                borderRadius: 1,
+                                border: "1px solid #e5e7eb",
+                                backgroundColor: "#f9fafb",
+                                maxHeight: 200,
+                                overflowY: "auto",
                               }}
                             >
-                              <TextareaAutosize
-                                value={editedDescription}
-                                onChange={(e) =>
-                                  setEditedDescription(e.target.value)
-                                }
-                                placeholder="Edit Description"
-                                minRows={3}
-                                style={{
-                                  width: "100%",
-                                  fontSize: "16px",
-                                  padding: "10px",
-                                  borderRadius: "4px",
-                                  border: "1px solid #ccc",
-                                  fontFamily:
-                                    "Roboto, Helvetica, Arial, sans-serif",
-                                  resize: "vertical",
-                                  whiteSpace: "pre-line",
-                                  textAlign: "justify",
-                                }}
-                              />
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  gap: 1,
-                                  alignItems: "flex-start",
-                                  mt: 0,
-                                }}
-                              >
-                                <IconButton
-                                  onClick={handleSaveClickDescription}
-                                >
-                                  <SaveIcon />
-                                </IconButton>
-                                <IconButton
-                                  onClick={() =>
-                                    setEditMode({
-                                      ...editMode,
-                                      description: false,
-                                    })
-                                  }
-                                >
-                                  <CancelIcon />
-                                </IconButton>
-                              </Box>
-                            </Box>
-                          ) : (
-                            <>
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  flexGrow: 1,
-                                }}
-                              >
-                                <FormControlLabel
-                                  value={descValue}
-                                  control={
-                                    <Radio
-                                      checked={desc.checked === true}
-                                      onClick={() => {
-                                        if (desc.checked) {
-                                          handleDescriptionChange({
-                                            target: { value: null },
-                                          });
-                                        } else {
-                                          handleDescriptionChange({
-                                            target: { value: descValue },
-                                          });
-                                        }
-                                      }}
-                                      sx={{
-                                        alignSelf: "flex-start",
-                                        mt: "3px",
-                                      }}
-                                    />
-                                  }
-                                  label={
+                              {aiHistory.description &&
+                              aiHistory.description.length > 0 ? (
+                                aiHistory.description.map((entry, hIndex) => (
+                                  <Box
+                                    key={hIndex}
+                                    sx={{
+                                      mb: 0.5,
+                                      p: 0.5,
+                                      borderRadius: 0.5,
+                                      cursor: "pointer",
+                                      "&:hover": {
+                                        backgroundColor: "#e5e7eb",
+                                      },
+                                    }}
+                                    onClick={() =>
+                                      applyHistoryDescription(
+                                        entry.value,
+                                        index,
+                                      )
+                                    }
+                                  >
                                     <Typography
                                       variant="body2"
                                       sx={{
-                                        fontSize: "16px",
+                                        fontSize: "14px",
                                         whiteSpace: "pre-line",
                                         textAlign: "justify",
                                       }}
                                     >
-                                      {descValue}
+                                      {entry.value}
                                     </Typography>
-                                  }
-                                  sx={{
-                                    flexGrow: 1,
-                                    display: "flex",
-                                    alignItems: "flex-start",
-                                    margin: 0,
-                                  }}
-                                />
-                              </Box>
-                              {/* Edit icon aligned to top-right */}
-                              <Box
-                                sx={{
-                                  ml: "auto",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                }}
-                              >
-                                <IconButton
-                                  onClick={() => {
-                                    setSelectedEditIndex(index);
-                                    setEditedDescription(descValue);
-                                    setSelectedDescription(descValue);
-                                    setEditMode({
-                                      ...editMode,
-                                      description: true,
-                                    });
-                                  }}
-                                  sx={{
-                                    opacity: desc.checked ? 1 : 0.3,
-                                    transition: "opacity 0.2s ease-in-out",
-                                    pointerEvents: desc.checked
-                                      ? "auto"
-                                      : "none",
-                                    alignSelf: "flex-start",
-                                    mt: "2px",
-                                  }}
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ display: "block", mt: 0.5 }}
+                                    >
+                                      {entry.type}
+                                      {entry.option ? ` • ${entry.option}` : ""}
+                                    </Typography>
+                                  </Box>
+                                ))
+                              ) : (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
                                 >
-                                  <EditIcon />
-                                </IconButton>
-                              </Box>
-                            </>
+                                  No history available.
+                                </Typography>
+                              )}
+                            </Box>
                           )}
-                        </ListItem>
+                        </Box>
                       );
                     })}
                   </RadioGroup>
@@ -2155,8 +2275,142 @@ const ProductDetail = () => {
               </TabPanel>
             </Box>
           </Box>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
+
+      {/* Modals */}
+      <Modal
+        open={aiModalOpen}
+        onClose={handleCloseAIModal}
+        aria-labelledby="ai-modal-title"
+        aria-describedby="ai-modal-description"
+      >
+        <Box
+          sx={{
+            borderRadius: "40px",
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: 280, sm: 300 },
+            height: { xs: 272, sm: 300 },
+            bgcolor: "background.paper",
+            border: "2px solid #000",
+            boxShadow: 24,
+            p: 2,
+          }}
+        >
+          <div id="ai-modal-description">
+            <FetchApi
+              onClose={handleCloseAIModal}
+              onUpdateProduct={handleUpdateProduct}
+              product={product}
+            />
+          </div>
+        </Box>
+      </Modal>
+
+      <Modal
+        open={customPromptModalOpen}
+        onClose={() => setCustomPromptModalOpen(false)}
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "90%", sm: 650 },
+            bgcolor: "#d8ddca",
+            borderRadius: "22px",
+            p: 2.5,
+            boxShadow: 24,
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: "white",
+              border: "2px solid #2563eb",
+              borderRadius: "16px",
+              p: 2,
+            }}
+          >
+            <TextareaAutosize
+              minRows={4}
+              placeholder="Please enter your prompt"
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              style={{
+                width: "100%",
+                resize: "none",
+                border: "none",
+                outline: "none",
+                fontSize: "16px",
+                fontFamily: "inherit",
+              }}
+            />
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                mt: 1,
+              }}
+            >
+              <IconButton
+                disabled={!customPrompt.trim()}
+                onClick={() => {
+                  setIsAddingNewPrompt(true);
+                  setCustomPromptModalOpen(false);
+                  setSnackbarSeverity("success");
+                  setSnackbarMessage(
+                    "Custom prompt saved. Click Rewrite to apply it.",
+                  );
+                  setSnackbarOpen(true);
+                }}
+                sx={{
+                  bgcolor: "#90caf9",
+                  color: "white",
+                  width: 34,
+                  height: 34,
+                  "&:hover": { bgcolor: "#64b5f6" },
+                }}
+              >
+                <ArrowForwardIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1.5 }}>
+            {[
+              "Improve writing and readability",
+              "Make the content more concise",
+              "Make the content more detailed",
+              "Optimize content for SEO and GEO",
+              "Make longer",
+              "Make shorter",
+              "Break into bullet points",
+            ].map((text) => (
+              <Button
+                key={text}
+                size="small"
+                onClick={() => handleQuickPrompt(text)}
+                sx={{
+                  bgcolor: "#929786",
+                  color: "white",
+                  borderRadius: "18px",
+                  textTransform: "none",
+                  fontSize: "13px",
+                  px: 1.5,
+                  "&:hover": { bgcolor: "#7f8574" },
+                }}
+              >
+                ✦&nbsp; {text}
+              </Button>
+            ))}
+          </Box>
+        </Box>
+      </Modal>
+
       {/* Chatbot UI */}
       <IconButton
         onClick={toggleChat}

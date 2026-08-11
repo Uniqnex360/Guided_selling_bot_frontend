@@ -102,7 +102,13 @@ export default function FetchApi({ onClose, onUpdateProduct,product:initialProdu
     (!titleExists ? 1 : 0) +
     (!featuresExists ? 1 : 0) +
     (!descriptionExists ? 1 : 0);
-
+if (!product) {
+  return (
+    <Box sx={{ p: 3, display: "flex", justifyContent: "center" }}>
+      <CircularProgress />
+    </Box>
+  );
+}
   return (
     <Box
       sx={{
