@@ -45,6 +45,7 @@ import soonImg from "../assets/soon-img.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import DotLoading from "../Loading/DotLoading";
 import { API_BASE_URL } from "../../utils/config";
+import AIHistoryPopover from "./AIHistoryPopover";
 const DetailLabel = styled(Typography)(({ theme }) => ({
   fontWeight: 600,
   fontSize: "0.9rem",
@@ -89,7 +90,6 @@ const ProductDetail = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [userMessage, setUserMessage] = useState("");
-  const [aiSuggestions, setAISuggestions] = useState([]);
   const [aiModalOpen, setAIModalOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width:600px)");
   const [generating, setGenerating] = useState(false);
@@ -129,14 +129,15 @@ const ProductDetail = () => {
   const [selectedFeatures, setSelectedFeatures] = useState(
     productTab?.features || [],
   );
+  const [historyAnchorEl, setHistoryAnchorEl] = useState(null);
+  const [historyContext, setHistoryContext] = useState(null);
+
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [editedTitle, setEditedTitle] = useState("");
   const [getTitle, setGetTitle] = useState([]);
   const [getTitleRewrite, setGetTitleRewrite] = useState([]);
   const [getFeatures, setGetFeatures] = useState([]);
   const [getDescription, setGetDescription] = useState([]);
-  const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(null);
-  const [selectedFeatureValue, setSelectedFeatureValue] = useState("");
   const [editingSetIndex, setEditingSetIndex] = useState(null);
   const [editingFeatures, setEditingFeatures] = useState([]);
   const [getRewriteDescription, setGetRewriteDescription] = useState([]);
@@ -165,7 +166,6 @@ const ProductDetail = () => {
     features: [],
     description: [],
   });
-  const [historyOpenIndex, setHistoryOpenIndex] = useState(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [selectedEditIndex, setSelectedEditIndex] = useState(null);
   const [editedDescription, setEditedDescription] = useState("");
@@ -184,16 +184,16 @@ const ProductDetail = () => {
   }, []);
   useEffect(() => {
     if (!id) return;
-fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
-     .then((res) => res.json())
-.then((json) => {
-  const h = json.data || {};
-  setAiHistory({
-    title: h.title_history || [],
-    features: h.features_history || [],
-    description: h.description_history || [],
-  });
-})
+    fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
+      .then((res) => res.json())
+      .then((json) => {
+        const h = json.data || {};
+        setAiHistory({
+          title: h.title_history || [],
+          features: h.features_history || [],
+          description: h.description_history || [],
+        });
+      })
       .catch((err) => {
         console.error("Error fetching AI history", err);
       });
@@ -377,17 +377,7 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
     setEditingSetIndex(null);
     setEditMode({ ...editMode, features: false });
   };
-  const handleFeatureSetChange = (event, listIndex) => {
-    const updatedSelectedFeatures = [...selectedFeatures];
-    if (event.target.checked) {
-      updatedSelectedFeatures[listIndex] = productTab.features[listIndex].map(
-        (_, featureIndex) => featureIndex,
-      );
-    } else {
-      updatedSelectedFeatures[listIndex] = [];
-    }
-    setSelectedFeatures(updatedSelectedFeatures);
-  };
+  
   const handleLocalUpdate = (updatedFields) => {
     const updatedProductTab = {
       ...productTab,
@@ -428,7 +418,6 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
     handleLocalUpdate({ description: updatedDescriptions });
     const longDescription = finalValue;
     setUpdateDesc(longDescription);
-    console.log("✅ Selected Description:", longDescription);
   };
   const handleSaveClickDescription = () => {
     const updatedDescriptions = [...productTab.description];
@@ -475,7 +464,6 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
           setLoading(false);
         });
     }
-    console.log("✅ Final Long Description:", longDescription);
   };
   const handleSaveClick = (type) => {
     if (type === "title") {
@@ -485,7 +473,6 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
       handleLocalUpdate({ ...productTab, title: updatedTitles });
       seteditValueTitle(updatedTitles);
       console.log("0000", updatedTitles);
-      const checkedTitle = updatedTitles.find((t) => t.checked)?.value || "";
       if (updatedTitles) {
         fetch(`${API_BASE_URL}/updategeneratedContent/`, {
           method: "POST",
@@ -513,17 +500,7 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
     setEditMode({ ...editMode, title: false });
     setSelectedEditIndex(null);
   };
-  const handleTitleChange = (index) => {
-    const willBeChecked = !productTab.title[index].checked;
-    const updatedTitles = productTab.title.map((title, idx) => ({
-      ...title,
-      checked: idx === index ? willBeChecked : false,
-    }));
-    const newSelectedTitle = willBeChecked ? productTab.title[index].value : "";
-    setSelectedTitle(newSelectedTitle);
-    handleLocalUpdate({ title: updatedTitles });
-    setGetTitle(updatedTitles);
-  };
+
   useEffect(() => {
     const checkedTitle = productTab?.title?.find((title) => title?.checked);
     if (checkedTitle) {
@@ -538,14 +515,7 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
       setSelectedTitle(checkedTitle.value);
     }
   }, [productTab?.title]);
-  const handleRadioChange = (type, index, value) => {
-    setSelectedTitle(value);
-    const updatedTitles = productTab.title.map((title, i) => ({
-      ...title,
-      checked: i === index,
-    }));
-    handleLocalUpdate({ ...productTab, title: updatedTitles });
-  };
+ 
   const handleEditClickTitle = (type, index) => {
     setEditMode({ ...editMode, [type]: true });
     setSelectedEditIndex(index);
@@ -562,21 +532,8 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
       setSelectedDescription(checkedDescription.value);
     }
   }, [productTab?.description]);
-  const handleLocalUpdateDescription = (updatedProductTab) => {
-    console.log("Local state updated with:", updatedProductTab);
-    const selectedTitle =
-      updatedProductTab.title.find((item) => item.checked)?.value || "";
-    setFinalTitle(selectedTitle);
-    const selectedDescription =
-      updatedProductTab.description.find((item) => item.checked)?.value || "";
-    setFinalDescription(selectedDescription);
-  };
-  const handleEditClickDescription = (index) => {
-    setEditMode({ ...editMode, description: true });
-    setSelectedEditIndex(index);
-    const currentValue = productTab?.description?.[index]?.value || "";
-    setEditedDescription(currentValue);
-  };
+  
+
   const handleMinimize = () => {
     setIsMinimized(true);
     setIsMaximized(false);
@@ -585,10 +542,7 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
     setIsMaximized(true);
     setIsMinimized(false);
   };
-  const handleRestore = () => {
-    setIsMaximized(false);
-    setIsMinimized(false);
-  };
+  
   useEffect(() => {
     if (Array.isArray(productTab?.features)) {
       const initialSelectedFeatures = productTab.features.map(() => []);
@@ -609,96 +563,11 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
     };
     fetchPromptList();
   }, []);
-  const handleSelectChange = (e) => {
-    const value = e.target.value;
-    if (value === "__add_new__") {
-      setIsAddingNewPrompt(true);
-      setSelectedPrompt("");
-    } else {
-      setSelectedPrompt(value);
-      setIsAddingNewPrompt(false);
-    }
-  };
-  // const sendSelectedPromptToAPI = async () => {
-  //   const selectedPromptName = isAddingNewPrompt
-  //     ? customPrompt
-  //     : promptList.find((p) => p.id === selectedPrompt)?.name;
-  //   if (!selectedPromptName || selectedPromptName.trim() === "") {
-  //     alert("Please enter or select a prompt before submitting.");
-  //     return;
-  //   }
-  //   const selectedTitles =
-  //     productTab.title?.filter((item) => item.checked) || [];
-  //   const selectedDescriptions =
-  //     productTab.description?.filter((item) => item.checked) || [];
-  //   const selectedFeatures =
-  //     productTab.features?.filter((item) => item.checked) || [];
-  //   if (
-  //   selectedTitles.length === 0 &&
-  //   selectedDescriptions.length === 0 &&
-  //   selectedFeatures.length === 0
-  // ) {
-  //   setSnackbarSeverity("warning");
-  //   setSnackbarMessage("Select a title, feature set, or description to rewrite.");
-  //   setSnackbarOpen(true);
-  //   return;
-  // }
-  // setRewriting(true);
-  // setSnackbarSeverity("info");
-  // setSnackbarMessage("Rewriting selected content...");
-  // setSnackbarOpen(true);
-
-  //   const requestPayload = {
-  //     option: selectedPromptName,
-  //     title: selectedTitles,
-  //     description: selectedDescriptions,
-  //     features: selectedFeatures,
-  //     product_id: id,
-  //   };
-  //   try {
-  //     const response = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify(requestPayload),
-  //     });
-  //     const result = await response.json();
-  //     if (result.status && result.message === "success") {
-  //       const updatedTitle = result.data?.title || [];
-  //       const updatedDescription = result.data?.description || [];
-  //       const updatedFeaturesRes = result.data?.features || [];
-  //       setProductTab({
-  //         title: updatedTitle,
-  //         description: updatedDescription,
-  //         features: updatedFeaturesRes,
-  //       });
-  //       const selectedTitle =
-  //         updatedTitle.find((item) => item?.checked)?.value || "";
-  //       setGetTitle(selectedTitle);
-  //       const selectedDescription =
-  //         updatedDescription.find((item) => item?.checked)?.value || "";
-  //       setUpdateDesc(selectedDescription);
-  //       const selectedFeatures = updatedFeaturesRes
-  //         .filter((item) => item?.checked)
-  //         .flatMap((item) => item?.value || []);
-  //       setGetFeatures(selectedFeatures);
-  //       console.log("Updated Features:", selectedFeatures);
-  //       setSnackbarMessage("AI content Rewrite successfully!");
-  //     } else {
-  //       setSnackbarMessage("Something went wrong. Please try again.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error sending data to API:", error);
-  //     setSnackbarMessage("Something went wrong. Please try again.");
-  //   }
-  //   setSnackbarOpen(true);
-  // };
+ 
 
   const handleQuickPrompt = (text) => {
     setCustomPrompt(text);
 
-    // Notify the user
     setSnackbarSeverity("info");
     setSnackbarMessage(`Prompt selected: "${text}". Click → to apply.`);
     setSnackbarOpen(true);
@@ -710,7 +579,6 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
         ? customPrompt
         : promptList.find((p) => p.id === selectedPrompt)?.name;
 
-    // Coerce to string so .trim() never throws
     const selectedPromptName =
       rawPromptName != null ? String(rawPromptName) : "";
 
@@ -761,12 +629,12 @@ fetch(`${API_BASE_URL}/fetchAiHistory/${id}/`)
       });
       const result = await response.json();
       const apiError = result?.data?.error || result?.error;
-if (apiError) {
-  setSnackbarSeverity("warning");
-  setSnackbarMessage(apiError);
-  setSnackbarOpen(true);
-  return;
-}
+      if (apiError) {
+        setSnackbarSeverity("warning");
+        setSnackbarMessage(apiError);
+        setSnackbarOpen(true);
+        return;
+      }
 
       if (result.status && result.message === "success") {
         setProductTab({
@@ -970,12 +838,7 @@ if (apiError) {
         setLoading(false);
       });
   };
-  const handleAISuggestionSelect = (suggestion) => {
-    setAIModalOpen(false);
-  };
-  const fetchAIOptions = () => {
-    setAISuggestions(["AI Feature 1", "AI Feature 2", "AI Description"]);
-  };
+ 
   const handleTabChange = (event, newTabIndex) => {
     setTabIndex(newTabIndex);
   };
@@ -994,13 +857,7 @@ if (apiError) {
     hasAiContent(productTab?.title) ||
     hasAiContent(productTab?.description) ||
     hasAiContent(productTab?.features);
-  const hasAllContent =
-    hasAiContent(productTab?.title) &&
-    hasAiContent(productTab?.description) &&
-    hasAiContent(productTab?.features);
-  const hasTitleAi = hasAiContent(productTab?.title);
-  const hasFeaturesAi = hasAiContent(productTab?.features);
-  const hasDescriptionAi = hasAiContent(productTab?.description);
+  
 
   const hasSelectedAiContent =
     (Array.isArray(productTab?.title) &&
@@ -1020,27 +877,24 @@ if (apiError) {
   let aiButtonOnClick = () => {};
   let aiButtonDisabled = false;
   if (!hasAnyContent) {
-    // No AI content at all → pure generate
     aiButtonLabel = "Generate Content With AI";
     aiButtonOnClick = () => {
       setGenerating(true);
-      handleAIOptions(); // opens FetchApi modal
+      handleAIOptions(); 
     };
     aiButtonDisabled = generating;
   } else if (hasSelectedAiContent && hasPrompt) {
-    // Some AI content is selected AND we have a prompt → direct regenerate
     aiButtonLabel = rewriting ? "Regenerating..." : "Regenerate";
     aiButtonOnClick = () => {
-      sendSelectedPromptToAPI(); // direct rewrite, no modal
+      sendSelectedPromptToAPI(); 
     };
     aiButtonDisabled = rewriting;
   } else {
-    // We have some AI content, but either nothing is selected OR no prompt yet
-    // Treat this as "generate/complete content with AI" using the modal
+    
     aiButtonLabel = "Generate Content With AI";
     aiButtonOnClick = () => {
       setGenerating(true);
-      handleAIOptions(); // FetchApi will decide what to generate (e.g., desc/features only)
+      handleAIOptions();
     };
     aiButtonDisabled = generating;
   }
@@ -1054,7 +908,6 @@ if (apiError) {
 
   return (
     <Container sx={{ maxWidth: "100%", margin: "0 auto" }}>
-      {/* Top bar: back + AI buttons */}
       <Box
         mb={2}
         sx={{
@@ -1082,7 +935,6 @@ if (apiError) {
             flexWrap: "wrap",
           }}
         >
-          {/* Combined AI button: Generate or Regenerate depending on state */}
           <Tooltip
             title={
               !hasAnyContent
@@ -1149,7 +1001,6 @@ if (apiError) {
             {updating ? "Updating..." : "Update"}
           </Button>
 
-          {/* Previous + Next navigation */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: 1 }}>
             <Tooltip
               title={
@@ -1220,9 +1071,7 @@ if (apiError) {
         </Box>
       </Box>
 
-      {/* TWO-COLUMN LAYOUT: 
-          LEFT = image + existing description/features,
-          RIGHT = AI title/features/description tabs */}
+     
       <Box
         sx={{
           mt: 0,
@@ -1232,14 +1081,12 @@ if (apiError) {
           gap: 4,
         }}
       >
-        {/* LEFT COLUMN: image + REAL description/features */}
         <Box
           sx={{
             flex: "0 0 auto",
             maxWidth: { xs: "100%", md: 520 },
           }}
         >
-          {/* Image + thumbnails */}
           <Box
             sx={{
               display: "flex",
@@ -1249,7 +1096,6 @@ if (apiError) {
               mb: 2,
             }}
           >
-            {/* Thumbnails */}
             <Box
               sx={{
                 display: "flex",
@@ -1282,7 +1128,6 @@ if (apiError) {
               })}
             </Box>
 
-            {/* Main image */}
             <Box
               sx={{
                 width: "100%",
@@ -1343,7 +1188,6 @@ if (apiError) {
             )}
           </Card>
 
-          {/* Existing Features card */}
           <Card sx={{ maxWidth: 510 }}>
             <Box
               display="flex"
@@ -1421,7 +1265,6 @@ if (apiError) {
           </Card>
         </Box>
 
-        {/* RIGHT COLUMN: AI content (title/price/meta + tabs) */}
         <Box
           sx={{
             flex: 1,
@@ -1444,7 +1287,6 @@ if (apiError) {
             {product?.product_name || "Product Title Not Available"}
           </Typography>
 
-          {/* Price */}
           <Box
             sx={{
               display: "flex",
@@ -1495,7 +1337,6 @@ if (apiError) {
             )}
           </Box>
 
-          {/* SKU / MPN */}
           <Box sx={{ display: "flex", flexDirection: "row", mb: 2, gap: 4 }}>
             <Box
               sx={{
@@ -1523,7 +1364,6 @@ if (apiError) {
             </Box>
           </Box>
 
-          {/* Category / Vendor / Brand */}
           <Box
             sx={{
               display: "flex",
@@ -1570,7 +1410,6 @@ if (apiError) {
             </Box>
           </Box>
 
-          {/* Tabs */}
           <Box sx={{ width: "100%", overflowX: "auto" }}>
             <Tabs
               value={tabIndex}
@@ -1679,26 +1518,25 @@ if (apiError) {
                                     }
                                   />
                                 </Box>
-
-                                {/* History chevron */}
-                                <IconButton
-                                  size="small"
-                                  onClick={() =>
-                                    setTitleHistoryIndex(
-                                      titleHistoryIndex === index
-                                        ? null
-                                        : index,
-                                    )
-                                  }
-                                  sx={{ mr: 0.5 }}
-                                >
-                                  {titleHistoryIndex === index ? (
-                                    <ExpandLessIcon fontSize="small" />
-                                  ) : (
-                                    <ExpandMoreIcon fontSize="small" />
-                                  )}
-                                </IconButton>
-
+                                <Tooltip title="View History" arrow>
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      setHistoryAnchorEl(e.currentTarget);
+                                      setHistoryContext({
+                                        type: "title",
+                                        rowIndex: index,
+                                      });
+                                    }}
+                                    sx={{ mr: 0.5 }}
+                                  >
+                                    {titleHistoryIndex === index ? (
+                                      <ExpandLessIcon fontSize="small" />
+                                    ) : (
+                                      <ExpandMoreIcon fontSize="small" />
+                                    )}
+                                  </IconButton>
+                                </Tooltip>
                                 <IconButton
                                   onClick={() =>
                                     handleEditClickTitle("title", index)
@@ -1711,8 +1549,6 @@ if (apiError) {
                             )}
                           </ListItem>
 
-                          {/* History dropdown under this row */}
-                          {/* History dropdown under this row */}
                           {titleHistoryIndex === index && (
                             <Box
                               sx={{
@@ -1791,7 +1627,6 @@ if (apiError) {
                 )}
               </TabPanel>
 
-              {/* Tab 1: Features */}
               <TabPanel value={tabIndex} index={1}>
                 <Box>
                   {Array.isArray(productTab?.features) &&
@@ -1848,23 +1683,24 @@ if (apiError) {
                                 gap: 1,
                               }}
                             >
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  setFeaturesHistoryIndex(
-                                    featuresHistoryIndex === listIndex
-                                      ? null
-                                      : listIndex,
-                                  )
-                                }
-                              >
-                                {featuresHistoryIndex === listIndex ? (
-                                  <ExpandLessIcon fontSize="small" />
-                                ) : (
-                                  <ExpandMoreIcon fontSize="small" />
-                                )}
-                              </IconButton>
-
+                              <Tooltip title="View History" arrow>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    setHistoryAnchorEl(e.currentTarget);
+                                    setHistoryContext({
+                                      type: "features",
+                                      rowIndex: listIndex,
+                                    });
+                                  }}
+                                >
+                                  {featuresHistoryIndex === listIndex ? (
+                                    <ExpandLessIcon fontSize="small" />
+                                  ) : (
+                                    <ExpandMoreIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </Tooltip>
                               {editMode.features &&
                               editingSetIndex === listIndex ? (
                                 <>
@@ -1942,7 +1778,6 @@ if (apiError) {
                             </Box>
                           ))}
 
-                          {/* History dropdown under this feature set */}
                           {featuresHistoryIndex === listIndex && (
                             <Box
                               sx={{
@@ -2024,7 +1859,6 @@ if (apiError) {
                 </Box>
               </TabPanel>
 
-              {/* Tab 2: Description */}
               <TabPanel value={tabIndex} index={2}>
                 {productTab?.description?.length > 0 ? (
                   <RadioGroup>
@@ -2153,23 +1987,24 @@ if (apiError) {
                                     gap: 1,
                                   }}
                                 >
-                                  <IconButton
-                                    size="small"
-                                    onClick={() =>
-                                      setDescriptionHistoryIndex(
-                                        descriptionHistoryIndex === index
-                                          ? null
-                                          : index,
-                                      )
-                                    }
-                                  >
-                                    {descriptionHistoryIndex === index ? (
-                                      <ExpandLessIcon fontSize="small" />
-                                    ) : (
-                                      <ExpandMoreIcon fontSize="small" />
-                                    )}
-                                  </IconButton>
-
+                                  <Tooltip title="View History" arrow>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+  setHistoryAnchorEl(e.currentTarget);
+  setHistoryContext({ type: "description", rowIndex: index });
+}}
+                                    >
+                                      {descriptionHistoryIndex === index ? (
+                                        <ExpandLessIcon fontSize="small" />
+                                      ) : (
+                                        <ExpandMoreIcon
+                                          fontSize="small"
+                                          hover
+                                        />
+                                      )}
+                                    </IconButton>
+                                  </Tooltip>
                                   <IconButton
                                     onClick={() => {
                                       setSelectedEditIndex(index);
@@ -2278,7 +2113,6 @@ if (apiError) {
         </Box>
       </Box>
 
-      {/* Modals */}
       <Modal
         open={aiModalOpen}
         onClose={handleCloseAIModal}
@@ -2411,7 +2245,6 @@ if (apiError) {
         </Box>
       </Modal>
 
-      {/* Chatbot UI */}
       <IconButton
         onClick={toggleChat}
         sx={{
@@ -2490,7 +2323,6 @@ if (apiError) {
                   </IconButton>
                 </span>
               </Tooltip>
-              {/* Close Button */}
               <Tooltip title="Close" arrow>
                 <IconButton
                   size="small"
@@ -2605,10 +2437,8 @@ if (apiError) {
                 </Paper>
               </Box>
             )}
-            {/* Scroll to bottom reference */}
             <div ref={messagesEndRef} />
           </Box>
-          {/* Input Box */}
           <Box
             sx={{
               display: "flex",
@@ -2642,11 +2472,23 @@ if (apiError) {
                 justifyContent: "center",
               }}
             >
-              <SendIcon sx={{ fontSize: 18 }} /> {/* 👈 Smaller icon */}
+              <SendIcon sx={{ fontSize: 18 }} />
             </Button>
           </Box>
         </Box>
       )}
+      <AIHistoryPopover
+        anchorEl={historyAnchorEl}
+        context={historyContext}
+        aiHistory={aiHistory}
+        onClose={() => {
+          setHistoryAnchorEl(null);
+          setHistoryContext(null);
+        }}
+        onApplyTitle={applyHistoryTitle}
+        onApplyFeatures={applyHistoryFeatures}
+        onApplyDescription={applyHistoryDescription}
+      />
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3000}
