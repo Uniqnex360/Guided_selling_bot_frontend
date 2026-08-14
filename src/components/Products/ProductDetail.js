@@ -487,16 +487,17 @@ const discountPercentage =
                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
               }}
             >
-              <img
-                alt="Product"
-                src={mainImage || soonImg}
-                style={{
-                  width: "100%",
-                  height: 340,
-                  objectFit: "cover",
-                  display: "block",
-                }}
-              />
+            <img
+  alt="Product"
+  src={mainImage || soonImg}
+  style={{
+    width: "100%",
+    height: 340,
+    objectFit: "contain",
+    display: "block",
+    backgroundColor: "#ffffff",
+  }}
+/>
               <Box
                 sx={{
                   position: "absolute",
@@ -553,7 +554,7 @@ const discountPercentage =
                       <img
                         src={img}
                         alt={`Thumbnail ${index + 1}`}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "6px" }}
+                        style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: "6px" }}
                       />
                     </Box>
                   );
