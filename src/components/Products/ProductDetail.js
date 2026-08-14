@@ -64,52 +64,56 @@ const ProductDetail = () => {
   const currentPage = queryParams.get("page") || 0;
 
   // Convert "USD" to "$" symbol
-const rawCurrency = product?.currency;
-const currencySymbol = (!rawCurrency || rawCurrency.toUpperCase() === "USD") ? "$" : rawCurrency;
+  const rawCurrency = product?.currency;
+  const currencySymbol =
+    !rawCurrency || rawCurrency.toUpperCase() === "USD" ? "$" : rawCurrency;
 
-// Format numbers with commas (e.g., 1423.84 -> 1,423.84)
-const formatPrice = (val) => {
-  if (val == null || isNaN(val)) return null;
-  const num = Number(val);
-  return num % 1 === 0
-    ? num.toLocaleString("en-US")
-    : num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
+  // Format numbers with commas (e.g., 1423.84 -> 1,423.84)
+  const formatPrice = (val) => {
+    if (val == null || isNaN(val)) return null;
+    const num = Number(val);
+    return num % 1 === 0
+      ? num.toLocaleString("en-US")
+      : num.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+  };
 
-const currentPrice = formatPrice(product?.list_price);
-const originalPrice = formatPrice(product?.was_price);
-const pushFieldToProduct = async (field, value) => {
-  const fieldMap = {
-    title: "product_name",
-    description: "long_description",
-    features: "features",
-  };
-  const payload = {
-    product_id: id,
-    product_obj: { [fieldMap[field]]: value },
-  };
-  try {
-    const response = await fetch(`${API_BASE_URL}/updateProductContent/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (data?.status) {
-      fetchProductDetails(id);
+  const currentPrice = formatPrice(product?.list_price);
+  const originalPrice = formatPrice(product?.was_price);
+  const pushFieldToProduct = async (field, value) => {
+    const fieldMap = {
+      title: "product_name",
+      description: "long_description",
+      features: "features",
+    };
+    const payload = {
+      product_id: id,
+      product_obj: { [fieldMap[field]]: value },
+    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/updateProductContent/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (data?.status) {
+        fetchProductDetails(id);
+      }
+    } catch (error) {
+      console.error("Error pushing field to product:", error);
     }
-  } catch (error) {
-    console.error("Error pushing field to product:", error);
-  }
-};
-const discountPercentage =
-  product?.discount &&
-  typeof product.discount === "string" &&
-  product.discount !== "NaN%"
-    ? product.discount
-    : typeof product?.discount === "number" && !isNaN(product.discount)
-      ? `${product.discount}%`
-      : "";
+  };
+  const discountPercentage =
+    product?.discount &&
+    typeof product.discount === "string" &&
+    product.discount !== "NaN%"
+      ? product.discount
+      : typeof product?.discount === "number" && !isNaN(product.discount)
+        ? `${product.discount}%`
+        : "";
 
   const showSnackbar = (severity, message) => {
     setSnackbarSeverity(severity);
@@ -325,7 +329,8 @@ const discountPercentage =
     );
 
   const imagesList = product?.images?.length ? product.images : [mainImage];
-  const currentImageIndex = imagesList.indexOf(mainImage) >= 0 ? imagesList.indexOf(mainImage) + 1 : 1;
+  const currentImageIndex =
+    imagesList.indexOf(mainImage) >= 0 ? imagesList.indexOf(mainImage) + 1 : 1;
 
   return (
     <Container
@@ -360,27 +365,34 @@ const discountPercentage =
             >
               Back to Products
             </Button>
-            <Typography sx={{ color: "#9ca3af", fontSize: "0.875rem" }}>/</Typography>
-            <Typography sx={{ color: "#111827", fontSize: "0.875rem", fontWeight: 500 }}>
+            <Typography sx={{ color: "#9ca3af", fontSize: "0.875rem" }}>
+              /
+            </Typography>
+            <Typography
+              sx={{ color: "#111827", fontSize: "0.875rem", fontWeight: 500 }}
+            >
               Product details
             </Typography>
           </Box>
 
-<Typography
-  variant="caption"
-  sx={{
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    fontWeight: 400,
-    color: "#6b7280",
-    fontSize: "0.75rem",
-    display: "block",
-  }}
->
-  PRODUCT WORKSPACE
-</Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              fontWeight: 400,
+              color: "#6b7280",
+              fontSize: "0.75rem",
+              display: "block",
+            }}
+          >
+            PRODUCT WORKSPACE
+          </Typography>
 
-          <Typography variant="h4" sx={{ fontWeight: 400, color: "#111827", mt: 0.5 }}>
+          <Typography
+            variant="h4"
+            sx={{ fontWeight: 400, color: "#111827", mt: 0.5 }}
+          >
             Product details
           </Typography>
 
@@ -391,7 +403,14 @@ const discountPercentage =
         </Box>
 
         {/* Action Button */}
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: { xs: 1, sm: 0 } }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            alignItems: "center",
+            mt: { xs: 1, sm: 0 },
+          }}
+        >
           <Tooltip title="Previous product">
             <span>
               <IconButton
@@ -474,7 +493,8 @@ const discountPercentage =
             justifyContent: "space-between",
             borderRight: { md: "1px solid #e5e7eb" },
             borderBottom: { xs: "1px solid #e5e7eb", md: "none" },
-          }}>
+          }}
+        >
           <Box>
             {/* Main Image Wrapper with Overlay Badge */}
             <Box
@@ -487,17 +507,17 @@ const discountPercentage =
                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
               }}
             >
-            <img
-  alt="Product"
-  src={mainImage || soonImg}
-  style={{
-    width: "100%",
-    height: 340,
-    objectFit: "contain",
-    display: "block",
-    backgroundColor: "#ffffff",
-  }}
-/>
+              <img
+                alt="Product"
+                src={mainImage || soonImg}
+                style={{
+                  width: "100%",
+                  height: 340,
+                  objectFit: "contain",
+                  display: "block",
+                  backgroundColor: "#ffffff",
+                }}
+              />
               <Box
                 sx={{
                   position: "absolute",
@@ -531,7 +551,15 @@ const discountPercentage =
             </Box>
 
             {/* Thumbnails Row */}
-            <Box sx={{ display: "flex", gap: 1.5, mt: 2, flexWrap: "wrap", alignItems: "center" }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1.5,
+                mt: 2,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
               {product?.images?.length > 0 ? (
                 product.images.map((img, index) => {
                   if (!img) return null;
@@ -546,7 +574,9 @@ const discountPercentage =
                         borderRadius: "8px",
                         overflow: "hidden",
                         cursor: "pointer",
-                        border: isSelected ? "2px solid #1b4d3e" : "1px solid #d1d5db",
+                        border: isSelected
+                          ? "2px solid #1b4d3e"
+                          : "1px solid #d1d5db",
                         bgcolor: "#fff",
                         p: "2px",
                       }}
@@ -554,7 +584,12 @@ const discountPercentage =
                       <img
                         src={img}
                         alt={`Thumbnail ${index + 1}`}
-                        style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: "6px" }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "contain",
+                          borderRadius: "6px",
+                        }}
                       />
                     </Box>
                   );
@@ -573,7 +608,12 @@ const discountPercentage =
                   <img
                     src={mainImage || soonImg}
                     alt="Thumbnail 1"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "6px" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      borderRadius: "6px",
+                    }}
                   />
                 </Box>
               )}
@@ -599,30 +639,85 @@ const discountPercentage =
             </Box>
           </Box>
 
-<Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 3, pt: 1 }}>
-  <Typography variant="caption" sx={{ color: "#6b7280", fontFamily: "monospace, sans-serif", fontSize: "0.75rem" }}>
-    Product images
-  </Typography>
-  <Typography variant="caption" sx={{ color: "#6b7280", fontFamily: "monospace, sans-serif", fontSize: "0.75rem" }}>
-    {currentImageIndex} of {imagesList.length}
-  </Typography>
-</Box>
-</Box>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mt: 3,
+              pt: 1,
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#6b7280",
+                fontFamily: "monospace, sans-serif",
+                fontSize: "0.75rem",
+              }}
+            >
+              Product images
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#6b7280",
+                fontFamily: "monospace, sans-serif",
+                fontSize: "0.75rem",
+              }}
+            >
+              {currentImageIndex} of {imagesList.length}
+            </Typography>
+          </Box>
+        </Box>
 
-        <Box sx={{ flex: 1, p: { xs: 3, md: 4 }, display: "flex", flexDirection: "column" }}>
+        <Box
+          sx={{
+            flex: 1,
+            p: { xs: 3, md: 4 },
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {/* Status & Recency Bar */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#10b981" }} />
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  bgcolor: "#10b981",
+                }}
+              />
               <Typography
                 variant="caption"
-                sx={{ fontWeight: 400, color: "#374151", letterSpacing: "0.05em", fontSize: "0.75rem", fontFamily: "monospace, sans-serif", }}
+                sx={{
+                  fontWeight: 400,
+                  color: "#374151",
+                  letterSpacing: "0.05em",
+                  fontSize: "0.75rem",
+                  fontFamily: "monospace, sans-serif",
+                }}
               >
                 ACTIVE LISTING
               </Typography>
             </Box>
-            <Typography variant="caption" sx={{ color: "#9ca3af", fontSize: "0.75rem" }}>•</Typography>
-            <Typography variant="caption" sx={{ color: "#6b7280", letterSpacing: "0.05em", fontSize: "0.75rem", fontFamily: "monospace, sans-serif"}}>
+            <Typography
+              variant="caption"
+              sx={{ color: "#9ca3af", fontSize: "0.75rem" }}
+            >
+              •
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#6b7280",
+                letterSpacing: "0.05em",
+                fontSize: "0.75rem",
+                fontFamily: "monospace, sans-serif",
+              }}
+            >
               LAST UPDATED 2 MIN AGO
             </Typography>
           </Box>
@@ -641,48 +736,53 @@ const discountPercentage =
             {product?.product_name || "Product Title Not Available"}
           </Typography>
 
-      {/* Pricing Bar */}
-<Box sx={{ display: "flex", alignItems: "baseline", gap: 1.25, mb: 4 }}>
-  {currentPrice && (
-    <Typography
-      sx={{
-        fontWeight: 700,
-        color: "#1b4d3e",
-        fontSize: { xs: "1.35rem", sm: "1.6rem" },
-        letterSpacing: "-0.02em",
-      }}
-    >
-      {currencySymbol}{currentPrice}
-    </Typography>
-  )}
+          {/* Pricing Bar */}
+          <Box
+            sx={{ display: "flex", alignItems: "baseline", gap: 1.25, mb: 4 }}
+          >
+            {currentPrice && (
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  color: "#1b4d3e",
+                  fontSize: { xs: "1.35rem", sm: "1.6rem" },
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {currencySymbol}
+                {currentPrice}
+              </Typography>
+            )}
 
-  {originalPrice && Number(product?.was_price) > Number(product?.list_price) && (
-    <Typography
-      variant="body2"
-      sx={{
-        color: "#9ca3af",
-        textDecoration: "line-through",
-        fontSize: "0.95rem",
-      }}
-    >
-      {currencySymbol}{originalPrice}
-    </Typography>
-  )}
+            {originalPrice &&
+              Number(product?.was_price) > Number(product?.list_price) && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#9ca3af",
+                    textDecoration: "line-through",
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  {currencySymbol}
+                  {originalPrice}
+                </Typography>
+              )}
 
-  {discountPercentage && (
-    <Typography
-      variant="caption"
-      sx={{
-        color: "#1b4d3e",
-        fontWeight: 600,
-        fontSize: "0.8rem",
-        letterSpacing: "0.02em",
-      }}
-    >
-      {discountPercentage} OFF
-    </Typography>
-  )}
-</Box>
+            {discountPercentage && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "#1b4d3e",
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {discountPercentage} OFF
+              </Typography>
+            )}
+          </Box>
 
           {/* Stacked 2x2 Grid for Fields */}
           <Box
@@ -696,11 +796,21 @@ const discountPercentage =
             <Box>
               <Typography
                 variant="caption"
-                sx={{ color: "#6b7280", fontWeight: 400, letterSpacing: "0.05em", display: "block", mb: 0.5, fontFamily: "monospace, sans-serif" }}
+                sx={{
+                  color: "#6b7280",
+                  fontWeight: 400,
+                  letterSpacing: "0.05em",
+                  display: "block",
+                  mb: 0.5,
+                  fontFamily: "monospace, sans-serif",
+                }}
               >
                 SKU
               </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 400, color: "#111827" }}>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: 400, color: "#111827" }}
+              >
                 {product?.sku_number_product_code_item_number || "N/A"}
               </Typography>
             </Box>
@@ -708,11 +818,21 @@ const discountPercentage =
             <Box>
               <Typography
                 variant="caption"
-                sx={{ color: "#6b7280", fontWeight: 400, letterSpacing: "0.05em", display: "block", mb: 0.5, fontFamily: "monospace, sans-serif"}}
+                sx={{
+                  color: "#6b7280",
+                  fontWeight: 400,
+                  letterSpacing: "0.05em",
+                  display: "block",
+                  mb: 0.5,
+                  fontFamily: "monospace, sans-serif",
+                }}
               >
                 MPN
               </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 400, color: "#111827" }}>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: 400, color: "#111827" }}
+              >
                 {product?.mpn || "N/A"}
               </Typography>
             </Box>
@@ -720,11 +840,21 @@ const discountPercentage =
             <Box>
               <Typography
                 variant="caption"
-                sx={{ color: "#6b7280", fontWeight: 400, letterSpacing: "0.05em", display: "block", mb: 0.5, fontFamily: "monospace, sans-serif" }}
+                sx={{
+                  color: "#6b7280",
+                  fontWeight: 400,
+                  letterSpacing: "0.05em",
+                  display: "block",
+                  mb: 0.5,
+                  fontFamily: "monospace, sans-serif",
+                }}
               >
                 CATEGORY
               </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 400, color: "#111827" }}>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: 400, color: "#111827" }}
+              >
                 {product?.end_level_category || "N/A"}
               </Typography>
             </Box>
@@ -732,11 +862,21 @@ const discountPercentage =
             <Box>
               <Typography
                 variant="caption"
-                sx={{ color: "#6b7280", fontWeight: 400, letterSpacing: "0.05em", display: "block", mb: 0.5, fontFamily: "monospace, sans-serif" }}
+                sx={{
+                  color: "#6b7280",
+                  fontWeight: 400,
+                  letterSpacing: "0.05em",
+                  display: "block",
+                  mb: 0.5,
+                  fontFamily: "monospace, sans-serif",
+                }}
               >
                 BRAND
               </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 400, color: "#111827" }}>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: 400, color: "#111827" }}
+              >
                 {product?.brand_name || "N/A"}
               </Typography>
             </Box>
@@ -744,14 +884,14 @@ const discountPercentage =
         </Box>
       </Box>
 
-     <ContentStudio
-  id={id}
-  product={product}
-  productTab={productTab}
-  setProductTab={setProductTab}
-  onSnackbar={showSnackbar}
-  onApplyToProduct={pushFieldToProduct}
-/>
+      <ContentStudio
+        id={id}
+        product={product}
+        productTab={productTab}
+        setProductTab={setProductTab}
+        onSnackbar={showSnackbar}
+        onApplyToProduct={pushFieldToProduct}
+      />
 
       {/* Chat Widget (unchanged) */}
       <IconButton
