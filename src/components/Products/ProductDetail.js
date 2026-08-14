@@ -392,7 +392,39 @@ const discountPercentage =
 
         {/* Action Button */}
         <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: { xs: 1, sm: 0 } }}>
-          <Button
+          <Tooltip title="Previous product">
+            <span>
+              <IconButton
+                onClick={handlePrevious}
+                disabled={currentIndex <= 0}
+                sx={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  color: "#374151",
+                }}
+              >
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Next product">
+            <span>
+              <IconButton
+                onClick={handleNext}
+                disabled={
+                  currentIndex === -1 || currentIndex >= productIds.length - 1
+                }
+                sx={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  color: "#374151",
+                }}
+              >
+                <ArrowForwardIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          {/* <Button
             variant="contained"
             onClick={handleUpdateProductTotal}
             disabled={loading || !hasAnyContent || updating}
@@ -415,7 +447,7 @@ const discountPercentage =
             }}
           >
             {updating ? "Updating..." : "Update product"}
-          </Button>
+          </Button> */}
         </Box>
       </Box>
 
