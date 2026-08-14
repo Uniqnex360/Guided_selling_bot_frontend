@@ -61,16 +61,19 @@ export default function ContentStudio({
   productTab,
   setProductTab,
   onSnackbar,
-  onApplyToProduct
+  onApplyToProduct,
 }) {
   const [tabIndex, setTabIndex] = useState(0);
   const fieldKeys = ["title", "features", "description"];
   const field = fieldKeys[tabIndex];
   const maxRewriteLimit = Number(process.env.REACT_APP_MAX_REWRITE_COUNT);
   const [historyOpen, setHistoryOpen] = useState(false);
-const [history, setHistory] = useState({ title: [], features: [], description: [] });
-const [loadingHistory, setLoadingHistory] = useState(false);
-
+  const [history, setHistory] = useState({
+    title: [],
+    features: [],
+    description: [],
+  });
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const versions = productTab?.[field] || [];
 
@@ -82,20 +85,20 @@ const [loadingHistory, setLoadingHistory] = useState(false);
     description: "",
   });
   const fetchHistory = () => {
-  setLoadingHistory(true);
-  fetch(`${API_BASE_URL}/fetchAiHistory/${id}`)
-    .then((res) => res.json())
-    .then((data) => {
-      const payload = data?.data || data || {};
-      setHistory({
-        title: payload.title_history || [],
-        features: payload.features_history || [],
-        description: payload.description_history || [],
-      });
-    })
-    .catch((err) => console.error("History fetch error:", err))
-    .finally(() => setLoadingHistory(false));
-};
+    setLoadingHistory(true);
+    fetch(`${API_BASE_URL}/fetchAiHistory/${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const payload = data?.data || data || {};
+        setHistory({
+          title: payload.title_history || [],
+          features: payload.features_history || [],
+          description: payload.description_history || [],
+        });
+      })
+      .catch((err) => console.error("History fetch error:", err))
+      .finally(() => setLoadingHistory(false));
+  };
   const isFirstGeneration = versions.length === 0;
   const isPromptEmpty =
     !isFirstGeneration &&
@@ -243,108 +246,109 @@ const [loadingHistory, setLoadingHistory] = useState(false);
     setProductTab({ ...productTab, [field]: updated });
     await persist({ [field]: updated });
     const valueToPush =
-  field === "features"
-    ? finalPreview.map((b) => b.text)
-    : versions[selectedVersionIndex[field]]?.value || "";
-await onApplyToProduct?.(field, valueToPush);
+      field === "features"
+        ? finalPreview.map((b) => b.text)
+        : versions[selectedVersionIndex[field]]?.value || "";
+    await onApplyToProduct?.(field, valueToPush);
     setApplying((p) => ({ ...p, [field]: false }));
     onSnackbar?.("success", `${FIELD_META[field].label} applied.`);
   };
 
- const handleGenerate = async () => {
-  if (isLimitReached) return;
-  const promptText = customPrompt[field].trim();
-  setGenerating((p) => ({ ...p, [field]: true }));
+  const handleGenerate = async () => {
+    if (isLimitReached) return;
+    const promptText = customPrompt[field].trim();
+    setGenerating((p) => ({ ...p, [field]: true }));
 
-  const isFirstGeneration = versions.length === 0;
+    const isFirstGeneration = versions.length === 0;
 
-  try {
-    if (isFirstGeneration) {
-      const res = await fetch(`${API_BASE_URL}/fetchAiContent/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product_id: id,
-          title: field === "title",
-          features: field === "features",
-          description: field === "description",
-        }),
-      });
-      const responseData = await res.json();
-      const newVersions = responseData?.data?.[field] || responseData?.[field] || [];
-      setProductTab((prev) => ({ ...prev, [field]: newVersions }));
-      onSnackbar?.("success", "First version generated.");
-    } else {
-      let baseSelection = [];
-
-      if (field === "features") {
-        // Collect checked bullets from checkedBullets Set
-        const selectedBullets = [];
-        versions.forEach((v, vi) => {
-          asFeatureBullets(v.value).forEach((text, bi) => {
-            if (checkedBullets.has(`${vi}:${bi}`)) {
-              selectedBullets.push(text);
-            }
-          });
+    try {
+      if (isFirstGeneration) {
+        const res = await fetch(`${API_BASE_URL}/fetchAiContent/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_id: id,
+            title: field === "title",
+            features: field === "features",
+            description: field === "description",
+          }),
         });
-
-        const targetIndex = selectedVersionIndex[field] ?? 0;
-        const featureValue =
-          selectedBullets.length > 0
-            ? selectedBullets
-            : asFeatureBullets(versions[targetIndex]?.value);
-
-        baseSelection = [{ value: featureValue, checked: true }];
+        const responseData = await res.json();
+        const newVersions =
+          responseData?.data?.[field] || responseData?.[field] || [];
+        setProductTab((prev) => ({ ...prev, [field]: newVersions }));
+        onSnackbar?.("success", "First version generated.");
       } else {
-        const targetIndex = selectedVersionIndex[field] ?? 0;
-        baseSelection = versions
-          .filter((_, i) => i === targetIndex)
-          .map((v) => ({ ...v, checked: true }));
+        let baseSelection = [];
+
+        if (field === "features") {
+          // Collect checked bullets from checkedBullets Set
+          const selectedBullets = [];
+          versions.forEach((v, vi) => {
+            asFeatureBullets(v.value).forEach((text, bi) => {
+              if (checkedBullets.has(`${vi}:${bi}`)) {
+                selectedBullets.push(text);
+              }
+            });
+          });
+
+          const targetIndex = selectedVersionIndex[field] ?? 0;
+          const featureValue =
+            selectedBullets.length > 0
+              ? selectedBullets
+              : asFeatureBullets(versions[targetIndex]?.value);
+
+          baseSelection = [{ value: featureValue, checked: true }];
+        } else {
+          const targetIndex = selectedVersionIndex[field] ?? 0;
+          baseSelection = versions
+            .filter((_, i) => i === targetIndex)
+            .map((v) => ({ ...v, checked: true }));
+        }
+
+        const payload = {
+          product_id: id,
+          option: promptText || "Generate another version",
+          title: field === "title" ? baseSelection : [],
+          description: field === "description" ? baseSelection : [],
+          features: field === "features" ? baseSelection : [],
+        };
+
+        const res = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        const apiError = result?.data?.error || result?.error;
+        if (apiError) {
+          onSnackbar?.("warning", apiError);
+          return;
+        }
+
+        const newlyGenerated = result?.data?.[field] || result?.[field] || [];
+
+        if (newlyGenerated.length === 0) {
+          onSnackbar?.("warning", "No new content returned from server.");
+          return;
+        }
+
+        // Append newly generated version to existing versions
+        if (newlyGenerated.length > 0) {
+          setProductTab((prev) => ({ ...prev, [field]: newlyGenerated }));
+        }
+
+        onSnackbar?.("success", "New version generated.");
       }
 
-      const payload = {
-        product_id: id,
-        option: promptText || "Generate another version",
-        title: field === "title" ? baseSelection : [],
-        description: field === "description" ? baseSelection : [],
-        features: field === "features" ? baseSelection : [],
-      };
-
-      const res = await fetch(`${API_BASE_URL}/regenerateAiContents/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = await res.json();
-      const apiError = result?.data?.error || result?.error;
-      if (apiError) {
-        onSnackbar?.("warning", apiError);
-        return;
-      }
-
-      const newlyGenerated = result?.data?.[field] || result?.[field] || [];
-
-      if (newlyGenerated.length === 0) {
-        onSnackbar?.("warning", "No new content returned from server.");
-        return;
-      }
-
-      // Append newly generated version to existing versions
-      if (newlyGenerated.length > 0) {
-  setProductTab((prev) => ({ ...prev, [field]: newlyGenerated }));
-}
-
-      onSnackbar?.("success", "New version generated.");
+      setCustomPrompt((p) => ({ ...p, [field]: "" }));
+    } catch (err) {
+      console.error("Generate error:", err);
+      onSnackbar?.("error", "Could not generate a new version.");
+    } finally {
+      setGenerating((p) => ({ ...p, [field]: false }));
     }
-
-    setCustomPrompt((p) => ({ ...p, [field]: "" }));
-  } catch (err) {
-    console.error("Generate error:", err);
-    onSnackbar?.("error", "Could not generate a new version.");
-  } finally {
-    setGenerating((p) => ({ ...p, [field]: false }));
-  }
-};
+  };
   const quickTags = [
     "Make it short",
     "Make it long",
@@ -711,9 +715,12 @@ await onApplyToProduct?.(field, valueToPush);
                 mb: 1,
               }}
             >
-           <Typography sx={{ fontWeight: 700, fontSize: 15 }}>
-  🪄&nbsp; {isLimitReached ? "Rewrite limit reached" : `Generate version ${versions.length + 1}`}
-</Typography>
+              <Typography sx={{ fontWeight: 700, fontSize: 15 }}>
+                🪄&nbsp;{" "}
+                {isLimitReached
+                  ? "Rewrite limit reached"
+                  : `Generate version ${versions.length + 1}`}
+              </Typography>
               <Typography
                 sx={{
                   fontSize: 12,

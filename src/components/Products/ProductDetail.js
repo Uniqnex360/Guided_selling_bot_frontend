@@ -380,7 +380,7 @@ const discountPercentage =
   PRODUCT WORKSPACE
 </Typography>
 
-          <Typography variant="h4" sx={{ fontWeight: 700, color: "#111827", mt: 0.5 }}>
+          <Typography variant="h4" sx={{ fontWeight: 400, color: "#111827", mt: 0.5 }}>
             Product details
           </Typography>
 
