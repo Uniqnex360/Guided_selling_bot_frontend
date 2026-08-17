@@ -626,26 +626,26 @@ export default function ContentStudio({
                 ) : field === "features" ? (
                   <Box>
                     {bullets.map((b, bi) => (
-                      <Box
-                        key={bi}
-                        sx={{ display: "flex", alignItems: "flex-start" }}
-                      >
-                        <Checkbox
-                          size="small"
-                          checked={checkedBullets.has(`${vi}:${bi}`)}
-                          onChange={() => handleToggleBullet(vi, bi)}
-                          sx={{
-                            color: COLORS.applyBg,
-                            "&.Mui-checked": { color: COLORS.applyBg },
-                            p: 0.5,
-                            mr: 0.5,
-                          }}
-                        />
-                        <Typography sx={{ fontSize: 15, pt: "9px" }}>
-                          {b}
-                        </Typography>
-                      </Box>
-                    ))}
+  <Box
+    key={bi}
+    sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.75 }}
+  >
+    <Checkbox
+      size="small"
+      checked={checkedBullets.has(`${vi}:${bi}`)}
+      onChange={() => handleToggleBullet(vi, bi)}
+      sx={{
+        color: COLORS.applyBg,
+        "&.Mui-checked": { color: COLORS.applyBg },
+        p: 0,
+        flexShrink: 0,
+      }}
+    />
+    <Typography sx={{ fontSize: 15 }}>
+      {b}
+    </Typography>
+  </Box>
+))}
                   </Box>
                 ) : (
                   <Box
@@ -698,7 +698,6 @@ export default function ContentStudio({
             </Typography>
           )}
 
-          {/* Generate version N */}
           <Box
             sx={{
               border: `1.5px dashed ${COLORS.border}`,
