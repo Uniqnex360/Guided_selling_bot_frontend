@@ -328,9 +328,10 @@ const ProductDetail = () => {
       </div>
     );
 
-  const imagesList = product?.images?.length ? product.images : [mainImage];
-  const currentImageIndex =
-    imagesList.indexOf(mainImage) >= 0 ? imagesList.indexOf(mainImage) + 1 : 1;
+  const imagesList = product?.images?.length ? product.images : [{ url: mainImage, name: "" }];
+const foundIndex = imagesList.findIndex((im) => im.url === mainImage);
+const currentImageIndex = foundIndex >= 0 ? foundIndex + 1 : 1;
+  
 
   return (
     <Container
@@ -561,62 +562,64 @@ const ProductDetail = () => {
               }}
             >
               {product?.images?.length > 0 ? (
-                product.images.map((img, index) => {
-                  if (!img) return null;
-                  const isSelected = mainImage === img;
-                  return (
-                    <Box
-                      key={`${img}-${index}`}
-                      onClick={() => setMainImage(img)}
-                      sx={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        cursor: "pointer",
-                        border: isSelected
-                          ? "2px solid #1b4d3e"
-                          : "1px solid #d1d5db",
-                        bgcolor: "#fff",
-                        p: "2px",
-                      }}
-                    >
-                      <img
-                        src={img}
-                        alt={`Thumbnail ${index + 1}`}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "contain",
-                          borderRadius: "6px",
-                        }}
-                      />
-                    </Box>
-                  );
-                })
-              ) : (
-                <Box
-                  sx={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: "8px",
-                    border: "2px solid #1b4d3e",
-                    bgcolor: "#fff",
-                    p: "2px",
-                  }}
-                >
-                  <img
-                    src={mainImage || soonImg}
-                    alt="Thumbnail 1"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      borderRadius: "6px",
-                    }}
-                  />
-                </Box>
-              )}
+  product.images.map((img, index) => {
+    if (!img) return null;
+
+    const isSelected = mainImage === img.url;     // compare URL strings
+
+    return (
+      <Box
+        key={`${img.url}-${index}`}
+        onClick={() => setMainImage(img.url)}     // store URL string
+        sx={{
+          width: 52,
+          height: 52,
+          borderRadius: "8px",
+          overflow: "hidden",
+          cursor: "pointer",
+          border: isSelected
+            ? "2px solid #1b4d3e"
+            : "1px solid #d1d5db",
+          bgcolor: "#fff",
+          p: "2px",
+        }}
+      >
+        <img
+          src={img.url}
+          alt={img.name || `Thumbnail ${index + 1}`}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            borderRadius: "6px",
+          }}
+        />
+      </Box>
+    );
+  })
+) : (
+  <Box
+    sx={{
+      width: 52,
+      height: 52,
+      borderRadius: "8px",
+      border: "2px solid #1b4d3e",
+      bgcolor: "#fff",
+      p: "2px",
+    }}
+  >
+    <img
+      src={mainImage || soonImg}
+      alt="Thumbnail 1"
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        borderRadius: "6px",
+      }}
+    />
+  </Box>
+)}
               {/* Plus Thumbnail Tile */}
               <Box
                 sx={{

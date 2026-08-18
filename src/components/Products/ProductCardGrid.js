@@ -111,12 +111,10 @@ export default function ProductCardGrid({
                                 <CardMedia
                                   component="img"
                                   image={
-                                    product.image_url &&
-                                    (product.image_url.startsWith("http://") ||
-                                      product.image_url.startsWith("https://"))
-                                      ? product.image_url
-                                      : "https://placehold.co/220x220?text=No+Img"
-                                  }
+    typeof product.image_url === "string"
+      ? product.image_url
+      : product.image_url?.url || "https://placehold.co/220x220?text=No+Img"
+  }
                                   alt={product.name}
                                   onError={(e) => {
                                     e.target.onerror = null;
