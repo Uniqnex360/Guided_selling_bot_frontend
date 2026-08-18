@@ -159,13 +159,23 @@ const ProductDetail = () => {
       .then((response) => response.json())
       .then((data) => {
         if (data?.data?.product) {
-          setProduct(data.data.product);
-          setMainImage(data.data.product.logo || soonImg);
-          setProductTab({
-            title: data?.data?.product?.ai_generated_title || [],
-            description: data?.data?.product?.ai_generated_description || [],
-            features: data?.data?.product?.ai_generated_features || [],
-          });
+          const p = data.data.product;
+setProduct(p);
+
+const mainUrl =
+  p.images?.[0]?.url ||
+  (typeof p.logo === "string"
+    ? p.logo
+    : p.logo?.url) ||
+  soonImg;
+
+setMainImage(mainUrl);
+
+setProductTab({
+  title: p.ai_generated_title || [],
+  description: p.ai_generated_description || [],
+  features: p.ai_generated_features || [],
+});
         } else {
           console.warn("Product data not found for ID:", productId);
         }
